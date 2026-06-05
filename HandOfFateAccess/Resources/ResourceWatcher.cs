@@ -68,7 +68,9 @@ namespace HandOfFateAccess.Resources {
 
 		private void Resubscribe(Player p) {
 			// Skip the old player if it was destroyed (Unity's == reports a destroyed
-			// object as null): its resource objects are GC'd with it, taking our handlers.
+			// object as null). Its resource objects are then orphaned: no game code ever
+			// writes to a player other than Player.Instance, so the stale handlers on the
+			// old one never fire again.
 			if (_subscribed != null) {
 				Player prev = _subscribed;
 				prev.Gold.OnUpdated = (PlayerResource.OnUpdatedHandler)Delegate.Remove(prev.Gold.OnUpdated, _onGold);

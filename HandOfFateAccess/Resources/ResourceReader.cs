@@ -37,7 +37,7 @@ namespace HandOfFateAccess.Resources {
 			if (s.HasFood) s.Food = p.Food.BaseValue;
 			if (s.HasGold) s.Gold = p.Gold.BaseValue;
 			if (s.HasIronOre) s.IronOre = p.IronOre.BaseValue;
-			s.Tokens = p.Tokens != null ? p.Tokens.Count : 0;
+			s.Tokens = p.Tokens.Count;
 			return s;
 		}
 	}

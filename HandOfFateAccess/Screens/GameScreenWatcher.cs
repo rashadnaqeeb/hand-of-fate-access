@@ -226,12 +226,22 @@ namespace HandOfFateAccess.Screens {
 		// navigation feedback. The game populates this only when the player has subtitles
 		// enabled, so an empty read (subtitles off, or no line playing) simply says
 		// nothing, respecting that setting.
+		//
+		// Hide() does not clear the label, so the last line lingers while the widget is
+		// hidden. Reset the marker whenever it is hidden, so a line that plays again
+		// (identical text) is seen as a fresh edge and re-announced rather than skipped.
 		private void PumpSubtitleText() {
 			string text;
+			bool visible;
 			try {
-				text = new Message().Add(SubtitleReader.Read()).Resolve();
+				SubtitleReader.Read(out var raw, out visible);
+				text = new Message().Add(raw).Resolve();
 			} catch (Exception ex) {
 				Log.Error("subtitle text readout failed: " + ex);
+				return;
+			}
+			if (!visible) {
+				_lastSubtitleText = null;
 				return;
 			}
 			if (text == _lastSubtitleText) return;
