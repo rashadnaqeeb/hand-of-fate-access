@@ -1,5 +1,4 @@
 using System.Reflection;
-using HandOfFateAccess.Focus;
 using HarmonyLib;
 
 namespace HandOfFateAccess.Screens {
@@ -16,28 +15,21 @@ namespace HandOfFateAccess.Screens {
 		private static readonly FieldInfo InstructionsField = AccessTools.Field(typeof(UIEncounterEventPanel), "m_instructionsText");
 
 		/// <summary>
-		/// The live narrative (scenario, then result after a choice), the mechanical
-		/// instructions (what the choice triggers: draw cards, win a token), and the
-		/// description of the encounter card the player most recently heard. All raw
-		/// text; composition and the duplicate-scenario decision are made in Core. The
-		/// card description lets Core drop the opening scenario, which is defined as that
-		/// same description and was already spoken on focusing the card. Anchoring on the
-		/// card actually heard (not the active encounter's card) means an encounter the
-		/// player never focused still announces its scenario. Null when no panel is live.
+		/// The live narrative (scenario when the panel opens, then the result after a
+		/// choice) and the mechanical instructions (what the choice triggers: draw cards,
+		/// win a token). Both are raw label text; composition is decided in Core. The
+		/// encounter card's focus readout omits the scenario, so the panel is the single
+		/// source for it and there is no duplication. Null when no panel is live.
 		/// </summary>
-		public static void Read(out string narrative, out string instructions, out string cardDescription) {
+		public static void Read(out string narrative, out string instructions) {
 			narrative = null;
 			instructions = null;
-			cardDescription = null;
 			UIManager ui = UIManager.Instance;
 			if (ui == null) return;
 			UIEncounterEventPanel panel = ui.EncounterEventPanel;
 			if (panel == null) return;
 			narrative = LabelText(TextField, panel);
 			instructions = LabelText(InstructionsField, panel);
-			EncounterCard heard = ProxyFactory.LastAnnouncedEncounterCard;
-			if (heard != null)
-				cardDescription = heard.LocalisedDescription;
 		}
 
 		private static string LabelText(FieldInfo field, UIEncounterEventPanel panel) {

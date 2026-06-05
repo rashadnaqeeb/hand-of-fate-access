@@ -7,17 +7,11 @@ namespace HandOfFateAccess.Screens {
 	/// instructions (what the choice triggers, e.g. "Draw 1 Equipment Card", "This
 	/// card's token is now yours"). Narrative first, then instructions, each only if
 	/// present; markup stripping and empty-dropping run through the Message pipeline.
-	/// Returns "" when nothing is left to say.
-	///
-	/// The opening scenario is, by the game's own definition, the encounter card's
-	/// description, which the player already heard on focusing the card. When the
-	/// narrative matches that description it is dropped to avoid reading it twice; a
-	/// later event's scenario or a choice result differs from the card and is kept.
+	/// Returns "" when nothing is left to say. The encounter card's focus readout omits
+	/// the scenario, so the panel is its single source and there is no duplication.
 	/// </summary>
 	public static class EncounterNarration {
-		public static string Compose(string narrative, string instructions, string cardDescription) {
-			if (!string.IsNullOrEmpty(narrative) && narrative == cardDescription)
-				narrative = null;
+		public static string Compose(string narrative, string instructions) {
 			return new Message().Add(narrative).Add(instructions).Resolve();
 		}
 	}

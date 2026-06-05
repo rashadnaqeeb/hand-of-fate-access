@@ -42,26 +42,14 @@ namespace HandOfFateAccess.Focus {
 
 		private static readonly string[] EmptyLabels = new string[0];
 
-		/// <summary>
-		/// The most recent encounter card actually announced via focus. An encounter's
-		/// opening scenario is, by the game's definition, this card's description, so the
-		/// encounter reader uses this to drop the scenario it already spoke. A live
-		/// reference (read fresh, never a cached string); null until a card is heard, so
-		/// an encounter the player never focused still announces its scenario.
-		/// </summary>
-		public static EncounterCard LastAnnouncedEncounterCard { get; private set; }
-
 		public static UIElement Create(GameObject go) {
 			UISelectable selectable = go.GetComponent<UISelectable>();
 			if (selectable != null && IsBlockerFocus(selectable))
 				return null;
 
 			Card card = go.GetComponentInParent<Card>();
-			if (card != null) {
-				if (card is EncounterCard encounter)
-					LastAnnouncedEncounterCard = encounter;
+			if (card != null)
 				return new CardElement(ExtractCard(card));
-			}
 
 			// A UISelectableGroup is a structural container in NGUI's selection model,
 			// not content. An ordinary group routes focus down to a child selectable
@@ -122,13 +110,19 @@ namespace HandOfFateAccess.Focus {
 				tokens = ExtractTokens(encounter);
 			}
 
+			// An encounter card's description is the encounter scenario, which is not on
+			// the table card (a sighted player sees only art and title) and is read by the
+			// event panel when the encounter is played. Reading it on focus too would
+			// duplicate it, so omit it here for encounters; the panel is the source.
+			string description = encounter != null ? null : card.LocalisedDescription;
+
 			// Card.Title is a raw localization key (e.g. ENCOUNTER_TITLE_TWISTED_CANYON);
 			// there is no LocalisedTitle, so localize it here the same way the game's own
 			// LocalisedDescription wraps Description. UIUtils.GetString returns the key
 			// unchanged if no entry exists, so this is safe for any already-human string.
 			return new CardInfo(
 				UIUtils.GetString(card.Title),
-				card.LocalisedDescription,
+				description,
 				card.StatValueString,
 				card.ValueString,
 				tokens,
