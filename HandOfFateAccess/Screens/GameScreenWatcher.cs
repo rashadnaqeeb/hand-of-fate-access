@@ -43,6 +43,7 @@ namespace HandOfFateAccess.Screens {
 		// reaches: the cabinet examine panel and the death/forfeit results line.
 		private string _lastCabinetText;
 		private string _lastDeathText;
+		private string _lastSubtitleText;
 
 		// Live game types mapped to mod screens. Compile-time references against
 		// Assembly-CSharp: a renamed GameState fails the build here, by design.
@@ -124,6 +125,7 @@ namespace HandOfFateAccess.Screens {
 			PumpEncounterText();
 			PumpCabinetText();
 			PumpDeathText();
+			PumpSubtitleText();
 		}
 
 		// The encounter event panel's narrative (scenario, then result after a choice)
@@ -187,6 +189,25 @@ namespace HandOfFateAccess.Screens {
 			_lastDeathText = text;
 			if (!string.IsNullOrEmpty(text))
 				Speak(text);
+		}
+
+		// The dealer's subtitle line is display-only narration the focus model never
+		// reaches. Each new segment queues behind current speech so it does not cut off
+		// navigation feedback. The game populates this only when the player has subtitles
+		// enabled, so an empty read (subtitles off, or no line playing) simply says
+		// nothing, respecting that setting.
+		private void PumpSubtitleText() {
+			string text;
+			try {
+				text = new Message().Add(SubtitleReader.Read()).Resolve();
+			} catch (Exception ex) {
+				Log.Error("subtitle text readout failed: " + ex);
+				return;
+			}
+			if (text == _lastSubtitleText) return;
+			_lastSubtitleText = text;
+			if (!string.IsNullOrEmpty(text))
+				SpeechPipeline.SpeakQueued(text);
 		}
 
 		// A modal dialogue is a MenuManager push on the Dialogue stack, invisible to
