@@ -68,6 +68,26 @@ namespace HandOfFateAccess.UI {
 	}
 
 	/// <summary>
+	/// Readout for an empty equipment slot in the paperdoll. A filled slot forwards
+	/// focus to its card (read as a CardElement); an empty one is sprite-only with no
+	/// label, so without this it would speak only its raw object name. The category
+	/// (weapon, armour...) comes first as the distinguishing word across slots, then
+	/// that the slot is empty. The category text is the game's own localized title,
+	/// extracted by the adapter; only the "empty" suffix is mod-authored.
+	/// </summary>
+	public sealed class EquipmentSlotElement : UIElement {
+		private readonly string _category;
+
+		public EquipmentSlotElement(string category) {
+			_category = category;
+		}
+
+		public override Message Describe() {
+			return new Message().Add(_category).Add(Strings.SlotEmpty);
+		}
+	}
+
+	/// <summary>
 	/// Readout for an encounter choice button. The number comes first: the game's focus
 	/// skips disabled/unavailable choices (they are non-selectable), so a gap in the
 	/// spoken numbers (1 then 3) is the only cue to the player that a choice was passed

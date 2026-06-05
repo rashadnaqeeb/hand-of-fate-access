@@ -146,17 +146,30 @@ namespace HandOfFateAccess {
 		// Selectors and toggles change their value in place (e.g. the language picker
 		// rewrites its label on left/right) without firing a selection change, so they
 		// are invisible to the focus path. While the watched control is still the live
-		// selection, re-read it and speak when its readout changed. Interrupt, since the
-		// change is the user's direct response to their own input. Gated to just after
-		// input so it does not rebuild the readout every idle frame, and so a label that
-		// changes on its own (not from the user) is not announced as if they changed it.
+		// selection, re-read it and speak when its readout changed.
+		//
+		// Two kinds of in-place change are handled differently. A selector/toggle changes
+		// from the user's own input, so it is polled only just after input (so an
+		// unrelated label that animates on its own is not announced as if they changed it)
+		// and interrupts, as their direct response. A stat card (gold, food, health)
+		// instead changes from game events with no input of its own, so it is polled every
+		// frame and queued, so an automatic resource change while the card holds focus is
+		// still heard without cutting off whatever is speaking.
 		private void PollWatchedValue() {
-			if (_watched == null || !NavigationState.WasRecent) return;
+			if (_watched == null) return;
 			if (UICamera.selectedObject != _watched) return;
+
+			bool isStat = _watched.GetComponentInParent<StatCard>() != null;
+			if (!isStat && !NavigationState.WasRecent) return;
+
 			string current = BuildReadout(_watched);
 			if (current == _watchedReadout) return;
 			_watchedReadout = current;
-			if (!string.IsNullOrEmpty(current))
+			if (string.IsNullOrEmpty(current)) return;
+
+			if (isStat && !NavigationState.WasRecent)
+				SpeechPipeline.SpeakQueued(current);
+			else
 				SpeechPipeline.SpeakInterrupt(current);
 		}
 

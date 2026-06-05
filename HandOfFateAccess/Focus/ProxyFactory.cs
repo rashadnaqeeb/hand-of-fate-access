@@ -53,6 +53,18 @@ namespace HandOfFateAccess.Focus {
 			if (card != null)
 				return new CardElement(ExtractCard(card));
 
+			// An equipment slot in the paperdoll is a CardContainer carrying only sprites,
+			// no label. A filled slot forwards focus to its card (handled by the Card branch
+			// above); an empty one keeps focus on itself and would otherwise fall through to
+			// its bare object name ("PaperdollSlot(Clone)"). Announce the slot's category from
+			// the game's own localized title, plus that it is empty. GetCategoryTitle returns
+			// a localization key; UIUtils.GetString localizes it (and returns "" for none).
+			PaperdollSlot slot = go.GetComponent<PaperdollSlot>();
+			if (slot != null && slot.TopCard == null) {
+				string category = UIUtils.GetString(InventoryCategoryData.GetCategoryTitle(slot.CategoryData.type));
+				return new EquipmentSlotElement(category);
+			}
+
 			// An encounter choice button focuses a UISelectableItem that is a separate
 			// object from its labels, so the generic child sweep misses them. Resolve the
 			// owning UIChoiceButton and extract its raw labels; ordering and cleanup are

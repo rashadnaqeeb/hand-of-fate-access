@@ -46,6 +46,12 @@ namespace HandOfFateAccess.Localization {
 		// localized "continue" label (only per-encounter ones), so it is authored here.
 		public static readonly string ControlContinue = "Continue";
 
+		// Appended after an equipment slot's category (e.g. "Weapons, empty") when the
+		// paperdoll slot holds no equipped card. An empty slot is sprite-only with no
+		// label, and the game has no localized "empty slot" string, so it is authored
+		// here; the category name itself comes from the game's own localization.
+		public static readonly string SlotEmpty = "empty";
+
 		// Shown on an encounter card that offers a token to win (the game draws a token
 		// gem on the card). The cards the token grants or removes are not displayed to
 		// the player anywhere, so only the presence of a winnable token is announced,
