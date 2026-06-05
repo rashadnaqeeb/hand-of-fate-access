@@ -31,6 +31,8 @@ Three projects (solution layout):
 
 Engine seams are interfaces with injectable fakes: `ISpeechBackend` (real = `TolkBackend`), `IClock` (real = `StopwatchClock`, default; test = fake time). When new logic needs engine state, add a seam in Core and keep the Unity/BepInEx implementation in the plugin, rather than reaching into engine APIs from testable code.
 
+**Adapter / composition split.** Reading live game state (focus, cards, map, tiles) inherently touches Unity and cannot live in Core. Keep that to a thin **adapter** in the plugin that only *extracts raw state* into a plain DTO (no Unity types past the boundary) and does **no formatting**. The announcement is then *composed* from the DTO by **Core** logic, which is unit-tested. The litmus test: if a piece of code decides what words the user hears, it belongs in Core; if it pulls a value off a `UILabel`/game object, it belongs in the adapter. This keeps test coverage growing with the mod instead of stranding announcement logic in the untestable plugin.
+
 Phased build plan is in `ROADMAP.md`. Three tiers:
 
 1. **UI (almost everything: dealer, cards, equipment, menus).** The game has full controller navigation; we do NOT rebuild it. Harmony-postfix **`UICamera.SetSelection(GameObject, ControlScheme)`** — the static chokepoint fired on every selection change — and announce the focused object, reading text via `UILabel.text` on it or its children. Per-control readouts (a card speaks name + full text + costs + tokens, not just its title) use a Proxy/UIElement model with a generic fallback proxy.

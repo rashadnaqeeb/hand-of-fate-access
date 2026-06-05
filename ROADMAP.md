@@ -14,9 +14,14 @@ Stand up the full speech and logging stack in one go, so the first run proves ou
 - [x] **Proof:** launch the game and get BOTH — a `[HoFAccess]` line in `output_log.txt` / BepInEx console AND a spoken startup line through the screen reader. Full output chain working end to end, with logging and speech both in place. (Verified: log chain present, "Hand of Fate Access loaded" spoken via JAWS, `card_table` scene loads clean with zero serialization errors.)
 
 ## Phase 2 - Focus spine (prove the core bet)
-- [ ] Harmony-postfix `UICamera.SetSelection`; on selection change in Controller scheme, read the focused GameObject's `UILabel` text.
-- [ ] Route through `SpeechPipeline`. Announce once per frame via an update loop + dirty flag (never from the hook).
+Split every focus readout into two layers so logic stays testable: a thin Unity **adapter** (in the plugin) that extracts raw state from the focused GameObject and does NO formatting, and **Core** composition that turns that raw state into the spoken string. The adapter is minimal and validated only in-game; the composition is unit-tested. Keep Unity types from leaking past the adapter boundary.
+- [ ] Stand up the validated manual Harmony-patch helper (logs success/failure per patch — see Cross-cutting) and use it for this and all later patches.
+- [ ] Harmony-postfix `UICamera.SetSelection`; on selection change in the Controller scheme, store the focused GameObject and set a dirty flag. Never speak from the hook.
+- [ ] Adapter: pull raw text from the focused object (`UILabel.text` on it or its children) into a plain DTO defined in Core (e.g. focused-control name plus its label texts). No Unity types in the DTO.
+- [ ] Core: compose the announcement from the DTO and unit-test the composition (empty labels, multiple child labels, markup via `TextFilter`).
+- [ ] Announce once per frame from the update loop via the dirty flag; route through `SpeechPipeline`.
 - **Proof:** navigating the main menu with keyboard/controller speaks each focused item.
+- **Architectural proof:** the focus-to-text composition is covered by offline tests; only raw extraction needs the game.
 
 ## Phase 3 - Proxy model + full readouts
 - [ ] `UIElement` base + `ProxyFactory` generic fallback (read all child labels, not just the first).
