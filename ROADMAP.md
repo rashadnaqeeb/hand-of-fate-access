@@ -24,22 +24,23 @@ Split every focus readout into two layers so logic stays testable: a thin Unity 
 - **Architectural proof:** the focus-to-text composition is covered by offline tests; only raw extraction needs the game.
 
 ## Phase 3 - Proxy model + full readouts
-- [ ] `UIElement` base + `ProxyFactory` generic fallback (read all child labels, not just the first).
-- [ ] `Container` hierarchy + `FocusContext` path-diffing (announce only changed container context).
-- [ ] `Message` system (composable, markup-stripped at resolve).
-- [ ] Targeted proxies for the high-value controls: encounter cards (name + full text + costs + tokens), equipment, fame/tokens, dealer prompts. Use View classes for shared game-model reads.
-- [ ] `ScreenManager` + per-screen registries where a screen needs context the generic proxy can't give.
-- **Proof:** a focused card/equipment reads its complete information, correctly, across the main game screens.
+- [x] `UIElement` base + `ProxyFactory` generic fallback (read all child labels, not just the first). (`Core/UI/UIElement.cs` with `GenericElement`; `Focus/ProxyFactory` is the single dispatch point, resolving the owning `Card` via `GetComponentInParent`.)
+- [x] `Container` hierarchy + `FocusContext` path-diffing (announce only changed container context). **Realized one layer up at the screen level:** NGUI container/panel names are developer-internal, but mod-authored screen names are clean, so "announce only the changed context" now lives in `ScreenStack`'s entry-diffing (`Core/Screens/ScreenStack.cs`) keyed on the game's `GameState` machine rather than on nameless NGUI containers.
+- [x] `Message` system (composable, markup-stripped at resolve). (`Core/UI/Message.cs`: ordered raw parts, filtered/empty-dropped/deduped/joined at `Resolve`.)
+- [x] Targeted proxies for the high-value controls: encounter cards (name + full text + costs + tokens), equipment, dealer prompts. Use View classes for shared game-model reads. (One `CardElement`/`CardInfo` covers all `Card` subclasses - encounter, equipment, gold/food/health stat counters; encounter cards also read token stakes and completion. Dealer prompt is the encounter card's `Description`. Fame is not an in-run resource. No separate View needed since one card reader suffices; add View classes when a screen shares model reads across controls.)
+- [x] `ScreenManager` (built as the `Screens` layer) — screen detection driven by the game's `GameState` machine, a Core `ScreenStack` with entry-announcement diffing, encounter/combat/shop overlays edge-detected from singletons, and the screen name spoken on entry. (`Core/Screens/{ScreenId,ScreenCatalog,ScreenStack}.cs`, `Screens/GameScreenWatcher.cs`.) Overlays that live outside the GameState machine are detected the same way: the pause menu (`PauseMenuManager` state) and modal dialogues (`MenuManager` Dialogue stack), the latter reading the live prompt text via `DialogueReader`/`DialogueInfo` so a modal is never silent. The stack is exposed for Phase 4 input dispatch and Phase 5 focus override to consume; the per-screen focus-resolution override and input-claim seams are defined but not wired (no dead dispatch). `ProxyFactory.Create` remains the focus resolver until Phase 5 needs the override.
+- **Proof:** a focused card/equipment reads its complete information, correctly, across the main game screens; each screen names itself on entry and modal/pause overlays announce. *(Confirmed in-game; passed a multi-reviewer code pass whose findings - the queued-focus latch, nested dialogues, selection-forwarding focus, the gain/lose wording sitting in the adapter, and the catch re-touching a destroyed object - are fixed.)*
 
-## Phase 4 - Input, review buffers, help
-- [ ] `InputManager`: rebindable actions, keyboard + controller, dispatched through the screen stack, falling back to the game's own action when unclaimed.
-- [ ] Buffer system (review cursor): step through detailed info (deck, equipment, current encounter) with Ctrl+arrows, without moving game focus.
-- [ ] F1 help overlay built from the active screen stack.
-- **Proof:** review buffers and rebindable keys work; F1 lists context controls.
+## Phase 4 - Input handler
+The mod needs its own keys for things the game has no control for (map cursor, on-demand status lookups). This phase builds the input layer those depend on. (Review buffers and an F1 help overlay were considered and cut as unnecessary: the game's own controller navigation plus the focus readouts already cover review, and dedicated status keys serve the lookup need more directly.)
+- [ ] `InputManager`: rebindable actions, keyboard + controller, falling back to the game's own action when a key is unclaimed so we never swallow game input.
+- [ ] First consumer - map-explorer navigation keys (Phase 5): Ctrl+arrows on keyboard, right stick on controller (pending confirmation the game doesn't already use the right stick).
+- [ ] Later - status keys that speak a specific value on demand (health, gold, food, etc.) without moving game focus. Deferred until those values exist as readable views; listed here so the input layer is designed to carry them.
+- **Proof:** a bound mod key fires its action, and an unclaimed key still reaches the game's own handler.
 
 ## Phase 5 - Map explorer
-- [ ] Determine how to capture the map-cursor input (right stick / IJKL) without the game consuming it — via InControl's API or `UnityEngine.Input`, and check Steam Input isn't remapping the right stick out from under us.
-- [ ] Grid cursor over `Map.Instance.MapLayout` via `GetSlot(Vector2)`; move with right stick / IJKL.
+- [ ] Determine how to capture the map-cursor input (right stick / Ctrl+arrows) without the game consuming it — via InControl's API or `UnityEngine.Input`, and check Steam Input isn't remapping the right stick out from under us.
+- [ ] Grid cursor over `Map.Instance.MapLayout` via `GetSlot(Vector2)`; move with right stick / Ctrl+arrows.
 - [ ] Read each slot: category, active card, lock/complete state, neighbors (`IsNextTo`), reachability (`SimplePathFinder`), distance/relation to `PlayerCounter`.
 - [ ] Scope to visible tiles by mirroring `CheckDarken` / `IsUnlocked`.
 - **Proof:** a blind player can explore the whole visible board and understand its layout and connections.

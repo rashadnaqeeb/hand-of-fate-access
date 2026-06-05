@@ -68,7 +68,13 @@ Phased build plan is in `ROADMAP.md`. Three tiers:
 ## Reflection targets (audit after game updates)
 
 Private game members reached by reflection — one audit point for game updates.
-- `UICamera` — `SetSelection` (patch target), `selectedObject`, `currentScheme`, `mCurrentSelection`.
+- `UICamera` — `SetSelection` (patch target), `selectedObject` (read at init to seed the first focus), `currentScheme`, `mCurrentSelection`.
+- `UISelectable` — `Select(bool)` (patch target; the unified selection chokepoint reached by both navigation and programmatic/initial focus, which bypasses `UICamera.SetSelection`), `IsValid`, `IsSelectable`. `UISelection.SelectedObject`/`UISelectionManager` are the layered selection model behind it (Primary/Secondary/Dialogue categories).
+- `Game` — `Instance`, `ActiveGameState`, `OnGameStateEntered`/`OnGameStateExited` (the `GameScreenWatcher` subscribes to these instead of polling).
+- `GameState_*` subclasses — the 17 concrete states mapped to `ScreenId` in `GameScreenWatcher.StateMap` via compile-time `typeof`, so a game-side rename breaks the build rather than mis-mapping. Audit the map after a game update.
+- `Encounter.Instance` / `CombatEncounter.Instance` / `Shop.Instance` — sub-context overlays edge-polled from the Update pump.
+- `MenuManager.Instance.PauseMenuManager.CurrentState.Name` (`PauseMenuManager.State.StateName`) — the pause overlay is a MenuManager push, not a GameState change, so it is edge-polled here. The game flips `ActiveGameState` to `GameState_Level_Pause` only when pausing from level play, so pause cannot be detected via the state machine alone.
+- `MenuManager.Instance.CurrentMenu(MenuManager.StackPriority.Dialogue)` — modal dialogues (forfeit/quit confirms, error popups, the controller tutorial) are pushes on the Dialogue stack, also invisible to the GameState machine; edge-polled as the topmost overlay. `Dialogue` (`m_body`, `m_optionOKText`, `m_optionCancelText` UILabels, reached by reflection in `DialogueReader`) — the prompt/option text read into `DialogueInfo`.
 
 ## Common LLM Antipatterns
 

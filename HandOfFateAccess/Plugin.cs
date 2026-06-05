@@ -1,9 +1,11 @@
+using System;
 using System.IO;
 using System.Reflection;
 using BepInEx;
 using HandOfFateAccess.Focus;
 using HandOfFateAccess.Patches;
 using HandOfFateAccess.Patching;
+using HandOfFateAccess.Screens;
 using HandOfFateAccess.Speech;
 using HandOfFateAccess.Util;
 using HarmonyLib;
@@ -31,6 +33,7 @@ namespace HandOfFateAccess {
 		private const int StartupDelayFrames = 120;
 		private bool _initialized;
 		private bool _speechReady;
+		private GameScreenWatcher _screenWatcher;
 
 		private void Awake() {
 			LogBepInExBackend.Install(Logger);
@@ -45,8 +48,10 @@ namespace HandOfFateAccess {
 				return;
 			}
 
-			if (_speechReady)
+			if (_speechReady) {
+				_screenWatcher.Pump();
 				PumpFocus();
+			}
 		}
 
 		private void Initialize() {
@@ -62,6 +67,17 @@ namespace HandOfFateAccess {
 
 			SpeechPipeline.SpeakInterrupt("Hand of Fate Access loaded");
 			InstallPatches();
+
+			_screenWatcher = new GameScreenWatcher();
+			_screenWatcher.Install();
+
+			// A control auto-selected before our patches were live (the main menu's
+			// initial button at launch) fired its selection where we couldn't hear
+			// it. Seed the current selection so the first focus reads without the
+			// user having to move; the dedup in FocusTracker makes this harmless if
+			// nothing has been selected yet.
+			if (UICamera.selectedObject != null)
+				FocusTracker.Record(UICamera.selectedObject);
 		}
 
 		private void InstallPatches() {
@@ -71,14 +87,41 @@ namespace HandOfFateAccess {
 				new[] { typeof(UnityEngine.GameObject), typeof(UICamera.ControlScheme) },
 				prefix: null,
 				postfix: AccessTools.Method(typeof(UICamera_SetSelection_Patch), "Postfix"));
+			patcher.Patch(
+				typeof(UISelectable), "Select",
+				new[] { typeof(bool) },
+				prefix: null,
+				postfix: AccessTools.Method(typeof(UISelectable_Select_Patch), "Postfix"));
 		}
 
 		private void PumpFocus() {
 			if (!FocusTracker.TryConsume(out var go)) return;
 
-			FocusDto dto = FocusAdapter.Extract(go);
-			string announcement = FocusComposer.Compose(dto);
-			if (!string.IsNullOrEmpty(announcement))
+			// Reading the focused control touches live game model state (e.g.
+			// EncounterCard.Description), which can throw on malformed asset data.
+			// Catch at this boundary so a bad card logs once instead of silently
+			// dropping the focus announcement. Runs per focus change, not per frame.
+			string announcement;
+			// Read the name inside the try: a destroyed Unity object throws on .name
+			// too, and that must not escape the catch unlogged. If it throws here the
+			// label stays generic and the failure is still reported.
+			string label = "focus";
+			try {
+				label = go.name;
+				announcement = ProxyFactory.Create(go).Describe().Resolve();
+			} catch (Exception ex) {
+				Log.Error("focus readout failed for '" + label + "': " + ex);
+				return;
+			}
+
+			if (string.IsNullOrEmpty(announcement)) return;
+
+			// Entering a screen auto-selects a control, firing this focus change in
+			// the same beat. When that happens, speak the control queued so it reads
+			// after the screen name instead of cutting it off; otherwise interrupt.
+			if (_screenWatcher.ConsumeScreenJustChanged())
+				SpeechPipeline.SpeakQueued(announcement);
+			else
 				SpeechPipeline.SpeakInterrupt(announcement);
 		}
 	}
