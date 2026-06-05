@@ -55,20 +55,14 @@ namespace HandOfFateAccess.Focus {
 
 			// An encounter choice button focuses a UISelectableItem that is a separate
 			// object from its labels, so the generic child sweep misses them. Resolve the
-			// owning UIChoiceButton and read its number then its choice text, which the
-			// game has already formatted with the success odds ("... (75% chance ...)").
-			// Number first because the game's focus skips disabled/unavailable choices
-			// (non-selectable), so a gap in the numbers (1 then 3) is the only cue to the
-			// player that a choice was passed over. This is the justified exception to
-			// the usual no-positional-counts rule.
+			// owning UIChoiceButton and extract its raw labels; ordering and cleanup are
+			// decided in Core (ChoiceElement). The choice text already carries the success
+			// odds, which the game bakes into the label ("... (75% chance of success)").
 			UIChoiceButton choice = go.GetComponentInParent<UIChoiceButton>();
 			if (choice != null) {
 				string text = LabelText(ChoiceTextField, choice);
-				if (!string.IsNullOrEmpty(text)) {
-					string number = LabelText(ChoiceLetterField, choice);
-					if (!string.IsNullOrEmpty(number)) number = number.TrimEnd(')', ' ');
-					return new GenericElement(go.name, new[] { number, text });
-				}
+				if (!string.IsNullOrEmpty(text))
+					return new ChoiceElement(new ChoiceInfo(LabelText(ChoiceLetterField, choice), text));
 			}
 
 			// A UISelectableGroup is a structural container in NGUI's selection model,

@@ -66,4 +66,26 @@ namespace HandOfFateAccess.UI {
 			return message;
 		}
 	}
+
+	/// <summary>
+	/// Readout for an encounter choice button. The number comes first: the game's focus
+	/// skips disabled/unavailable choices (they are non-selectable), so a gap in the
+	/// spoken numbers (1 then 3) is the only cue to the player that a choice was passed
+	/// over. This is the deliberate exception to the no-positional-counts rule. The
+	/// game's decorative ")" on the number is trimmed so the reader does not announce it.
+	/// </summary>
+	public sealed class ChoiceElement : UIElement {
+		private readonly ChoiceInfo _info;
+
+		public ChoiceElement(ChoiceInfo info) {
+			_info = info;
+		}
+
+		public override Message Describe() {
+			string number = _info.Number;
+			if (!string.IsNullOrEmpty(number))
+				number = number.TrimEnd(')', ' ');
+			return new Message().Add(number).Add(_info.Text);
+		}
+	}
 }
