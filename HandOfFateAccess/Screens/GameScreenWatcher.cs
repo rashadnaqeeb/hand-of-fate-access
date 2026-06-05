@@ -43,6 +43,7 @@ namespace HandOfFateAccess.Screens {
 		// reaches: the cabinet examine panel and the death/forfeit results line.
 		private string _lastCabinetText;
 		private string _lastDeathText;
+		private string _lastScoreboardText;
 		private string _lastSubtitleText;
 
 		// Live game types mapped to mod screens. Compile-time references against
@@ -125,7 +126,15 @@ namespace HandOfFateAccess.Screens {
 			PumpEncounterText();
 			PumpCabinetText();
 			PumpDeathText();
+			PumpScoreboardText();
 			PumpSubtitleText();
+		}
+
+		// The death line and the scoreboard are both display-only surfaces on the results
+		// states; their per-frame FindObjectOfType is scoped here so it only runs there.
+		private static bool InResults() {
+			GameState state = Game.Instance != null ? Game.Instance.ActiveGameState : null;
+			return state is GameState_Post || state is GameState_AlphaEnd;
 		}
 
 		// The encounter event panel's narrative (scenario, then result after a choice)
@@ -173,8 +182,7 @@ namespace HandOfFateAccess.Screens {
 		// results screen. Gated to the results states so the per-frame FindObjectOfType
 		// only runs there. Interrupts as the reveal of the run's outcome.
 		private void PumpDeathText() {
-			GameState state = Game.Instance != null ? Game.Instance.ActiveGameState : null;
-			if (!(state is GameState_Post) && !(state is GameState_AlphaEnd)) {
+			if (!InResults()) {
 				_lastDeathText = null;
 				return;
 			}
@@ -189,6 +197,28 @@ namespace HandOfFateAccess.Screens {
 			_lastDeathText = text;
 			if (!string.IsNullOrEmpty(text))
 				Speak(text);
+		}
+
+		// The end-of-run score breakdown is display-only; only its continue button is
+		// focusable. Gated to the results states. Queued so it reads after the death line
+		// (which interrupts as the outcome reveal) rather than cutting it off.
+		private void PumpScoreboardText() {
+			if (!InResults()) {
+				_lastScoreboardText = null;
+				return;
+			}
+			string text;
+			try {
+				ScoreboardReader.Read(out var header, out var rows);
+				text = ScoreboardNarration.Compose(header, rows);
+			} catch (Exception ex) {
+				Log.Error("scoreboard text readout failed: " + ex);
+				return;
+			}
+			if (text == _lastScoreboardText) return;
+			_lastScoreboardText = text;
+			if (!string.IsNullOrEmpty(text))
+				SpeechPipeline.SpeakQueued(text);
 		}
 
 		// The dealer's subtitle line is display-only narration the focus model never
