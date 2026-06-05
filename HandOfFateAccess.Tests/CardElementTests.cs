@@ -4,7 +4,7 @@ using Xunit;
 namespace HandOfFateAccess.Tests {
 	/// <summary>
 	/// The targeted card readout: title first, then status, stat, rules/prompt,
-	/// value, token stakes - with empty model fields dropping out of the line.
+	/// value, and whether a token can be won - with empty model fields dropping out.
 	/// </summary>
 	public class CardElementTests {
 		private static string Describe(CardInfo info) =>
@@ -51,41 +51,27 @@ namespace HandOfFateAccess.Tests {
 				description: "Bandits attack.",
 				statValueString: "",
 				valueString: "",
-				tokens: null,
 				complete: true);
 			Assert.Equal("Ambush, completed, Bandits attack.", Describe(info));
 		}
 
 		[Fact]
 		public void Incomplete_encounter_omits_status() {
-			var info = new CardInfo("Ambush", "Bandits attack.", "", "", tokens: null, complete: false);
+			var info = new CardInfo("Ambush", "Bandits attack.", "", "");
 			Assert.Equal("Ambush, Bandits attack.", Describe(info));
 		}
 
 		[Fact]
-		public void Encounter_tokens_read_after_prompt() {
-			var info = new CardInfo(
-				title: "Gamble",
-				description: "Place your bet.",
-				statValueString: "",
-				valueString: "",
-				tokens: new[] { new TokenStake("Gold", ""), new TokenStake("", "Curse") });
-			Assert.Equal("Gamble, Place your bet., gain Gold, lose Curse", Describe(info));
+		public void Token_is_announced_when_winnable() {
+			// Only that a token can be won; the reward cards are never read.
+			var info = new CardInfo("Demon Trader III", "", "", "", hasToken: true);
+			Assert.Equal("Demon Trader III, token", Describe(info));
 		}
 
 		[Fact]
-		public void Token_stake_with_both_sides_reads_gain_then_lose() {
-			var info = new CardInfo("Trade", "", "", "",
-				tokens: new[] { new TokenStake("Sword", "Gold") });
-			Assert.Equal("Trade, gain Sword, lose Gold", Describe(info));
-		}
-
-		[Fact]
-		public void Token_stake_empty_side_is_dropped() {
-			// An empty gain/remove must not produce a bare "gain"/"lose".
-			var info = new CardInfo("Gift", "", "", "",
-				tokens: new[] { new TokenStake("Bread", "") });
-			Assert.Equal("Gift, gain Bread", Describe(info));
+		public void Token_is_omitted_when_not_winnable() {
+			var info = new CardInfo("Goblin", "Deal damage", "", "", hasToken: false);
+			Assert.Equal("Goblin, Deal damage", Describe(info));
 		}
 
 		[Fact]

@@ -46,16 +46,11 @@ namespace HandOfFateAccess.Localization {
 		// localized "continue" label (only per-encounter ones), so it is authored here.
 		public static readonly string ControlContinue = "Continue";
 
-		// Token stakes: the cards a card will grant or take from the player. {0} is
-		// the name of that card. English puts the verb first ("gain Gold"); reorder
-		// to fit the target language.
-		public static string TokenGain(string cardName) {
-			return string.Format("gain {0}", cardName);
-		}
-
-		public static string TokenLose(string cardName) {
-			return string.Format("lose {0}", cardName);
-		}
+		// Shown on an encounter card that offers a token to win (the game draws a token
+		// gem on the card). The cards the token grants or removes are not displayed to
+		// the player anywhere, so only the presence of a winnable token is announced,
+		// matching what the gem conveys.
+		public static readonly string CardToken = "token";
 
 		// Plugin lifecycle. Spoken once at startup to confirm the accessibility mod
 		// is running. {0} is the mod version (e.g. "0.1.0"). The product name is part

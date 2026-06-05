@@ -11,8 +11,6 @@ namespace HandOfFateAccess.UI {
 	/// the spoken line.
 	/// </summary>
 	public sealed class CardInfo {
-		private static readonly TokenStake[] NoTokens = new TokenStake[0];
-
 		/// <summary>Card name/title, the distinguishing word spoken first.</summary>
 		public string Title { get; }
 
@@ -25,8 +23,8 @@ namespace HandOfFateAccess.UI {
 		/// <summary>Buy/sell value line, empty outside shop/value contexts.</summary>
 		public string ValueString { get; }
 
-		/// <summary>Structured token stakes for an encounter card (titles gained/removed, no wording). Empty for non-encounter cards.</summary>
-		public TokenStake[] Tokens { get; }
+		/// <summary>True when this encounter card shows a token gem (a token can be won here).</summary>
+		public bool HasToken { get; }
 
 		/// <summary>True when an encounter card has already been resolved.</summary>
 		public bool Complete { get; }
@@ -36,13 +34,13 @@ namespace HandOfFateAccess.UI {
 			string description,
 			string statValueString,
 			string valueString,
-			TokenStake[] tokens = null,
+			bool hasToken = false,
 			bool complete = false) {
 			Title = title;
 			Description = description;
 			StatValueString = statValueString;
 			ValueString = valueString;
-			Tokens = tokens ?? NoTokens;
+			HasToken = hasToken;
 			Complete = complete;
 		}
 	}

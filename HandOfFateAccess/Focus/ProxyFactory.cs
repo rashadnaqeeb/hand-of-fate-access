@@ -102,12 +102,14 @@ namespace HandOfFateAccess.Focus {
 		}
 
 		private static CardInfo ExtractCard(Card card) {
-			TokenStake[] tokens = null;
 			bool complete = false;
+			bool hasToken = false;
 			var encounter = card as EncounterCard;
 			if (encounter != null) {
 				complete = encounter.Complete;
-				tokens = ExtractTokens(encounter);
+				// Mirrors the token gem the card shows: a token can be won here. The
+				// reward cards are not displayed to the player, so we read only this.
+				hasToken = encounter.CanGiveTokens;
 			}
 
 			// An encounter card's description is the encounter scenario, which is not on
@@ -125,38 +127,8 @@ namespace HandOfFateAccess.Focus {
 				description,
 				card.StatValueString,
 				card.ValueString,
-				tokens,
+				hasToken,
 				complete);
-		}
-
-		// Extract the cards each token grants/removes as raw titles only; the
-		// "gain"/"lose" wording is applied in Core (CardElement).
-		private static TokenStake[] ExtractTokens(EncounterCard encounter) {
-			Token[] prefabs = encounter.TokenPrefabs;
-			if (prefabs == null || prefabs.Length == 0)
-				return null;
-
-			var stakes = new List<TokenStake>();
-			foreach (Token token in prefabs) {
-				if (token == null) continue;
-				string gain = CardTitles(token.CardSetToAdd);
-				string remove = CardTitles(token.CardSetToRemove);
-				if (gain.Length > 0 || remove.Length > 0)
-					stakes.Add(new TokenStake(gain, remove));
-			}
-			return stakes.ToArray();
-		}
-
-		private static string CardTitles(CardSet set) {
-			if (set == null) return "";
-			List<Card> cards = set.Cards;
-			if (cards == null || cards.Count == 0) return "";
-
-			var titles = new List<string>();
-			foreach (Card card in cards)
-				if (card != null && !string.IsNullOrEmpty(card.Title))
-					titles.Add(UIUtils.GetString(card.Title));
-			return string.Join(", ", titles.ToArray());
 		}
 
 		private static string[] ExtractLabels(GameObject go) {

@@ -42,7 +42,7 @@ namespace HandOfFateAccess.UI {
 	/// information (stat, rules/prompt, token stakes) instead of a jumble of
 	/// template text. Order follows the announcement rules: distinguishing word
 	/// (title) first, then status, the key stat, the rules/prompt, the buy/sell
-	/// value, then token stakes.
+	/// value, then whether a token can be won here.
 	/// </summary>
 	public sealed class CardElement : UIElement {
 		private readonly CardInfo _info;
@@ -59,13 +59,10 @@ namespace HandOfFateAccess.UI {
 				.Add(_info.StatValueString)
 				.Add(_info.Description)
 				.Add(_info.ValueString);
-			// Token stakes have no localized name; the player-facing meaning is the
-			// cards a token grants or removes. The "gain"/"lose" wording is decided
-			// here (Core), not in the adapter.
-			foreach (TokenStake stake in _info.Tokens) {
-				if (!string.IsNullOrEmpty(stake.Gain)) message.Add(Strings.TokenGain(stake.Gain));
-				if (!string.IsNullOrEmpty(stake.Remove)) message.Add(Strings.TokenLose(stake.Remove));
-			}
+			// Only that a token can be won here, matching the gem on the card. The
+			// reward cards are never shown to the player, so they are not announced.
+			if (_info.HasToken)
+				message.Add(Strings.CardToken);
 			return message;
 		}
 	}
