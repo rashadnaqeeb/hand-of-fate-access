@@ -157,11 +157,40 @@ namespace HandOfFateAccess.Focus {
 		}
 
 		private static string[] ExtractLabels(GameObject go) {
+			string[] own = LabelTexts(go);
+			if (HasUsableText(own))
+				return own;
+
+			// The focused object carries no label of its own: it is a bare selectable
+			// whose label sits elsewhere in the owning control (UIChoiceButton, the
+			// settings rows, upgrade items all wire the selectable and label as separate
+			// objects). Climb to the nearest ancestor that has labels, without crossing
+			// into a container that holds another selectable (which would belong to a
+			// different control). Only reached when the direct sweep found nothing, so it
+			// can only improve a would-be bare-name readout, never regress a working one.
+			Transform t = go.transform;
+			while (t.parent != null && t.parent.GetComponentsInChildren<UISelectableItem>(true).Length <= 1) {
+				t = t.parent;
+				string[] up = LabelTexts(t.gameObject);
+				if (HasUsableText(up))
+					return up;
+			}
+			return own;
+		}
+
+		private static string[] LabelTexts(GameObject go) {
 			UILabel[] labels = go.GetComponentsInChildren<UILabel>();
 			var texts = new string[labels.Length];
 			for (int i = 0; i < labels.Length; i++)
 				texts[i] = labels[i].text;
 			return texts;
+		}
+
+		private static bool HasUsableText(string[] texts) {
+			foreach (string t in texts)
+				if (!string.IsNullOrEmpty(t))
+					return true;
+			return false;
 		}
 	}
 }
