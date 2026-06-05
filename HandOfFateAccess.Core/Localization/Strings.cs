@@ -41,6 +41,11 @@ namespace HandOfFateAccess.Localization {
 		// already been finished, e.g. "Bandit Camp, completed".
 		public static readonly string CardCompleted = "completed";
 
+		// Readouts for focusable controls that carry no label of their own, so the
+		// raw object name would otherwise be spoken. The game has no single reusable
+		// localized "continue" label (only per-encounter ones), so it is authored here.
+		public static readonly string ControlContinue = "Continue";
+
 		// Token stakes: the cards a card will grant or take from the player. {0} is
 		// the name of that card. English puts the verb first ("gain Gold"); reorder
 		// to fit the target language.

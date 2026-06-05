@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using HandOfFateAccess.Localization;
 using HandOfFateAccess.UI;
 using HandOfFateAccess.Util;
 using HarmonyLib;
@@ -32,6 +33,15 @@ namespace HandOfFateAccess.Focus {
 		// we suppress it. Meaningful names (Continue, Skip) still read.
 		private static readonly HashSet<string> NoiseNames = new HashSet<string> { "Selectable" };
 
+		// Authored readouts for label-less controls whose raw object name reads poorly.
+		// The mapping (internal object name -> which authored string) lives here; the
+		// spoken word itself lives in Strings (Core), so it stays translatable.
+		private static readonly Dictionary<string, string> NameReadouts = new Dictionary<string, string> {
+			{ "ContinueButton", Strings.ControlContinue },
+		};
+
+		private static readonly string[] EmptyLabels = new string[0];
+
 		public static UIElement Create(GameObject go) {
 			UISelectable selectable = go.GetComponent<UISelectable>();
 			if (selectable != null && IsBlockerFocus(selectable))
@@ -59,6 +69,9 @@ namespace HandOfFateAccess.Focus {
 					Log.Debug("focus suppressed for placeholder '" + go.name + "'; " + DescribeSelectable(selectable));
 					return null;
 				}
+				string readout;
+				if (NameReadouts.TryGetValue(go.name, out readout))
+					return new GenericElement(readout, EmptyLabels);
 				Log.Debug("focus fell back to name '" + go.name + "'; " + DescribeSelectable(selectable));
 			}
 			return new GenericElement(go.name, labels);
