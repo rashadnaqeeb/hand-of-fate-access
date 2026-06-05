@@ -50,7 +50,7 @@ namespace HandOfFateAccess.Localization {
 		// gem on the card). The cards the token grants or removes are not displayed to
 		// the player anywhere, so only the presence of a winnable token is announced,
 		// matching what the gem conveys.
-		public static readonly string CardToken = "token";
+		public static readonly string CardToken = "token available";
 
 		// Plugin lifecycle. Spoken once at startup to confirm the accessibility mod
 		// is running. {0} is the mod version (e.g. "0.1.0"). The product name is part

@@ -65,7 +65,7 @@ namespace HandOfFateAccess.Tests {
 		public void Token_is_announced_when_winnable() {
 			// Only that a token can be won; the reward cards are never read.
 			var info = new CardInfo("Demon Trader III", "", "", "", hasToken: true);
-			Assert.Equal("Demon Trader III, token", Describe(info));
+			Assert.Equal("Demon Trader III, token available", Describe(info));
 		}
 
 		[Fact]
