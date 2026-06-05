@@ -12,6 +12,9 @@ obj/
 *.exp
 *.res
 
+# Local Claude settings (machine paths, local permission grants)
+.claude/settings.local.json
+
 # IDE
 .vs/
 .idea/

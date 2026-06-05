@@ -12,6 +12,7 @@ Phased plan. Each phase ends with a concrete, verifiable proof in the real game 
 ## Phase 1 - Speech (prove output)
 - [x] Speech backend decided: **Tolk** (x86). User supplies `Tolk.dll` + companion DLLs.
 - [ ] Lift `Speech/` from oni-access (`ISpeechBackend`, `TolkBackend`, `SpeechEngine`, `SpeechPipeline`, `TextFilter`); port to .NET 3.5; deploy the x86 Tolk DLLs alongside the plugin.
+- [ ] Pre-load `Tolk.dll` (with companion DLLs co-located) at `Awake` so the `DllImport` resolves; log clearly if it doesn't.
 - [ ] Initialize speech in plugin `Awake`; speak a startup line.
 - **Proof:** the mod speaks through NVDA (or chosen backend) when the game starts.
 
@@ -35,6 +36,7 @@ Phased plan. Each phase ends with a concrete, verifiable proof in the real game 
 - **Proof:** review buffers and rebindable keys work; F1 lists context controls.
 
 ## Phase 5 - Map explorer
+- [ ] Determine how to capture the map-cursor input (right stick / IJKL) without the game consuming it — via InControl's API or `UnityEngine.Input`, and check Steam Input isn't remapping the right stick out from under us.
 - [ ] Grid cursor over `Map.Instance.MapLayout` via `GetSlot(Vector2)`; move with right stick / IJKL.
 - [ ] Read each slot: category, active card, lock/complete state, neighbors (`IsNextTo`), reachability (`SimplePathFinder`), distance/relation to `PlayerCounter`.
 - [ ] Scope to visible tiles by mirroring `CheckDarken` / `IsUnlocked`.
@@ -47,6 +49,7 @@ Phased plan. Each phase ends with a concrete, verifiable proof in the real game 
 - **Proof:** a representative fight is winnable without sight.
 
 ## Cross-cutting (ongoing)
+- [ ] Offline test project (no game launch). Cover `TextFilter` (full regression suite), `Message` composition, and mod-authored announcement formatting.
 - [ ] Logging discipline + a validated manual Harmony-patch helper (logs each patch).
 - [ ] Mod settings (speech rate/backend, verbosity, keybinds).
 - [ ] `changes.md` changelog, player-perspective entries.
