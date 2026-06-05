@@ -11,6 +11,7 @@ using HandOfFateAccess.Speech;
 using HandOfFateAccess.UI;
 using HandOfFateAccess.Util;
 using HarmonyLib;
+using UnityEngine;
 
 namespace HandOfFateAccess {
 	/// <summary>
@@ -112,46 +113,73 @@ namespace HandOfFateAccess {
 				postfix: null);
 		}
 
-		private void PumpFocus() {
-			if (!FocusTracker.TryConsume(out var go, out var userInitiated)) return;
+		// The focused control and its last spoken readout, kept so an in-place value
+		// change (a selector/toggle that updates its label without moving focus) is
+		// detected by re-reading it each frame.
+		private GameObject _watched;
+		private string _watchedReadout;
 
-			// Reading the focused control touches live game model state (e.g.
-			// EncounterCard.Description), which can throw on malformed asset data.
-			// Catch at this boundary so a bad card logs once instead of silently
-			// dropping the focus announcement. Runs per focus change, not per frame.
-			string announcement;
-			// Read the name inside the try: a destroyed Unity object throws on .name
-			// too, and that must not escape the catch unlogged. If it throws here the
-			// label stays generic and the failure is still reported.
+		private void PumpFocus() {
+			if (FocusTracker.TryConsume(out var go, out var userInitiated)) {
+				string announcement = BuildReadout(go);
+				// Watch only a control that actually said something, so a suppressed or
+				// empty focus is not re-polled (which would re-log every frame).
+				_watched = string.IsNullOrEmpty(announcement) ? null : go;
+				_watchedReadout = announcement;
+				if (string.IsNullOrEmpty(announcement)) return;
+
+				// A screen or overlay that announced itself this frame leads: the focus
+				// queues behind it so it reads after the screen name or dialogue text. With
+				// no fresh context, a focus the user drove with a key interrupts (responsive
+				// navigation) and one the game landed on its own queues.
+				SpeechMode mode = FocusAnnouncePolicy.Decide(userInitiated, _screenWatcher.ConsumeScreenJustChanged());
+				if (mode == SpeechMode.Interrupt)
+					SpeechPipeline.SpeakInterrupt(announcement);
+				else
+					SpeechPipeline.SpeakQueued(announcement);
+				return;
+			}
+
+			PollWatchedValue();
+		}
+
+		// Selectors and toggles change their value in place (e.g. the language picker
+		// rewrites its label on left/right) without firing a selection change, so they
+		// are invisible to the focus path. While the watched control is still the live
+		// selection, re-read it and speak when its readout changed. Interrupt, since the
+		// change is the user's direct response to their own input.
+		private void PollWatchedValue() {
+			if (_watched == null || UICamera.selectedObject != _watched) return;
+			string current = BuildReadout(_watched);
+			if (current == _watchedReadout) return;
+			_watchedReadout = current;
+			if (!string.IsNullOrEmpty(current))
+				SpeechPipeline.SpeakInterrupt(current);
+		}
+
+		// Reading the focused control touches live game model state (e.g.
+		// EncounterCard.Description), which can throw on malformed asset data. Catch at
+		// this boundary so a bad control logs instead of silently dropping the readout.
+		// Returns null for a suppressed (structural) or unreadable control.
+		private string BuildReadout(GameObject go) {
+			// Read the name inside the try: a destroyed Unity object throws on .name too,
+			// and that must not escape the catch unlogged.
 			string label = "focus";
 			try {
 				label = go.name;
 				UIElement element = ProxyFactory.Create(go);
 				if (element == null) {
-					// A structural selectable (group/blocker) grabbed focus with no
-					// content of its own. Not an error: the delegated child speaks. Logged
-					// so a genuinely stranded focus (group that never delegates) is still
-					// traceable instead of silently dropped.
+					// A structural selectable (group/blocker) grabbed focus with no content
+					// of its own. Not an error: the delegated child speaks. Logged so a
+					// genuinely stranded focus is traceable instead of silently dropped.
 					Log.Debug("focus suppressed for structural selectable '" + label + "'");
-					return;
+					return null;
 				}
-				announcement = element.Describe().Resolve();
+				return element.Describe().Resolve();
 			} catch (Exception ex) {
 				Log.Error("focus readout failed for '" + label + "': " + ex);
-				return;
+				return null;
 			}
-
-			if (string.IsNullOrEmpty(announcement)) return;
-
-			// A screen or overlay that announced itself this frame leads: the focus
-			// queues behind it so it reads after the screen name or dialogue text. With
-			// no fresh context, a focus the user drove with a key interrupts (responsive
-			// navigation) and one the game landed on its own queues.
-			SpeechMode mode = FocusAnnouncePolicy.Decide(userInitiated, _screenWatcher.ConsumeScreenJustChanged());
-			if (mode == SpeechMode.Interrupt)
-				SpeechPipeline.SpeakInterrupt(announcement);
-			else
-				SpeechPipeline.SpeakQueued(announcement);
 		}
 	}
 }
