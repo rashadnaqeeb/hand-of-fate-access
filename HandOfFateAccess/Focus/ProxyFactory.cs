@@ -27,6 +27,7 @@ namespace HandOfFateAccess.Focus {
 	internal static class ProxyFactory {
 		private static readonly FieldInfo BlockerGroupField = AccessTools.Field(typeof(UISelection), "m_selectionBlockerGroup");
 		private static readonly FieldInfo ChoiceTextField = AccessTools.Field(typeof(UIChoiceButton), "m_choiceText");
+		private static readonly FieldInfo ChoiceLetterField = AccessTools.Field(typeof(UIChoiceButton), "m_letterText");
 
 		// Generic NGUI placeholder names that carry no information. A label-less stop
 		// can only ever speak its raw object name; when that name is one of these (the
@@ -53,14 +54,21 @@ namespace HandOfFateAccess.Focus {
 				return new CardElement(ExtractCard(card));
 
 			// An encounter choice button focuses a UISelectableItem that is a separate
-			// object from its label, so the generic child sweep misses it. Resolve the
-			// owning UIChoiceButton and read its choice text, which the game has already
-			// formatted with the success odds ("... (75% chance of success)").
+			// object from its labels, so the generic child sweep misses them. Resolve the
+			// owning UIChoiceButton and read its number then its choice text, which the
+			// game has already formatted with the success odds ("... (75% chance ...)").
+			// Number first because the game's focus skips disabled/unavailable choices
+			// (non-selectable), so a gap in the numbers (1 then 3) is the only cue to the
+			// player that a choice was passed over. This is the justified exception to
+			// the usual no-positional-counts rule.
 			UIChoiceButton choice = go.GetComponentInParent<UIChoiceButton>();
 			if (choice != null) {
-				string choiceText = ChoiceText(choice);
-				if (!string.IsNullOrEmpty(choiceText))
-					return new GenericElement(choiceText, EmptyLabels);
+				string text = LabelText(ChoiceTextField, choice);
+				if (!string.IsNullOrEmpty(text)) {
+					string number = LabelText(ChoiceLetterField, choice);
+					if (!string.IsNullOrEmpty(number)) number = number.TrimEnd(')', ' ');
+					return new GenericElement(go.name, new[] { number, text });
+				}
 			}
 
 			// A UISelectableGroup is a structural container in NGUI's selection model,
@@ -143,8 +151,8 @@ namespace HandOfFateAccess.Focus {
 				complete);
 		}
 
-		private static string ChoiceText(UIChoiceButton choice) {
-			var label = (UILabel)ChoiceTextField.GetValue(choice);
+		private static string LabelText(FieldInfo field, object owner) {
+			var label = (UILabel)field.GetValue(owner);
 			return label != null ? label.text : null;
 		}
 
