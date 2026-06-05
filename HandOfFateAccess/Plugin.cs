@@ -100,10 +100,20 @@ namespace HandOfFateAccess {
 				new[] { typeof(bool) },
 				prefix: null,
 				postfix: AccessTools.Method(typeof(UISelectable_Select_Patch), "Postfix"));
+			patcher.Patch(
+				typeof(UISelectable), "OnKey",
+				new[] { typeof(UnityEngine.KeyCode) },
+				prefix: AccessTools.Method(typeof(UISelectable_OnKey_Patch), "Prefix"),
+				postfix: null);
+			patcher.Patch(
+				typeof(UISelectable), "DoClick",
+				new System.Type[0],
+				prefix: AccessTools.Method(typeof(UISelectable_DoClick_Patch), "Prefix"),
+				postfix: null);
 		}
 
 		private void PumpFocus() {
-			if (!FocusTracker.TryConsume(out var go)) return;
+			if (!FocusTracker.TryConsume(out var go, out var userInitiated)) return;
 
 			// Reading the focused control touches live game model state (e.g.
 			// EncounterCard.Description), which can throw on malformed asset data.
@@ -133,13 +143,15 @@ namespace HandOfFateAccess {
 
 			if (string.IsNullOrEmpty(announcement)) return;
 
-			// Entering a screen auto-selects a control, firing this focus change in
-			// the same beat. When that happens, speak the control queued so it reads
-			// after the screen name instead of cutting it off; otherwise interrupt.
-			if (_screenWatcher.ConsumeScreenJustChanged())
-				SpeechPipeline.SpeakQueued(announcement);
-			else
+			// A screen or overlay that announced itself this frame leads: the focus
+			// queues behind it so it reads after the screen name or dialogue text. With
+			// no fresh context, a focus the user drove with a key interrupts (responsive
+			// navigation) and one the game landed on its own queues.
+			SpeechMode mode = FocusAnnouncePolicy.Decide(userInitiated, _screenWatcher.ConsumeScreenJustChanged());
+			if (mode == SpeechMode.Interrupt)
 				SpeechPipeline.SpeakInterrupt(announcement);
+			else
+				SpeechPipeline.SpeakQueued(announcement);
 		}
 	}
 }

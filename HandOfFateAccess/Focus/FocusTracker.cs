@@ -10,6 +10,7 @@ namespace HandOfFateAccess.Focus {
 	internal static class FocusTracker {
 		private static GameObject _pending;
 		private static GameObject _lastRecorded;
+		private static bool _pendingUserInitiated;
 		private static bool _dirty;
 
 		/// <summary>
@@ -24,20 +25,27 @@ namespace HandOfFateAccess.Focus {
 			if (go == _lastRecorded) return;
 			_lastRecorded = go;
 			_pending = go;
+			// Stamp origin at record time, not consume time: this runs inside the input
+			// dispatch (same frame) for user-driven changes, whereas TryConsume may run a
+			// later frame when the frame stamp no longer matches.
+			_pendingUserInitiated = NavigationState.IsActive;
 			_dirty = true;
 		}
 
 		/// <summary>
 		/// If focus changed since the last call, hand back the focused object and
-		/// clear the dirty flag. Returns false when nothing is pending.
+		/// whether the user drove the change, and clear the dirty flag. Returns false
+		/// when nothing is pending.
 		/// </summary>
-		public static bool TryConsume(out GameObject go) {
+		public static bool TryConsume(out GameObject go, out bool userInitiated) {
 			if (!_dirty) {
 				go = null;
+				userInitiated = false;
 				return false;
 			}
 			_dirty = false;
 			go = _pending;
+			userInitiated = _pendingUserInitiated;
 			return true;
 		}
 	}
