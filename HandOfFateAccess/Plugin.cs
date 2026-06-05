@@ -42,6 +42,7 @@ namespace HandOfFateAccess {
 		private bool _speechReady;
 		private GameScreenWatcher _screenWatcher;
 		private ResourceWatcher _resourceWatcher;
+		private ProgressWatcher _progressWatcher;
 
 		private void Awake() {
 			LogBepInExBackend.Install(Logger);
@@ -59,6 +60,7 @@ namespace HandOfFateAccess {
 			if (_speechReady) {
 				_screenWatcher.Pump();
 				_resourceWatcher.Pump();
+				_progressWatcher.Pump();
 				PumpFocus();
 			}
 		}
@@ -84,6 +86,7 @@ namespace HandOfFateAccess {
 			_screenWatcher.Install();
 
 			_resourceWatcher = new ResourceWatcher();
+			_progressWatcher = new ProgressWatcher();
 
 			// A control auto-selected before our patches were live (the main menu's
 			// initial button at launch) fired its selection where we couldn't hear

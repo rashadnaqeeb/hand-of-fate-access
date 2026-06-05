@@ -69,6 +69,11 @@ namespace HandOfFateAccess.Localization {
 		public static readonly string ResourceIronOre = "iron ore";
 		public static readonly string ResourceTokens = "tokens";
 
+		// The score noun in the dungeon-progress readout ("1200 score"). The HUD shows the
+		// score as a bare number beside an icon with no word, so the noun is authored here.
+		// The accompanying level word is reused from the game's own SCORE_LEVEL string.
+		public static readonly string ProgressScore = "score";
+
 		// Plugin lifecycle. Spoken once at startup to confirm the accessibility mod
 		// is running. {0} is the mod version (e.g. "0.1.0"). The product name is part
 		// of this string and IS meant to be translated: render "Hand of Fate Access"
