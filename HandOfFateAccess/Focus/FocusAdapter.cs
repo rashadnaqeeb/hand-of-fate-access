@@ -9,8 +9,6 @@ namespace HandOfFateAccess.Focus {
 	/// </summary>
 	internal static class FocusAdapter {
 		public static FocusDto Extract(GameObject go) {
-			if (go == null) return null;
-
 			// Active labels only: hidden labels (tooltips, off-state copies) aren't
 			// on screen, so they shouldn't be spoken. Hierarchy order is reading order.
 			UILabel[] labels = go.GetComponentsInChildren<UILabel>();
