@@ -16,12 +16,25 @@ namespace HandOfFateAccess.Focus {
 	/// it directly or on a nested selectable. When a Card is found we read its data
 	/// model (complete info) and never also sweep its labels, which would
 	/// double-speak. Everything else falls back to the generic label sweep.
+	///
+	/// Returns null for a focused object that is not content (see below); the caller
+	/// treats null as "nothing to announce" and skips it.
 	/// </summary>
 	internal static class ProxyFactory {
 		public static UIElement Create(GameObject go) {
 			Card card = go.GetComponentInParent<Card>();
 			if (card != null)
 				return new CardElement(ExtractCard(card));
+
+			// A UISelectableGroup is a structural container in NGUI's selection model,
+			// not content. An ordinary group routes focus down to a child selectable
+			// (its initial/last selection), whose own Select event follows with the real
+			// readout; the selection blocker group is an input lock used during
+			// transitions and loading. Either way the group's own object carries no
+			// label, so announcing it would speak its bare scene name ("Selectable",
+			// "SelectableBlocker"). Suppress it and let the delegated child speak.
+			if (go.GetComponent<UISelectableGroup>() != null)
+				return null;
 
 			return new GenericElement(go.name, ExtractLabels(go));
 		}

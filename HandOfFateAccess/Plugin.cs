@@ -8,6 +8,7 @@ using HandOfFateAccess.Patches;
 using HandOfFateAccess.Patching;
 using HandOfFateAccess.Screens;
 using HandOfFateAccess.Speech;
+using HandOfFateAccess.UI;
 using HandOfFateAccess.Util;
 using HarmonyLib;
 
@@ -115,7 +116,16 @@ namespace HandOfFateAccess {
 			string label = "focus";
 			try {
 				label = go.name;
-				announcement = ProxyFactory.Create(go).Describe().Resolve();
+				UIElement element = ProxyFactory.Create(go);
+				if (element == null) {
+					// A structural selectable (group/blocker) grabbed focus with no
+					// content of its own. Not an error: the delegated child speaks. Logged
+					// so a genuinely stranded focus (group that never delegates) is still
+					// traceable instead of silently dropped.
+					Log.Debug("focus suppressed for structural selectable '" + label + "'");
+					return;
+				}
+				announcement = element.Describe().Resolve();
 			} catch (Exception ex) {
 				Log.Error("focus readout failed for '" + label + "': " + ex);
 				return;
