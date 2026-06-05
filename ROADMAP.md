@@ -2,19 +2,16 @@
 
 Phased plan. Each phase ends with a concrete, verifiable proof in the real game before moving on. Check items off as completed. See `CLAUDE.md` for architecture and conventions.
 
-## Phase 0 - Scaffold (prove the loader)
+## Phase 1 - Plugin, logging, and speech (prove the whole output chain)
+Stand up the full speech and logging stack in one go, so the first run proves output works end to end, not just that a DLL loaded. There's no value in a bare loader milestone on its own.
 - [ ] Install BepInEx 5.x **x86** into the game folder; launch once to generate `BepInEx/` config.
-- [ ] Create the plugin project (`HandOfFateAccess.csproj`), target **.NET 3.5**, reference BepInEx, 0Harmony, and the game's `Assembly-CSharp.dll` / `UnityEngine.dll` / NGUI types.
-- [ ] Minimal `[BepInPlugin]` `BaseUnityPlugin` that logs `[HoFAccess] loaded` in `Awake`.
-- [ ] `build.ps1`: build + copy DLL into `<game>\BepInEx\plugins\`.
-- **Proof:** launch the game, see `[HoFAccess] loaded` in `output_log.txt` / BepInEx console.
-
-## Phase 1 - Speech (prove output)
-- [x] Speech backend decided: **Tolk** (x86). User supplies `Tolk.dll` + companion DLLs.
-- [ ] Lift `Speech/` from oni-access (`ISpeechBackend`, `TolkBackend`, `SpeechEngine`, `SpeechPipeline`, `TextFilter`); port to .NET 3.5; deploy the x86 Tolk DLLs alongside the plugin.
-- [ ] Pre-load `Tolk.dll` (with companion DLLs co-located) at `Awake` so the `DllImport` resolves; log clearly if it doesn't.
-- [ ] Initialize speech in plugin `Awake`; speak a startup line.
-- **Proof:** the mod speaks through NVDA (or chosen backend) when the game starts.
+- [ ] Create the plugin project (`HandOfFateAccess.csproj`), target **.NET 3.5**, reference BepInEx, 0Harmony, and the game's `Assembly-CSharp.dll` / `UnityEngine.dll` / NGUI types. `[BepInPlugin]` `BaseUnityPlugin` entry.
+- [ ] `build.ps1`: build + copy the plugin DLL and the x86 Tolk DLLs (+ companions) into `<game>\BepInEx\plugins\`.
+- [ ] Logging setup: a mod `Log` helper writing to the BepInEx logger / Unity log, every line prefixed `[HoFAccess]`.
+- [ ] Speech: lift `Speech/` from oni-access (`ISpeechBackend`, `TolkBackend`, `SpeechEngine`, `SpeechPipeline`, `TextFilter`); port to .NET 3.5. (Backend already decided: Tolk x86.)
+- [ ] Pre-load `Tolk.dll` (companions co-located) at `Awake` so the `DllImport` resolves; log clearly if it doesn't.
+- [ ] In `Awake`: initialize logging and speech, log `[HoFAccess] loaded`, and speak a startup line.
+- **Proof:** launch the game and get BOTH — a `[HoFAccess]` line in `output_log.txt` / BepInEx console AND a spoken startup line through the screen reader. Full output chain working end to end, with logging and speech both in place.
 
 ## Phase 2 - Focus spine (prove the core bet)
 - [ ] Harmony-postfix `UICamera.SetSelection`; on selection change in Controller scheme, read the focused GameObject's `UILabel` text.
@@ -50,7 +47,7 @@ Phased plan. Each phase ends with a concrete, verifiable proof in the real game 
 
 ## Cross-cutting (ongoing)
 - [ ] Offline test project (no game launch). Cover `TextFilter` (full regression suite), `Message` composition, and mod-authored announcement formatting.
-- [ ] Logging discipline + a validated manual Harmony-patch helper (logs each patch).
+- [ ] Validated manual Harmony-patch helper (logs success/failure of each patch). Add when Phase 2 starts patching.
 - [ ] Mod settings (speech rate/backend, verbosity, keybinds).
 - [ ] `changes.md` changelog, player-perspective entries.
 - [ ] Keep `CLAUDE.md` Reflection Targets list current.
