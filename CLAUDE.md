@@ -5,8 +5,8 @@ HandOfFateAccess makes **Hand of Fate** (the original) playable by blind users. 
 ## Game & environment
 
 - Engine: **Unity 5.3.7f1, Mono, 32-bit (x86)**. UI toolkit is **NGUI** (UICamera, UILabel, UIButton...); gamepad input is the **InControl** library.
-- Loader: **BepInEx 5.x (x86)** + Harmony. The mod assembly targets **.NET 3.5**.
-- **Required BepInEx config (Unity 5.x):** in `<game>\BepInEx\config\BepInEx.cfg`, `[Preloader.Entrypoint]` must be `Type = MonoBehaviour` (default `Application` runs the chainloader during `Application..cctor`, which corrupts the first scene's NGUI deserialization: hundreds of "different serialization layout" / "missing script" errors and a hang on the loading screen before `card_table` loads). This file lives in the game folder, not the repo, and regenerates with the broken default if BepInEx is reinstalled, so re-apply it after any BepInEx reinstall/upgrade. Alternate entrypoint if needed: `Camera`.
+- Loader: **BepInEx 5.x (x86)** + Harmony. The mod assembly targets **.NET 3.5**. The exact build (BepInEx 5.4.23.2 x86) is vendored in `third_party/bepinex/`; `setup-bepinex.ps1` installs it into the game folder.
+- **Required BepInEx config (Unity 5.x):** in `<game>\BepInEx\config\BepInEx.cfg`, `[Preloader.Entrypoint]` must be `Type = MonoBehaviour` (default `Application` runs the chainloader during `Application..cctor`, which corrupts the first scene's NGUI deserialization: hundreds of "different serialization layout" / "missing script" errors and a hang on the loading screen before `card_table` loads). This file lives in the game folder, not the repo. `setup-bepinex.ps1` guarantees this (it patches an existing cfg or seeds one), so always (re)install BepInEx via that script rather than the raw upstream zip. Alternate entrypoint if needed: `Camera`.
 - Game code: `<game>\Hand of Fate_Data\Managed\Assembly-CSharp.dll`, where `<game>` is the Steam `steamapps/common/Hand of Fate` folder.
 - Decompiled game source for reference: `HoF-Decompiled/` (gitignored). **Look up any game type/method/field signature here before guessing.**
 - Player log: `<game>\Hand of Fate_Data\output_log.txt` (this Unity 5.3 build writes it there, not under LocalLow). BepInEx also writes `<game>\BepInEx\LogOutput.log`. Both are truncated each launch. Mod lines are prefixed `[HoFAccess]`.
@@ -16,7 +16,7 @@ HandOfFateAccess makes **Hand of Fate** (the original) playable by blind users. 
 
 ## Build, deploy, logs
 
-- `build.ps1` builds the plugin (and Core transitively) and deploys both `HandOfFateAccess.dll` and `HandOfFateAccess.Core.dll` plus the x86 Tolk native deps into `<game>\BepInEx\plugins\`. `test.ps1` runs the offline test suite.
+- `setup-bepinex.ps1` installs the vendored BepInEx into the game folder with the correct entrypoint (run once per game install / after a game update wipes it). `build.ps1` builds the plugin (and Core transitively) and deploys both `HandOfFateAccess.dll` and `HandOfFateAccess.Core.dll` plus the x86 Tolk native deps into `<game>\BepInEx\plugins\`. `test.ps1` runs the offline test suite.
 - Run `build.ps1` / `test.ps1` directly via PowerShell (allowed by this project's `.claude/settings.local.json`). When invoking PowerShell through the Bash tool, escape `$` as `\$` so bash doesn't expand it first.
 - Shared MSBuild properties (`Version`, `LangVersion`) live in `Directory.Build.props` at the repo root; bump the version there.
 - Speech backend is **Tolk** (x86). 
