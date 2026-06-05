@@ -58,6 +58,17 @@ namespace HandOfFateAccess.Localization {
 		// matching what the gem conveys.
 		public static readonly string CardToken = "token available";
 
+		// Resource nouns, spoken in the on-demand resource readout ("200/200 health, 5
+		// food, 3 gold") and in live change announcements ("-5 health", "+3 gold"). The
+		// game's own STAT_ keys are format strings ("Gold: {0}"), not bare nouns, so the
+		// nouns are authored here. Kept short: these read aloud often.
+		public static readonly string ResourceHealth = "health";
+		public static readonly string ResourceMaxHealth = "max health";
+		public static readonly string ResourceFood = "food";
+		public static readonly string ResourceGold = "gold";
+		public static readonly string ResourceIronOre = "iron ore";
+		public static readonly string ResourceTokens = "tokens";
+
 		// Plugin lifecycle. Spoken once at startup to confirm the accessibility mod
 		// is running. {0} is the mod version (e.g. "0.1.0"). The product name is part
 		// of this string and IS meant to be translated: render "Hand of Fate Access"
