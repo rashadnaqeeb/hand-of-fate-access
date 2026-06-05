@@ -22,6 +22,14 @@ namespace HandOfFateAccess.Focus {
 	/// </summary>
 	internal static class ProxyFactory {
 		public static UIElement Create(GameObject go) {
+			// While selection is locked to the blocker group (an input lock the game
+			// raises during transitions and loading), the placeholder that holds focus
+			// is content-less and named for its role ("SelectableBlocker", "Selectable").
+			// IsBlocked is the game's own authoritative flag for that state; suppress it.
+			UISelectable selectable = go.GetComponent<UISelectable>();
+			if (selectable != null && selectable.Selection != null && selectable.Selection.IsBlocked)
+				return null;
+
 			Card card = go.GetComponentInParent<Card>();
 			if (card != null)
 				return new CardElement(ExtractCard(card));

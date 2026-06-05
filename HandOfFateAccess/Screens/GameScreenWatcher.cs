@@ -35,6 +35,9 @@ namespace HandOfFateAccess.Screens {
 		// The dialogue's identity, not just present/absent, so a second dialogue
 		// stacked on the first (and the first revealed when it closes) is detected.
 		private Dialogue _topDialogue;
+		// The encounter narrative last announced, for edge detection only: the live text
+		// is always re-read and spoken, this just marks the scenario->result change.
+		private string _lastEncounterText;
 
 		// Live game types mapped to mod screens. Compile-time references against
 		// Assembly-CSharp: a renamed GameState fails the build here, by design.
@@ -113,6 +116,27 @@ namespace HandOfFateAccess.Screens {
 			PumpOverlay(Shop.Instance != null, ref _shopActive, ScreenId.Shop);
 			PumpOverlay(PauseMenuOpen(), ref _pauseActive, ScreenId.Paused);
 			PumpDialogue();
+			PumpEncounterText();
+		}
+
+		// The encounter event panel's narrative (scenario, then result after a choice)
+		// is display-only text the focus model never reaches. Edge-detect a change in
+		// the live text and announce it. Routed through Speak so it interrupts as the
+		// new context and the Continue button the game then selects queues behind it,
+		// the same ordering as a dialogue. Empty text (panel reset/closed) just clears
+		// the edge marker.
+		private void PumpEncounterText() {
+			string text;
+			try {
+				text = EncounterEventReader.Read();
+			} catch (Exception ex) {
+				Log.Error("encounter text readout failed: " + ex);
+				return;
+			}
+			if (text == _lastEncounterText) return;
+			_lastEncounterText = text;
+			if (!string.IsNullOrEmpty(text))
+				Speak(text);
 		}
 
 		// A modal dialogue is a MenuManager push on the Dialogue stack, invisible to
