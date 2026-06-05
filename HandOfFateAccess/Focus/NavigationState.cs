@@ -20,5 +20,14 @@ namespace HandOfFateAccess.Focus {
 
 		/// <summary>Whether user input was dispatched on the current frame.</summary>
 		public static bool IsActive => Time.frameCount == _inputFrame;
+
+		/// <summary>
+		/// Whether user input was dispatched on the current or immediately previous
+		/// frame. Covers either Update order between our pump and UICamera's input pass:
+		/// a value the input changes is visible either the same frame (we run after) or
+		/// the next (we run before). Used to gate the in-place value-change poll so it
+		/// runs only just after input, not every frame.
+		/// </summary>
+		public static bool WasRecent => Time.frameCount - _inputFrame <= 1;
 	}
 }

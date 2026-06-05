@@ -147,9 +147,12 @@ namespace HandOfFateAccess {
 		// rewrites its label on left/right) without firing a selection change, so they
 		// are invisible to the focus path. While the watched control is still the live
 		// selection, re-read it and speak when its readout changed. Interrupt, since the
-		// change is the user's direct response to their own input.
+		// change is the user's direct response to their own input. Gated to just after
+		// input so it does not rebuild the readout every idle frame, and so a label that
+		// changes on its own (not from the user) is not announced as if they changed it.
 		private void PollWatchedValue() {
-			if (_watched == null || UICamera.selectedObject != _watched) return;
+			if (_watched == null || !NavigationState.WasRecent) return;
+			if (UICamera.selectedObject != _watched) return;
 			string current = BuildReadout(_watched);
 			if (current == _watchedReadout) return;
 			_watchedReadout = current;

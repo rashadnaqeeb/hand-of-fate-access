@@ -100,9 +100,15 @@ namespace HandOfFateAccess.Focus {
 		private static bool IsBlockerFocus(UISelectable selectable) {
 			UISelection selection = selectable.Selection;
 			if (selection == null) return false;
-			if (selection.IsBlocked) return true;
+			// Check the blocker group first. The game's IsBlocked is LockedGroup ==
+			// m_selectionBlockerGroup; if a category has no blocker group wired, that is
+			// null == null when nothing is locked, i.e. IsBlocked reads true always, and
+			// keying off it would silently drop every focus on the category. So suppress
+			// only when a real blocker exists: the category is locked to it, or the
+			// focused object belongs to it.
 			var blocker = (UISelectableGroup)BlockerGroupField.GetValue(selection);
-			return blocker != null && selectable.Group == blocker;
+			if (blocker == null) return false;
+			return selection.IsBlocked || selectable.Group == blocker;
 		}
 
 		private static string DescribeSelectable(UISelectable selectable) {
