@@ -15,20 +15,26 @@ namespace HandOfFateAccess.Screens {
 		private static readonly FieldInfo InstructionsField = AccessTools.Field(typeof(UIEncounterEventPanel), "m_instructionsText");
 
 		/// <summary>
-		/// The live narrative (scenario, then result after a choice) and the mechanical
-		/// instructions (what the choice triggers: draw cards, win a token). Both are
-		/// raw label text; composition and ordering are decided in Core. Set to null
-		/// when no panel is live.
+		/// The live narrative (scenario, then result after a choice), the mechanical
+		/// instructions (what the choice triggers: draw cards, win a token), and the
+		/// in-play encounter card's description. All raw text; composition and the
+		/// duplicate-scenario decision are made in Core. The card description lets Core
+		/// drop the opening scenario, which is defined as that same description and was
+		/// already spoken when the player focused the card. Null when no panel is live.
 		/// </summary>
-		public static void Read(out string narrative, out string instructions) {
+		public static void Read(out string narrative, out string instructions, out string cardDescription) {
 			narrative = null;
 			instructions = null;
+			cardDescription = null;
 			UIManager ui = UIManager.Instance;
 			if (ui == null) return;
 			UIEncounterEventPanel panel = ui.EncounterEventPanel;
 			if (panel == null) return;
 			narrative = LabelText(TextField, panel);
 			instructions = LabelText(InstructionsField, panel);
+			EncounterCard card = Encounter.Instance != null ? Encounter.Instance.Card : null;
+			if (card != null)
+				cardDescription = card.LocalisedDescription;
 		}
 
 		private static string LabelText(FieldInfo field, UIEncounterEventPanel panel) {
