@@ -42,14 +42,26 @@ namespace HandOfFateAccess.Focus {
 
 		private static readonly string[] EmptyLabels = new string[0];
 
+		/// <summary>
+		/// The most recent encounter card actually announced via focus. An encounter's
+		/// opening scenario is, by the game's definition, this card's description, so the
+		/// encounter reader uses this to drop the scenario it already spoke. A live
+		/// reference (read fresh, never a cached string); null until a card is heard, so
+		/// an encounter the player never focused still announces its scenario.
+		/// </summary>
+		public static EncounterCard LastAnnouncedEncounterCard { get; private set; }
+
 		public static UIElement Create(GameObject go) {
 			UISelectable selectable = go.GetComponent<UISelectable>();
 			if (selectable != null && IsBlockerFocus(selectable))
 				return null;
 
 			Card card = go.GetComponentInParent<Card>();
-			if (card != null)
+			if (card != null) {
+				if (card is EncounterCard encounter)
+					LastAnnouncedEncounterCard = encounter;
 				return new CardElement(ExtractCard(card));
+			}
 
 			// A UISelectableGroup is a structural container in NGUI's selection model,
 			// not content. An ordinary group routes focus down to a child selectable
