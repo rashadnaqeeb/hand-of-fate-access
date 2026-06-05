@@ -26,6 +26,7 @@ namespace HandOfFateAccess.Focus {
 	/// </summary>
 	internal static class ProxyFactory {
 		private static readonly FieldInfo BlockerGroupField = AccessTools.Field(typeof(UISelection), "m_selectionBlockerGroup");
+		private static readonly FieldInfo ChoiceTextField = AccessTools.Field(typeof(UIChoiceButton), "m_choiceText");
 
 		// Generic NGUI placeholder names that carry no information. A label-less stop
 		// can only ever speak its raw object name; when that name is one of these (the
@@ -50,6 +51,17 @@ namespace HandOfFateAccess.Focus {
 			Card card = go.GetComponentInParent<Card>();
 			if (card != null)
 				return new CardElement(ExtractCard(card));
+
+			// An encounter choice button focuses a UISelectableItem that is a separate
+			// object from its label, so the generic child sweep misses it. Resolve the
+			// owning UIChoiceButton and read its choice text, which the game has already
+			// formatted with the success odds ("... (75% chance of success)").
+			UIChoiceButton choice = go.GetComponentInParent<UIChoiceButton>();
+			if (choice != null) {
+				string choiceText = ChoiceText(choice);
+				if (!string.IsNullOrEmpty(choiceText))
+					return new GenericElement(choiceText, EmptyLabels);
+			}
 
 			// A UISelectableGroup is a structural container in NGUI's selection model,
 			// not content. An ordinary group routes focus down to a child selectable
@@ -129,6 +141,11 @@ namespace HandOfFateAccess.Focus {
 				card.ValueString,
 				hasToken,
 				complete);
+		}
+
+		private static string ChoiceText(UIChoiceButton choice) {
+			var label = (UILabel)ChoiceTextField.GetValue(choice);
+			return label != null ? label.text : null;
 		}
 
 		private static string[] ExtractLabels(GameObject go) {
