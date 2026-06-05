@@ -1,0 +1,22 @@
+# Decompiled game source — reference only, not part of the build
+HoF-Decompiled/
+
+# .NET build output
+bin/
+obj/
+*.user
+*.suo
+
+# C/C++ build intermediates (e.g. vendored Tolk source tree)
+*.obj
+*.exp
+*.res
+
+# IDE
+.vs/
+.idea/
+
+# OS cruft
+Thumbs.db
+desktop.ini
+.DS_Store
