@@ -74,6 +74,20 @@ namespace HandOfFateAccess.Localization {
 		// The accompanying level word is reused from the game's own SCORE_LEVEL string.
 		public static readonly string ProgressScore = "score";
 
+		// The equipment-replace prompt. When picked-up gear would replace something you
+		// have equipped, the game shows a new-vs-old comparison on display-only panels the
+		// focus model never reaches, with a confirm/cancel (no navigable buttons). The
+		// decision line is spoken first, then the hint queues behind it so acting quickly
+		// skips it. {0} is the new item, {1} the equipped item it would replace, each with
+		// its own stats. The framing is authored; the item text comes from the live panels.
+		public static string EquipReplace(string newItem, string oldItem) {
+			return string.Format("Equip {0}, replacing {1}", newItem, oldItem);
+		}
+
+		// Spoken after the replace decision line; confirm equips the new item, cancel keeps
+		// the currently equipped one (the new item is stowed in reserve).
+		public static readonly string EquipReplaceHint = "confirm to equip, cancel to keep";
+
 		// Plugin lifecycle. Spoken once at startup to confirm the accessibility mod
 		// is running. {0} is the mod version (e.g. "0.1.0"). The product name is part
 		// of this string and IS meant to be translated: render "Hand of Fate Access"

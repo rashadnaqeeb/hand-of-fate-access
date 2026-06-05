@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using HandOfFateAccess.Focus;
+using HandOfFateAccess.Localization;
 using HandOfFateAccess.Speech;
 using HandOfFateAccess.UI;
 using HandOfFateAccess.Util;
@@ -45,6 +46,7 @@ namespace HandOfFateAccess.Screens {
 		private string _lastDeathText;
 		private string _lastScoreboardText;
 		private string _lastSubtitleText;
+		private string _lastCompareText;
 
 		// Live game types mapped to mod screens. Compile-time references against
 		// Assembly-CSharp: a renamed GameState fails the build here, by design.
@@ -128,6 +130,7 @@ namespace HandOfFateAccess.Screens {
 			PumpDeathText();
 			PumpScoreboardText();
 			PumpSubtitleText();
+			PumpCompareText();
 		}
 
 		// The death line and the scoreboard are both display-only surfaces on the results
@@ -248,6 +251,27 @@ namespace HandOfFateAccess.Screens {
 			_lastSubtitleText = text;
 			if (!string.IsNullOrEmpty(text))
 				SpeechPipeline.SpeakQueued(text);
+		}
+
+		// The equipment-replace prompt compares new gear against what it would replace on
+		// display-only panels, with a confirm/cancel that has no navigable buttons, so the
+		// whole decision is otherwise silent. Announce the comparison interrupting (it is
+		// the new decision context), then queue the action hint behind it so acting quickly
+		// skips it. Empty (prompt closed) just clears the edge marker.
+		private void PumpCompareText() {
+			string text;
+			try {
+				CompareReader.Read(out var newItem, out var oldItem);
+				text = CompareNarration.Compose(newItem, oldItem);
+			} catch (Exception ex) {
+				Log.Error("equipment compare readout failed: " + ex);
+				return;
+			}
+			if (text == _lastCompareText) return;
+			_lastCompareText = text;
+			if (string.IsNullOrEmpty(text)) return;
+			SpeechPipeline.SpeakInterrupt(text);
+			SpeechPipeline.SpeakQueued(Strings.EquipReplaceHint);
 		}
 
 		// A modal dialogue is a MenuManager push on the Dialogue stack, invisible to
