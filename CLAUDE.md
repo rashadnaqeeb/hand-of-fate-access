@@ -6,18 +6,30 @@ HandOfFateAccess makes **Hand of Fate** (the original) playable by blind users. 
 
 - Engine: **Unity 5.3.7f1, Mono, 32-bit (x86)**. UI toolkit is **NGUI** (UICamera, UILabel, UIButton...); gamepad input is the **InControl** library.
 - Loader: **BepInEx 5.x (x86)** + Harmony. The mod assembly targets **.NET 3.5**.
+- **Required BepInEx config (Unity 5.x):** in `<game>\BepInEx\config\BepInEx.cfg`, `[Preloader.Entrypoint]` must be `Type = MonoBehaviour` (default `Application` runs the chainloader during `Application..cctor`, which corrupts the first scene's NGUI deserialization: hundreds of "different serialization layout" / "missing script" errors and a hang on the loading screen before `card_table` loads). This file lives in the game folder, not the repo, and regenerates with the broken default if BepInEx is reinstalled, so re-apply it after any BepInEx reinstall/upgrade. Alternate entrypoint if needed: `Camera`.
 - Game code: `<game>\Hand of Fate_Data\Managed\Assembly-CSharp.dll`, where `<game>` is the Steam `steamapps/common/Hand of Fate` folder.
 - Decompiled game source for reference: `HoF-Decompiled/` (gitignored). **Look up any game type/method/field signature here before guessing.**
-- Player log: `%USERPROFILE%\AppData\LocalLow\Defiant Development\Hand of Fate\output_log.txt`. Mod lines are prefixed `[HoFAccess]`.
+- Player log: `<game>\Hand of Fate_Data\output_log.txt` (this Unity 5.3 build writes it there, not under LocalLow). BepInEx also writes `<game>\BepInEx\LogOutput.log`. Both are truncated each launch. Mod lines are prefixed `[HoFAccess]`.
+- Unity 5.3.7's old Mono runtime rejects `RegexOptions.Compiled` (throws `ArgumentOutOfRangeException` at `Regex` construction). Never pass it; same caution for other newer-runtime-only BCL features.
+- Plugin `Awake` runs inside the BepInEx chainloader during `Application..cctor`, before the engine main loop starts. Touching most Unity APIs there hard-crashes the process (observed: `Time.unscaledTime` is fatal in `Awake`). Do only non-Unity setup in `Awake` (logging, native preload, P/Invoke); defer anything that reads Unity state, speaks, or reads focus to the `Update` loop. Note `SpeechPipeline.SpeakInterrupt` reads `Time` for its dedup window, so it too must not be called before the first `Update`.
+- P/Invoke into Tolk is x86, so match the vendored binding exactly (`third_party/tolk/src/dotnet/Tolk.cs`): `CallingConvention.Cdecl`, every `bool` as `UnmanagedType.I1`, strings as `LPWStr`. Default 4-byte `bool` marshalling is tolerated on x64 but wrong on x86.
 
 ## Build, deploy, logs
 
-- `build.ps1` builds the plugin and deploys the DLL plus native deps into `<game>\BepInEx\plugins\`.
-- Run `build.ps1` directly via PowerShell (allowed by this project's `.claude/settings.local.json`). When invoking PowerShell through the Bash tool, escape `$` as `\$` so bash doesn't expand it first.
+- `build.ps1` builds the plugin (and Core transitively) and deploys both `HandOfFateAccess.dll` and `HandOfFateAccess.Core.dll` plus the x86 Tolk native deps into `<game>\BepInEx\plugins\`. `test.ps1` runs the offline test suite.
+- Run `build.ps1` / `test.ps1` directly via PowerShell (allowed by this project's `.claude/settings.local.json`). When invoking PowerShell through the Bash tool, escape `$` as `\$` so bash doesn't expand it first.
+- Shared MSBuild properties (`Version`, `LangVersion`) live in `Directory.Build.props` at the repo root; bump the version there.
 - Speech backend is **Tolk** (x86). 
 - When a build fails on a signature, look it up in `HoF-Decompiled/` before guessing.
 
 ## Architecture
+
+Three projects (solution layout):
+- **`HandOfFateAccess.Core`** — engine-agnostic logic (speech pipeline, `TextFilter`, `Log`, `IClock`). References **nothing** external (no Unity, no BepInEx). Multi-targets `net35` (consumed by the plugin) and `netstandard2.0` (consumed by tests). Keep it dependency-free so it stays unit-testable off-engine; put anything testable here.
+- **`HandOfFateAccess`** — the BepInEx plugin (net35): engine/native glue only (`Plugin`, `TolkBackend`, `LogBepInExBackend`, `NativeLoader`). References Core. Build deploys both DLLs to `BepInEx/plugins`.
+- **`HandOfFateAccess.Tests`** — net8 + xUnit, references Core only. Run with `test.ps1` (`dotnet test`). No Unity, no BepInEx, no game launch.
+
+Engine seams are interfaces with injectable fakes: `ISpeechBackend` (real = `TolkBackend`), `IClock` (real = `StopwatchClock`, default; test = fake time). When new logic needs engine state, add a seam in Core and keep the Unity/BepInEx implementation in the plugin, rather than reaching into engine APIs from testable code.
 
 Phased build plan is in `ROADMAP.md`. Three tiers:
 
@@ -47,7 +59,7 @@ Phased build plan is in `ROADMAP.md`. Three tiers:
 
 **No silent failures.** Every catch logs via `Log.Warn`/`Log.Error`. No empty catches, no catch-and-return-default without logging.
 
-**Testing.** Offline test project, no game launch. Prioritize silent-failure surfaces: `TextFilter` (full regression suite), `Message` composition, announcement formatting. Don't test thin proxies that just read a live component.
+**Testing.** `HandOfFateAccess.Tests` (net8 + xUnit), runs via `test.ps1` — no game launch, no Unity. It references `HandOfFateAccess.Core` only, so anything you want covered must live in Core behind a seam, not in the plugin assembly. Prioritize silent-failure surfaces: `TextFilter` (full regression suite), `SpeechPipeline` (enable/dedup/filter), `Message` composition, announcement formatting. Don't test thin proxies that just read a live component. Static singletons (`SpeechPipeline`, `SpeechEngine`) mean tests reset shared state and parallelization is disabled assembly-wide.
 
 **Editing & style.** Read exact lines before editing; never compose `old_string` from memory (CRLF on Windows — match bytes). Comments describe current state, not change history. Don't over-null-check — let it crash where null isn't expected; a crash is visible, a swallowed null is not. Don't pad or invent concerns.
 

@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net35</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>HandOfFateAccess</AssemblyName>
+    <RootNamespace>HandOfFateAccess</RootNamespace>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <!-- net35 BepInEx/Unity Mono target; no runtime to bundle. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <!-- Game install root. Override with the HOF_GAME environment variable
+         (MSBuild surfaces env vars as properties); falls back to the default
+         Steam location. The build references the game's Managed assemblies and
+         BepInEx core from here. -->
+    <HofGame Condition="'$(HOF_GAME)' != ''">$(HOF_GAME)</HofGame>
+    <HofGame Condition="'$(HofGame)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Hand of Fate</HofGame>
+    <HofManaged>$(HofGame)\Hand of Fate_Data\Managed</HofManaged>
+    <HofBepInEx>$(HofGame)\BepInEx\core</HofBepInEx>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Engine-agnostic logic lives in Core; deployed alongside this DLL. -->
+  <ItemGroup>
+    <ProjectReference Include="..\HandOfFateAccess.Core\HandOfFateAccess.Core.csproj" />
+  </ItemGroup>
+
+  <!-- BepInEx + Harmony (from the installed BepInEx core). -->
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(HofBepInEx)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(HofBepInEx)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Game assemblies. Unity 5.3.7 ships a monolithic UnityEngine.dll;
+       NGUI and InControl are compiled into the game assemblies. -->
+  <ItemGroup>
+    <Reference Include="UnityEngine">
+      <HintPath>$(HofManaged)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(HofManaged)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>$(HofManaged)\Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

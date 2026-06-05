@@ -4,14 +4,14 @@ Phased plan. Each phase ends with a concrete, verifiable proof in the real game 
 
 ## Phase 1 - Plugin, logging, and speech (prove the whole output chain)
 Stand up the full speech and logging stack in one go, so the first run proves output works end to end, not just that a DLL loaded. There's no value in a bare loader milestone on its own.
-- [ ] Install BepInEx 5.x **x86** into the game folder; launch once to generate `BepInEx/` config.
-- [ ] Create the plugin project (`HandOfFateAccess.csproj`), target **.NET 3.5**, reference BepInEx, 0Harmony, and the game's `Assembly-CSharp.dll` / `UnityEngine.dll` / NGUI types. `[BepInPlugin]` `BaseUnityPlugin` entry.
-- [ ] `build.ps1`: build + copy the plugin DLL and the x86 Tolk DLLs (+ companions) into `<game>\BepInEx\plugins\`.
-- [ ] Logging setup: a mod `Log` helper writing to the BepInEx logger / Unity log, every line prefixed `[HoFAccess]`.
-- [ ] Speech: lift `Speech/` from oni-access (`ISpeechBackend`, `TolkBackend`, `SpeechEngine`, `SpeechPipeline`, `TextFilter`); port to .NET 3.5. (Backend already decided: Tolk x86.)
-- [ ] Pre-load `Tolk.dll` (companions co-located) at `Awake` so the `DllImport` resolves; log clearly if it doesn't.
-- [ ] In `Awake`: initialize logging and speech, log `[HoFAccess] loaded`, and speak a startup line.
-- **Proof:** launch the game and get BOTH — a `[HoFAccess]` line in `output_log.txt` / BepInEx console AND a spoken startup line through the screen reader. Full output chain working end to end, with logging and speech both in place.
+- [x] Install BepInEx 5.x **x86** into the game folder; launch once to generate `BepInEx/` config. (Installed BepInEx 5.4.23.2 x86; config generates on the first launch.)
+- [x] Create the plugin project (`HandOfFateAccess.csproj`), target **.NET 3.5**, reference BepInEx, 0Harmony, and the game's `Assembly-CSharp.dll` / `UnityEngine.dll` / NGUI types. `[BepInPlugin]` `BaseUnityPlugin` entry.
+- [x] `build.ps1`: build + copy the plugin DLL and the x86 Tolk DLLs (+ companions) into `<game>\BepInEx\plugins\`.
+- [x] Logging setup: a mod `Log` helper writing to the BepInEx logger / Unity log, every line prefixed `[HoFAccess]`.
+- [x] Speech: lift `Speech/` from oni-access (`ISpeechBackend`, `TolkBackend`, `SpeechEngine`, `SpeechPipeline`, `TextFilter`); port to .NET 3.5. (`TextFilter` reworked for NGUI bracket markup.)
+- [x] Pre-load `Tolk.dll` (companions co-located) at `Awake` so the `DllImport` resolves; log clearly if it doesn't.
+- [x] In `Awake`: initialize logging and speech, log `[HoFAccess] loaded`, and speak a startup line.
+- [x] **Proof:** launch the game and get BOTH — a `[HoFAccess]` line in `output_log.txt` / BepInEx console AND a spoken startup line through the screen reader. Full output chain working end to end, with logging and speech both in place. (Verified: log chain present, "Hand of Fate Access loaded" spoken via JAWS, `card_table` scene loads clean with zero serialization errors.)
 
 ## Phase 2 - Focus spine (prove the core bet)
 - [ ] Harmony-postfix `UICamera.SetSelection`; on selection change in Controller scheme, read the focused GameObject's `UILabel` text.
@@ -46,7 +46,7 @@ Stand up the full speech and logging stack in one go, so the first run proves ou
 - **Proof:** a representative fight is winnable without sight.
 
 ## Cross-cutting (ongoing)
-- [ ] Offline test project (no game launch). Cover `TextFilter` (full regression suite), `Message` composition, and mod-authored announcement formatting.
+- [x] Offline test project (no game launch). `HandOfFateAccess.Tests` (net8 + xUnit) over the dependency-free `HandOfFateAccess.Core`; run via `test.ps1`. Covers `TextFilter` (regression suite), `SpeechPipeline` (enable/dedup/filter), `SpeechEngine`. Extend with `Message` composition and announcement formatting as those land.
 - [ ] Validated manual Harmony-patch helper (logs success/failure of each patch). Add when Phase 2 starts patching.
 - [ ] Mod settings (speech rate/backend, verbosity, keybinds).
 - [ ] `changes.md` changelog, player-perspective entries.
