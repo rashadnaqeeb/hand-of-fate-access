@@ -24,6 +24,12 @@ namespace HandOfFateAccess.Screens {
 		private static readonly FieldInfo TitleParamsField = AccessTools.Field(typeof(CardContainer), "m_selectableContextTitleParams");
 		private static readonly FieldInfo ConfirmTextField = AccessTools.Field(typeof(CardContainer), "m_selectableContextText");
 		private static readonly FieldInfo CancelTextField = AccessTools.Field(typeof(CardContainer), "m_cancelContextText");
+		// The zoom wires its buttons as per-card actions (CardClickAction/CardCancelAction),
+		// not the Selectable* ones, so these are the presence signals for confirm/cancel. A
+		// confirm is not guaranteed: the deck-builder zoom is examine-only (cancel/back, no
+		// confirm), and a flipped card's confirm is the reveal action.
+		private static readonly FieldInfo ClickActionField = AccessTools.Field(typeof(CardContainer), "m_cardClickAction");
+		private static readonly FieldInfo CancelActionField = AccessTools.Field(typeof(CardContainer), "m_cardCancelAction");
 		private static readonly FieldInfo OldPanelField = AccessTools.Field(typeof(ComparePanelManager), "m_old");
 		private static readonly FieldInfo InfoTitleField = AccessTools.Field(typeof(InfoPanel), "m_title");
 		private static readonly FieldInfo InfoStatTitleField = AccessTools.Field(typeof(InfoPanel), "m_statTitle");
@@ -41,9 +47,8 @@ namespace HandOfFateAccess.Screens {
 			var info = new ZoomInfo {
 				Flipped = card.Flipped,
 				Title = LocalizeTitle(zoom),
-				// There is always a confirm (reveal or the real action); cancel only when wired.
-				Confirm = UIUtils.GetString(Text(ConfirmTextField, zoom)),
-				Cancel = zoom.SelectableCancelAction != null ? UIUtils.GetString(Text(CancelTextField, zoom)) : null,
+				Confirm = HasAction(ClickActionField, zoom) ? UIUtils.GetString(Text(ConfirmTextField, zoom)) : null,
+				Cancel = HasAction(CancelActionField, zoom) ? UIUtils.GetString(Text(CancelTextField, zoom)) : null,
 			};
 			if (info.Flipped) return info;
 
@@ -98,6 +103,10 @@ namespace HandOfFateAccess.Screens {
 				StatValue = Label(InfoStatValueField, oldPanel),
 				Description = Label(InfoDescriptionField, oldPanel),
 			};
+		}
+
+		private static bool HasAction(FieldInfo field, object owner) {
+			return field.GetValue(owner) != null;
 		}
 
 		private static string Text(FieldInfo field, object owner) {
