@@ -48,8 +48,12 @@ namespace HandOfFateAccess.Focus {
 				tokens = ExtractTokens(encounter);
 			}
 
+			// Card.Title is a raw localization key (e.g. ENCOUNTER_TITLE_TWISTED_CANYON);
+			// there is no LocalisedTitle, so localize it here the same way the game's own
+			// LocalisedDescription wraps Description. UIUtils.GetString returns the key
+			// unchanged if no entry exists, so this is safe for any already-human string.
 			return new CardInfo(
-				card.Title,
+				UIUtils.GetString(card.Title),
 				card.LocalisedDescription,
 				card.StatValueString,
 				card.ValueString,
@@ -83,7 +87,7 @@ namespace HandOfFateAccess.Focus {
 			var titles = new List<string>();
 			foreach (Card card in cards)
 				if (card != null && !string.IsNullOrEmpty(card.Title))
-					titles.Add(card.Title);
+					titles.Add(UIUtils.GetString(card.Title));
 			return string.Join(", ", titles.ToArray());
 		}
 
