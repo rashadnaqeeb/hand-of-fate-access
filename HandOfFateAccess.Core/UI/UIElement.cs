@@ -41,8 +41,8 @@ namespace HandOfFateAccess.UI {
 	/// Reads the data model rather than the on-card labels, so it speaks complete
 	/// information (stat, rules/prompt, token stakes) instead of a jumble of
 	/// template text. Order follows the announcement rules: distinguishing word
-	/// (title) first, then status, the key stat, the rules/prompt, the buy/sell
-	/// value, then whether a token can be won here.
+	/// (title) first, then status, the key stat, the rules/prompt, equipment traits,
+	/// the buy/sell value, then whether a token can be won here.
 	/// </summary>
 	public sealed class CardElement : UIElement {
 		private readonly CardInfo _info;
@@ -58,6 +58,7 @@ namespace HandOfFateAccess.UI {
 			message
 				.Add(_info.StatValueString)
 				.Add(_info.Description)
+				.Add(_info.Traits)
 				.Add(_info.ValueString);
 			// Only that a token can be won here, matching the gem on the card. The
 			// reward cards are never shown to the player, so they are not announced.

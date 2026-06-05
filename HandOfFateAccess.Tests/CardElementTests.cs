@@ -87,5 +87,22 @@ namespace HandOfFateAccess.Tests {
 			var info = new CardInfo("[b]Goblin[/b]", "[FF0000]Deal 5[-]", "", "");
 			Assert.Equal("Goblin, Deal 5", Describe(info));
 		}
+
+		[Fact]
+		public void Equipment_traits_follow_description_before_value() {
+			var info = new CardInfo(
+				title: "War Axe",
+				description: "A heavy blade.",
+				statValueString: "Damage: 8",
+				valueString: "Value: 20 gold",
+				traits: "Two-handed, Slow");
+			Assert.Equal("War Axe, Damage: 8, A heavy blade., Two-handed, Slow, Value: 20 gold", Describe(info));
+		}
+
+		[Fact]
+		public void No_traits_field_leaves_readout_unchanged() {
+			var info = new CardInfo("Iron Sword", "A reliable blade.", "Damage: 5", "");
+			Assert.Equal("Iron Sword, Damage: 5, A reliable blade.", Describe(info));
+		}
 	}
 }

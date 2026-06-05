@@ -29,19 +29,28 @@ namespace HandOfFateAccess.UI {
 		/// <summary>True when an encounter card has already been resolved.</summary>
 		public bool Complete { get; }
 
+		/// <summary>
+		/// Equipment trait names (e.g. "Two-handed, Fast"), comma-joined by the game.
+		/// Empty for non-equipment cards. Shown on the inventory detail panel, which the
+		/// focus model never reaches, so it is folded into the card's own readout here.
+		/// </summary>
+		public string Traits { get; }
+
 		public CardInfo(
 			string title,
 			string description,
 			string statValueString,
 			string valueString,
 			bool hasToken = false,
-			bool complete = false) {
+			bool complete = false,
+			string traits = null) {
 			Title = title;
 			Description = description;
 			StatValueString = statValueString;
 			ValueString = valueString;
 			HasToken = hasToken;
 			Complete = complete;
+			Traits = traits;
 		}
 	}
 }

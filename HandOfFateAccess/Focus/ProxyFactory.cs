@@ -150,6 +150,12 @@ namespace HandOfFateAccess.Focus {
 			// duplicate it, so omit it here for encounters; the panel is the source.
 			string description = encounter != null ? null : card.LocalisedDescription;
 
+			// Equipment traits (e.g. "Two-handed, Fast") live only on the inventory detail
+			// panel, which the focus model never reaches, so fold them into the card's own
+			// readout. Non-equipment cards have none.
+			var equipment = card as EquipmentCard;
+			string traits = equipment != null ? equipment.TraitString : null;
+
 			// Card.Title is a raw localization key (e.g. ENCOUNTER_TITLE_TWISTED_CANYON);
 			// there is no LocalisedTitle, so localize it here the same way the game's own
 			// LocalisedDescription wraps Description. UIUtils.GetString returns the key
@@ -160,7 +166,8 @@ namespace HandOfFateAccess.Focus {
 				card.StatValueString,
 				card.ValueString,
 				hasToken,
-				complete);
+				complete,
+				traits);
 		}
 
 		private static string LabelText(FieldInfo field, object owner) {
