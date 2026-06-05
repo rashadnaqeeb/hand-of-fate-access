@@ -51,15 +51,16 @@ Phased build plan is in `ROADMAP.md`. Three tiers:
 - Announce focus ONCE per frame from an update loop; hooks/setters only store state and set a dirty flag — never speak from a hook.
 - All speech goes through `SpeechPipeline`; never call the backend directly. All logging through the mod `Log` helper, never `Debug.Log`. Inside any `*.Input` namespace, fully qualify `UnityEngine.Input`.
 - Never interrupt existing speech unless an action supersedes it (navigation). Default to queued.
-- **Never cache game state.** Re-query every time; the only acceptable "cache" is a reference to a live component read at speech time. When several callers read the same game model, centralize reads in one View class.
-- Prefer the game's own localized text and live UI state over hardcoded strings.
+- **Never cache game state.** Do not copy game data into mod-side dictionaries, lists, or string fields for later use; re-query the game when you need a value. A sighted player can see when the screen contradicts itself; a blind player trusts speech absolutely, so stale data is worse than no data. The only acceptable "cache" is holding a reference to a live Unity component (e.g. a `UILabel`) and reading its properties at speech time. When several callers read the same game model, centralize reads in one View class.
+- **Reuse game data, avoid hardcoding.** Use the game's own localized text and live UI state wherever possible; look up game strings via `Localization.Localize(key)` / `UIUtils.GetString(key)`. Hardcoded text goes stale across game updates and blocks translation. Only author a string when no game data source exists (audited: screen names, "completed", and token gain/lose wording have no game-localized source; card names, descriptions, and costs are read live off `UILabel`).
+- **No inline user-facing string literals.** Every word the mod itself authors and speaks must come from the mod's central strings file (a table in Core), never an inline literal, so the authored set can be translated later. Punctuation and log/debug text are exempt.
 
 **Announcements (mod-authored text only — never reword game text).** Users are expert screen-reader users; strip fluff, never information.
-- Distinguishing word first ("anchored cursor", not "cursor anchored").
+- Distinguishing word first: the sooner the varying part appears, the faster the user moves on ("anchored cursor", not "cursor anchored").
 - No positional counts ("3 of 10") — the reader tracks position. No nav hints unless an unusual control, and on a delay. No redundant context or obvious type suffixes.
-- Include all gameplay-relevant detail (card text, costs, tokens, tile connections). Avoid emdashes and fancy punctuation.
+- Include all gameplay-relevant detail (card text, costs, tokens, tile connections); concise means no fluff, not less information. Avoid emdashes (the reader announces them as "dash", breaking flow) and fancy punctuation.
 
-**No silent failures.** Every catch logs via `Log.Warn`/`Log.Error`. No empty catches, no catch-and-return-default without logging.
+**No silent failures.** The mod runs on Harmony patches and reflection, which fail invisibly unless logged: a swallowed exception in a patch silently stops a feature with no error the player can see. Every catch logs via `Log.Warn`/`Log.Error` what failed and where. No empty catches, no catch-and-return-default without logging. A logged failure is actionable; a silent one is invisible.
 
 **Testing.** `HandOfFateAccess.Tests` (net8 + xUnit), runs via `test.ps1` — no game launch, no Unity. It references `HandOfFateAccess.Core` only, so anything you want covered must live in Core behind a seam, not in the plugin assembly. Prioritize silent-failure surfaces: `TextFilter` (full regression suite), `SpeechPipeline` (enable/dedup/filter), `Message` composition, announcement formatting. Don't test thin proxies that just read a live component. Static singletons (`SpeechPipeline`, `SpeechEngine`) mean tests reset shared state and parallelization is disabled assembly-wide.
 

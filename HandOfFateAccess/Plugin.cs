@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using BepInEx;
 using HandOfFateAccess.Focus;
+using HandOfFateAccess.Localization;
 using HandOfFateAccess.Patches;
 using HandOfFateAccess.Patching;
 using HandOfFateAccess.Screens;
@@ -25,6 +26,9 @@ namespace HandOfFateAccess {
 	public class Plugin : BaseUnityPlugin {
 		public const string PluginGuid = "com.rashad.handoffateaccess";
 		public const string PluginName = "Hand of Fate Access";
+		// BepInPlugin needs a compile-time literal, so this cannot read the assembly.
+		// Keep it in sync with <Version> in Directory.Build.props (the source the
+		// spoken startup version is read from); bumping one means bumping both.
 		public const string PluginVersion = "0.1.0";
 
 		// Frames to wait in Update before initializing, so the game loop is live
@@ -56,7 +60,8 @@ namespace HandOfFateAccess {
 
 		private void Initialize() {
 			Log.Info("update reached; initializing speech");
-			string pluginDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+			Assembly assembly = Assembly.GetExecutingAssembly();
+			string pluginDir = Path.GetDirectoryName(assembly.Location);
 			NativeLoader.Preload(pluginDir, "Tolk.dll");
 
 			if (!SpeechEngine.Initialize(new TolkBackend())) {
@@ -65,7 +70,9 @@ namespace HandOfFateAccess {
 			}
 			_speechReady = true;
 
-			SpeechPipeline.SpeakInterrupt("Hand of Fate Access loaded");
+			// Spoken version comes from the assembly (driven by Directory.Build.props),
+			// trimmed to major.minor.build so the trailing revision .0 is not read out.
+			SpeechPipeline.SpeakInterrupt(Strings.PluginLoaded(assembly.GetName().Version.ToString(3)));
 			InstallPatches();
 
 			_screenWatcher = new GameScreenWatcher();

@@ -1,3 +1,5 @@
+using HandOfFateAccess.Localization;
+
 namespace HandOfFateAccess.UI {
 	/// <summary>
 	/// A focused control as the mod understands it, built by the plugin's
@@ -50,7 +52,7 @@ namespace HandOfFateAccess.UI {
 		public override Message Describe() {
 			var message = new Message().Add(_info.Title);
 			if (_info.Complete)
-				message.Add("completed");
+				message.Add(Strings.CardCompleted);
 			message
 				.Add(_info.StatValueString)
 				.Add(_info.Description)
@@ -59,8 +61,8 @@ namespace HandOfFateAccess.UI {
 			// cards a token grants or removes. The "gain"/"lose" wording is decided
 			// here (Core), not in the adapter.
 			foreach (TokenStake stake in _info.Tokens) {
-				if (!string.IsNullOrEmpty(stake.Gain)) message.Add("gain " + stake.Gain);
-				if (!string.IsNullOrEmpty(stake.Remove)) message.Add("lose " + stake.Remove);
+				if (!string.IsNullOrEmpty(stake.Gain)) message.Add(Strings.TokenGain(stake.Gain));
+				if (!string.IsNullOrEmpty(stake.Remove)) message.Add(Strings.TokenLose(stake.Remove));
 			}
 			return message;
 		}

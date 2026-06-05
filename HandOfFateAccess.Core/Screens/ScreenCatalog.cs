@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HandOfFateAccess.Localization;
 
 namespace HandOfFateAccess.Screens {
 	/// <summary>
@@ -20,26 +21,26 @@ namespace HandOfFateAccess.Screens {
 		}
 
 		private static readonly Dictionary<ScreenId, Entry> Entries = new Dictionary<ScreenId, Entry> {
-			{ ScreenId.Unknown,       new Entry("",               false) },
-			{ ScreenId.Loading,       new Entry("Loading",        false) },
-			{ ScreenId.Intro,         new Entry("Intro",          false) },
-			{ ScreenId.Attract,       new Entry("Attract",        false) },
-			{ ScreenId.MainMenu,      new Entry("Main menu",      true)  },
-			{ ScreenId.DeckBuilder,   new Entry("Deck builder",   true)  },
-			{ ScreenId.DungeonSelect, new Entry("Dungeon select", true)  },
-			{ ScreenId.Map,           new Entry("Map",            true)  },
-			{ ScreenId.CardTable,     new Entry("Card table",     true)  },
-			{ ScreenId.Encounter,     new Entry("Encounter",      true)  },
-			{ ScreenId.Combat,        new Entry("Combat",         true)  },
-			{ ScreenId.Shop,          new Entry("Shop",           true)  },
+			{ ScreenId.Unknown,       new Entry("",                        false) },
+			{ ScreenId.Loading,       new Entry(Strings.ScreenLoading,      false) },
+			{ ScreenId.Intro,         new Entry(Strings.ScreenIntro,        false) },
+			{ ScreenId.Attract,       new Entry(Strings.ScreenAttract,      false) },
+			{ ScreenId.MainMenu,      new Entry(Strings.ScreenMainMenu,     true)  },
+			{ ScreenId.DeckBuilder,   new Entry(Strings.ScreenDeckBuilder,  true)  },
+			{ ScreenId.DungeonSelect, new Entry(Strings.ScreenDungeonSelect,true)  },
+			{ ScreenId.Map,           new Entry(Strings.ScreenMap,          true)  },
+			{ ScreenId.CardTable,     new Entry(Strings.ScreenCardTable,    true)  },
+			{ ScreenId.Encounter,     new Entry(Strings.ScreenEncounter,    true)  },
+			{ ScreenId.Combat,        new Entry(Strings.ScreenCombat,       true)  },
+			{ ScreenId.Shop,          new Entry(Strings.ScreenShop,         true)  },
 			// A modal dialogue announces its own prompt text dynamically, not this
 			// generic name, so the auto-announce flag is off; the name is only the
 			// fallback when the prompt can't be read.
-			{ ScreenId.Dialogue,      new Entry("Dialogue",       false) },
-			{ ScreenId.Inventory,     new Entry("Inventory",      true)  },
-			{ ScreenId.Paused,        new Entry("Paused",         true)  },
-			{ ScreenId.Results,       new Entry("Results",        true)  },
-			{ ScreenId.Cabinet,       new Entry("Cabinet",        true)  },
+			{ ScreenId.Dialogue,      new Entry(Strings.ScreenDialogue,     false) },
+			{ ScreenId.Inventory,     new Entry(Strings.ScreenInventory,    true)  },
+			{ ScreenId.Paused,        new Entry(Strings.ScreenPaused,       true)  },
+			{ ScreenId.Results,       new Entry(Strings.ScreenResults,      true)  },
+			{ ScreenId.Cabinet,       new Entry(Strings.ScreenCabinet,      true)  },
 		};
 
 		/// <summary>The spoken name for a screen.</summary>
