@@ -15,11 +15,11 @@ Stand up the full speech and logging stack in one go, so the first run proves ou
 
 ## Phase 2 - Focus spine (prove the core bet)
 Split every focus readout into two layers so logic stays testable: a thin Unity **adapter** (in the plugin) that extracts raw state from the focused GameObject and does NO formatting, and **Core** composition that turns that raw state into the spoken string. The adapter is minimal and validated only in-game; the composition is unit-tested. Keep Unity types from leaking past the adapter boundary.
-- [ ] Stand up the validated manual Harmony-patch helper (logs success/failure per patch — see Cross-cutting) and use it for this and all later patches.
-- [ ] Harmony-postfix `UICamera.SetSelection`; on selection change in the Controller scheme, store the focused GameObject and set a dirty flag. Never speak from the hook.
-- [ ] Adapter: pull raw text from the focused object (`UILabel.text` on it or its children) into a plain DTO defined in Core (e.g. focused-control name plus its label texts). No Unity types in the DTO.
-- [ ] Core: compose the announcement from the DTO and unit-test the composition (empty labels, multiple child labels, markup via `TextFilter`).
-- [ ] Announce once per frame from the update loop via the dirty flag; route through `SpeechPipeline`.
+- [x] Stand up the validated manual Harmony-patch helper (logs success/failure per patch — see Cross-cutting) and use it for this and all later patches. (`Patching/HarmonyPatcher`.)
+- [x] Harmony-postfix `UICamera.SetSelection`; on selection change in the Controller scheme, store the focused GameObject and set a dirty flag. Never speak from the hook. (`Patches/UICamera_SetSelection_Patch` -> `Focus/FocusTracker`; scheme-scoped to Controller, which NGUI also uses for keyboard arrow nav.)
+- [x] Adapter: pull raw text from the focused object (`UILabel.text` on it or its children) into a plain DTO defined in Core (e.g. focused-control name plus its label texts). No Unity types in the DTO. (`Focus/FocusAdapter` -> `Core/Focus/FocusDto`.)
+- [x] Core: compose the announcement from the DTO and unit-test the composition (empty labels, multiple child labels, markup via `TextFilter`). (`Core/Focus/FocusComposer`, `FocusComposerTests`.)
+- [x] Announce once per frame from the update loop via the dirty flag; route through `SpeechPipeline`. (`Plugin.PumpFocus`, interrupt mode since navigation supersedes.)
 - **Proof:** navigating the main menu with keyboard/controller speaks each focused item.
 - **Architectural proof:** the focus-to-text composition is covered by offline tests; only raw extraction needs the game.
 
@@ -52,7 +52,7 @@ Split every focus readout into two layers so logic stays testable: a thin Unity 
 
 ## Cross-cutting (ongoing)
 - [x] Offline test project (no game launch). `HandOfFateAccess.Tests` (net8 + xUnit) over the dependency-free `HandOfFateAccess.Core`; run via `test.ps1`. Covers `TextFilter` (regression suite), `SpeechPipeline` (enable/dedup/filter), `SpeechEngine`. Extend with `Message` composition and announcement formatting as those land.
-- [ ] Validated manual Harmony-patch helper (logs success/failure of each patch). Add when Phase 2 starts patching.
+- [x] Validated manual Harmony-patch helper (logs success/failure of each patch). (`Patching/HarmonyPatcher`.)
 - [ ] Mod settings (speech rate/backend, verbosity, keybinds).
 - [ ] `changes.md` changelog, player-perspective entries.
 - [ ] Keep `CLAUDE.md` Reflection Targets list current.
