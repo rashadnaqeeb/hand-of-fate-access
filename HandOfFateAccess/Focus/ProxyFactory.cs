@@ -26,6 +26,12 @@ namespace HandOfFateAccess.Focus {
 	internal static class ProxyFactory {
 		private static readonly FieldInfo BlockerGroupField = AccessTools.Field(typeof(UISelection), "m_selectionBlockerGroup");
 
+		// Generic NGUI placeholder names that carry no information. A label-less stop
+		// can only ever speak its raw object name; when that name is one of these (the
+		// splash-screen click-to-skip area is "Selectable"), the word says nothing, so
+		// we suppress it. Meaningful names (Continue, Skip) still read.
+		private static readonly HashSet<string> NoiseNames = new HashSet<string> { "Selectable" };
+
 		public static UIElement Create(GameObject go) {
 			UISelectable selectable = go.GetComponent<UISelectable>();
 			if (selectable != null && IsBlockerFocus(selectable))
@@ -45,11 +51,16 @@ namespace HandOfFateAccess.Focus {
 
 			string[] labels = ExtractLabels(go);
 			// When a focused object yields no spoken label text we announce its raw
-			// object name as a last resort. Log what it actually is (concrete selectable
-			// type and owning/blocker group) so name-only noise can be characterized and
-			// suppressed precisely from the log rather than guessed at.
-			if (new Message().AddRange(labels).Resolve().Length == 0)
+			// object name as a last resort. Suppress generic placeholder names outright;
+			// otherwise log what it actually is (concrete selectable type and owning/
+			// blocker group) so the remaining name-only stops can be audited from the log.
+			if (new Message().AddRange(labels).Resolve().Length == 0) {
+				if (NoiseNames.Contains(go.name)) {
+					Log.Debug("focus suppressed for placeholder '" + go.name + "'; " + DescribeSelectable(selectable));
+					return null;
+				}
 				Log.Debug("focus fell back to name '" + go.name + "'; " + DescribeSelectable(selectable));
+			}
 			return new GenericElement(go.name, labels);
 		}
 
