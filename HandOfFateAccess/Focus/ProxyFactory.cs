@@ -49,6 +49,15 @@ namespace HandOfFateAccess.Focus {
 			if (selectable != null && IsBlockerFocus(selectable))
 				return null;
 
+			// A card being zoomed for a decision (examine, equip, buy, keep...) is force-
+			// selected and locked as the sole selection, often re-selecting the card the
+			// player just had focused (deduped) or while it is mid deal-animation (skipped),
+			// so the focus path cannot reliably read it; and the zoom's lore/compare panels
+			// are display-only. The ZoomReader owns the whole zoom instead, so suppress focus
+			// here to avoid double-speaking the card when focus does land.
+			if (go.GetComponentInParent<ZoomContainer>() != null)
+				return null;
+
 			Card card = go.GetComponentInParent<Card>();
 			if (card != null)
 				return new CardElement(ExtractCard(card));
@@ -133,7 +142,10 @@ namespace HandOfFateAccess.Focus {
 				+ " blocked=" + (selection != null && selection.IsBlocked);
 		}
 
-		private static CardInfo ExtractCard(Card card) {
+		// Shared with the ZoomReader, which reads the zoomed card the same way (the
+		// encounter-scenario omission applies in the zoom too: examining a card must not
+		// pre-read the scenario the event panel reads when it is played).
+		internal static CardInfo ExtractCard(Card card) {
 			bool complete = false;
 			bool hasToken = false;
 			var encounter = card as EncounterCard;

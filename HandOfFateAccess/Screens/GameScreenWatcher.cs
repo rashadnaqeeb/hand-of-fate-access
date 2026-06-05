@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using HandOfFateAccess.Focus;
-using HandOfFateAccess.Localization;
 using HandOfFateAccess.Speech;
 using HandOfFateAccess.UI;
 using HandOfFateAccess.Util;
@@ -46,7 +45,7 @@ namespace HandOfFateAccess.Screens {
 		private string _lastDeathText;
 		private string _lastScoreboardText;
 		private string _lastSubtitleText;
-		private string _lastCompareText;
+		private string _lastZoomText;
 
 		// Live game types mapped to mod screens. Compile-time references against
 		// Assembly-CSharp: a renamed GameState fails the build here, by design.
@@ -130,7 +129,7 @@ namespace HandOfFateAccess.Screens {
 			PumpDeathText();
 			PumpScoreboardText();
 			PumpSubtitleText();
-			PumpCompareText();
+			PumpZoomText();
 		}
 
 		// The death line and the scoreboard are both display-only surfaces on the results
@@ -253,25 +252,27 @@ namespace HandOfFateAccess.Screens {
 				SpeechPipeline.SpeakQueued(text);
 		}
 
-		// The equipment-replace prompt compares new gear against what it would replace on
-		// display-only panels, with a confirm/cancel that has no navigable buttons, so the
-		// whole decision is otherwise silent. Announce the comparison interrupting (it is
-		// the new decision context), then queue the action hint behind it so acting quickly
-		// skips it. Empty (prompt closed) just clears the edge marker.
-		private void PumpCompareText() {
-			string text;
+		// A card zoom presents a single card for a decision (examine, equip, buy, keep,
+		// reveal) on a locked sole selection with display-only detail panels, so the focus
+		// path cannot read it. The ZoomReader reads the whole zoom off the model; announce
+		// the decision line interrupting (it is the new context), then queue the button-
+		// label hint behind it so acting quickly skips it. Empty (no zoom) clears the
+		// marker. Focus is suppressed for zoom cards in ProxyFactory, so this is the sole
+		// announcer and does not double-speak.
+		private void PumpZoomText() {
+			ZoomAnnouncement announcement;
 			try {
-				CompareReader.Read(out var newItem, out var oldItem);
-				text = CompareNarration.Compose(newItem, oldItem);
+				announcement = ZoomNarration.Compose(ZoomReader.Read());
 			} catch (Exception ex) {
-				Log.Error("equipment compare readout failed: " + ex);
+				Log.Error("zoom readout failed: " + ex);
 				return;
 			}
-			if (text == _lastCompareText) return;
-			_lastCompareText = text;
-			if (string.IsNullOrEmpty(text)) return;
-			SpeechPipeline.SpeakInterrupt(text);
-			SpeechPipeline.SpeakQueued(Strings.EquipReplaceHint);
+			if (announcement.Main == _lastZoomText) return;
+			_lastZoomText = announcement.Main;
+			if (string.IsNullOrEmpty(announcement.Main)) return;
+			SpeechPipeline.SpeakInterrupt(announcement.Main);
+			if (!string.IsNullOrEmpty(announcement.Hint))
+				SpeechPipeline.SpeakQueued(announcement.Hint);
 		}
 
 		// A modal dialogue is a MenuManager push on the Dialogue stack, invisible to
