@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using HandOfFateAccess.Focus;
 using HandOfFateAccess.Speech;
+using HandOfFateAccess.UI;
 using HandOfFateAccess.Util;
 
 namespace HandOfFateAccess.Screens {
@@ -38,6 +39,10 @@ namespace HandOfFateAccess.Screens {
 		// The encounter narrative last announced, for edge detection only: the live text
 		// is always re-read and spoken, this just marks the scenario->result change.
 		private string _lastEncounterText;
+		// Same edge markers for the other display-only surfaces the focus model never
+		// reaches: the cabinet examine panel and the death/forfeit results line.
+		private string _lastCabinetText;
+		private string _lastDeathText;
 
 		// Live game types mapped to mod screens. Compile-time references against
 		// Assembly-CSharp: a renamed GameState fails the build here, by design.
@@ -117,6 +122,8 @@ namespace HandOfFateAccess.Screens {
 			PumpOverlay(PauseMenuOpen(), ref _pauseActive, ScreenId.Paused);
 			PumpDialogue();
 			PumpEncounterText();
+			PumpCabinetText();
+			PumpDeathText();
 		}
 
 		// The encounter event panel's narrative (scenario, then result after a choice)
@@ -136,6 +143,48 @@ namespace HandOfFateAccess.Screens {
 			}
 			if (text == _lastEncounterText) return;
 			_lastEncounterText = text;
+			if (!string.IsNullOrEmpty(text))
+				Speak(text);
+		}
+
+		// The cabinet examine panel (lore, deck changes, upgrades) is display-only text
+		// reached from the live StartOptions singleton. The court card the player examined
+		// stays focused and speaks its own name, so this section detail queues behind that
+		// name rather than interrupting it, and each bumper page to a new section re-reads.
+		// Empty text (panel closed) just clears the edge marker.
+		private void PumpCabinetText() {
+			string text;
+			try {
+				CabinetReader.Read(out var section, out var body);
+				text = CabinetNarration.Compose(section, body);
+			} catch (Exception ex) {
+				Log.Error("cabinet text readout failed: " + ex);
+				return;
+			}
+			if (text == _lastCabinetText) return;
+			_lastCabinetText = text;
+			if (!string.IsNullOrEmpty(text))
+				SpeechPipeline.SpeakQueued(text);
+		}
+
+		// The death/forfeit results line is display-only text UIDeathPanel sets on the
+		// results screen. Gated to the results states so the per-frame FindObjectOfType
+		// only runs there. Interrupts as the reveal of the run's outcome.
+		private void PumpDeathText() {
+			GameState state = Game.Instance != null ? Game.Instance.ActiveGameState : null;
+			if (!(state is GameState_Post) && !(state is GameState_AlphaEnd)) {
+				_lastDeathText = null;
+				return;
+			}
+			string text;
+			try {
+				text = new Message().Add(DeathPanelReader.Read()).Resolve();
+			} catch (Exception ex) {
+				Log.Error("death text readout failed: " + ex);
+				return;
+			}
+			if (text == _lastDeathText) return;
+			_lastDeathText = text;
 			if (!string.IsNullOrEmpty(text))
 				Speak(text);
 		}
