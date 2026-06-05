@@ -1,4 +1,5 @@
 using HandOfFateAccess.Localization;
+using HandOfFateAccess.Util;
 
 namespace HandOfFateAccess.UI {
 	/// <summary>
@@ -28,8 +29,15 @@ namespace HandOfFateAccess.UI {
 		public override Message Describe() {
 			var labels = new Message().AddRange(_labels);
 			// Fall back to the object name only when no label produced spoken text.
-			if (labels.Resolve().Length == 0)
+			// A control reaching this branch is a label-less focus stop that speaks its
+			// bare GameObject name (the "Selectable"-style noise). Groups are already
+			// filtered upstream, so anything logged here is a non-group object worth
+			// auditing: log the name once per focus so the noise set can be enumerated
+			// from output_log.txt without guessing at scene contents.
+			if (labels.Resolve().Length == 0) {
+				Log.Debug("focus fell back to object name '" + _name + "' (no label text)");
 				return new Message().Add(_name);
+			}
 			return labels;
 		}
 	}
