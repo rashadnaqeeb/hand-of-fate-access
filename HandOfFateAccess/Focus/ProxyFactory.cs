@@ -1,5 +1,8 @@
 using System.Collections.Generic;
+using System.Reflection;
 using HandOfFateAccess.UI;
+using HandOfFateAccess.Util;
+using HarmonyLib;
 using UnityEngine;
 
 namespace HandOfFateAccess.Focus {
@@ -21,13 +24,11 @@ namespace HandOfFateAccess.Focus {
 	/// treats null as "nothing to announce" and skips it.
 	/// </summary>
 	internal static class ProxyFactory {
+		private static readonly FieldInfo BlockerGroupField = AccessTools.Field(typeof(UISelection), "m_selectionBlockerGroup");
+
 		public static UIElement Create(GameObject go) {
-			// While selection is locked to the blocker group (an input lock the game
-			// raises during transitions and loading), the placeholder that holds focus
-			// is content-less and named for its role ("SelectableBlocker", "Selectable").
-			// IsBlocked is the game's own authoritative flag for that state; suppress it.
 			UISelectable selectable = go.GetComponent<UISelectable>();
-			if (selectable != null && selectable.Selection != null && selectable.Selection.IsBlocked)
+			if (selectable != null && IsBlockerFocus(selectable))
 				return null;
 
 			Card card = go.GetComponentInParent<Card>();
@@ -37,14 +38,43 @@ namespace HandOfFateAccess.Focus {
 			// A UISelectableGroup is a structural container in NGUI's selection model,
 			// not content. An ordinary group routes focus down to a child selectable
 			// (its initial/last selection), whose own Select event follows with the real
-			// readout; the selection blocker group is an input lock used during
-			// transitions and loading. Either way the group's own object carries no
-			// label, so announcing it would speak its bare scene name ("Selectable",
-			// "SelectableBlocker"). Suppress it and let the delegated child speak.
+			// readout. The group's own object carries no label, so announcing it would
+			// speak its bare scene name. Suppress it and let the delegated child speak.
 			if (go.GetComponent<UISelectableGroup>() != null)
 				return null;
 
-			return new GenericElement(go.name, ExtractLabels(go));
+			string[] labels = ExtractLabels(go);
+			// When a focused object yields no spoken label text we announce its raw
+			// object name as a last resort. Log what it actually is (concrete selectable
+			// type and owning/blocker group) so name-only noise can be characterized and
+			// suppressed precisely from the log rather than guessed at.
+			if (new Message().AddRange(labels).Resolve().Length == 0)
+				Log.Debug("focus fell back to name '" + go.name + "'; " + DescribeSelectable(selectable));
+			return new GenericElement(go.name, labels);
+		}
+
+		// The blocker group parks focus on a content-less placeholder ("SelectableBlocker")
+		// while the game locks input during transitions. Catch it structurally - the
+		// focused selectable belongs to its category's blocker group - so it is
+		// suppressed whether or not the lock flag (IsBlocked) is currently raised; the
+		// flag was only set during some of the placeholder's focus events. The flag is
+		// kept as an additional backstop.
+		private static bool IsBlockerFocus(UISelectable selectable) {
+			UISelection selection = selectable.Selection;
+			if (selection == null) return false;
+			if (selection.IsBlocked) return true;
+			var blocker = (UISelectableGroup)BlockerGroupField.GetValue(selection);
+			return blocker != null && selectable.Group == blocker;
+		}
+
+		private static string DescribeSelectable(UISelectable selectable) {
+			if (selectable == null) return "selectable=none";
+			UISelection selection = selectable.Selection;
+			UISelectableGroup blocker = selection != null ? (UISelectableGroup)BlockerGroupField.GetValue(selection) : null;
+			return "type=" + selectable.GetType().Name
+				+ " group=" + (selectable.Group != null ? selectable.Group.name : "none")
+				+ " blocker=" + (blocker != null ? blocker.name : "none")
+				+ " blocked=" + (selection != null && selection.IsBlocked);
 		}
 
 		private static CardInfo ExtractCard(Card card) {

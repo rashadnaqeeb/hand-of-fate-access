@@ -128,7 +128,8 @@ namespace HandOfFateAccess.Screens {
 		private void PumpEncounterText() {
 			string text;
 			try {
-				text = EncounterEventReader.Read();
+				EncounterEventReader.Read(out var narrative, out var instructions);
+				text = EncounterNarration.Compose(narrative, instructions);
 			} catch (Exception ex) {
 				Log.Error("encounter text readout failed: " + ex);
 				return;
