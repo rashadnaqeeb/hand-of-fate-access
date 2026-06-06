@@ -80,6 +80,14 @@ namespace HandOfFateAccess.Focus {
 					return new MapSlotElement(slotInfo);
 			}
 
+			// An archetype (Fates) card's detail lives on the deck builder's CabinetCardInfo
+			// panel (description, upgrades, deck changes, loadout), which the ArchetypeReader
+			// owns and edge-announces. The focused card itself would only re-read the title and
+			// duplicate the panel's description, so suppress it here, the same way the zoom is.
+			// Checked before the Card branch since an archetype card is a Card.
+			if (go.GetComponentInParent<ArchetypeCard>() != null)
+				return null;
+
 			Card card = go.GetComponentInParent<Card>();
 			if (card != null)
 				return new CardElement(ExtractCard(card));

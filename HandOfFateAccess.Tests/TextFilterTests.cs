@@ -34,6 +34,15 @@ namespace HandOfFateAccess.Tests {
 		// Real (non-tag) brackets are preserved
 		[InlineData("deal 5 [50%] damage", "deal 5 [50%] damage")]
 		[InlineData("loot [chest]", "loot [chest]")]
+		// A leading list bullet is dropped (it reads as "dash"); markup-stripped first
+		[InlineData("- Health 100", "Health 100")]
+		[InlineData("• Food 3", "Food 3")]
+		[InlineData("[b]- Gold 0[/b]", "Gold 0")]
+		// A negative number is not a bullet (no space after the dash)
+		[InlineData("-10 health", "-10 health")]
+		[InlineData("Health Lost from Starving -10", "Health Lost from Starving -10")]
+		// Only the leading bullet goes; a mid-line dash stays
+		[InlineData("well - maybe", "well - maybe")]
 		public void FilterForSpeech_Cases(string input, string expected) {
 			Assert.Equal(expected, TextFilter.FilterForSpeech(input));
 		}

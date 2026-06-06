@@ -13,20 +13,17 @@ namespace HandOfFateAccess.Screens {
 	/// path never reads, so it is read here and announced once when the examined card changes.
 	///
 	/// Reached from the live StartOptions singleton, then the private CabinetCardInfo
-	/// reference and its current panel index, by reflection so a game-side rename crashes
-	/// the build's audit rather than degrading silently. The panels animate via alpha
-	/// rather than activation, so the active section is found by index, not by sweeping
-	/// active objects; labels within that one panel are read live at speech time.
+	/// reference, by reflection so a game-side rename crashes the build's audit rather than
+	/// degrading silently. The section read itself is shared with the Fates pile via
+	/// <see cref="CardInfoPanelReader"/>; this only sources the cabinet's panel and the name.
 	/// </summary>
 	internal static class CabinetReader {
 		private static readonly FieldInfo CourtCardInfoField = AccessTools.Field(typeof(StartOptionsContainer), "m_courtCardInfo");
-		private static readonly FieldInfo PanelIndexField = AccessTools.Field(typeof(CabinetCardInfo), "m_panelIndex");
-		private static readonly FieldInfo PanelsField = AccessTools.Field(typeof(CabinetCardInfo), "m_panels");
 
 		/// <summary>
 		/// The examined card's name, the active section title, and its body labels, or nulls
-		/// when no panel is shown (panel index below zero). Cheap index check first, so the
-		/// label sweep only runs while the panel is actually open.
+		/// when no panel is shown. The examine banner shows the name on every section (even for
+		/// a card face-down on the rack), which the focus path never reads, so it is sourced here.
 		/// </summary>
 		public static void Read(out string cardName, out string section, out string[] body) {
 			cardName = null;
@@ -39,27 +36,12 @@ namespace HandOfFateAccess.Screens {
 			StartOptionsContainer container = start.Container;
 			if (container == null) return;
 			var info = (CabinetCardInfo)CourtCardInfoField.GetValue(container);
-			if (info == null) return;
 
-			int idx = (int)PanelIndexField.GetValue(info);
-			var panels = (CabinetCardInfoPanel[])PanelsField.GetValue(info);
-			if (idx < 0 || panels == null || idx >= panels.Length) return;
-			CabinetCardInfoPanel panel = panels[idx];
-			if (panel == null) return;
-
-			// The examine banner shows the card's name on every section. Card.Title is a
-			// localization key; GetString localizes it (and returns plain text unchanged).
-			Card card = info.Card;
+			// Card.Title is a localization key; GetString localizes it (and returns plain text
+			// unchanged).
+			Card card = CardInfoPanelReader.Read(info, out section, out body);
 			if (card != null)
 				cardName = UIUtils.GetString(card.Title);
-
-			// Title is a serialized string (already display text or a key); GetString
-			// localizes a key and returns plain text unchanged.
-			section = UIUtils.GetString(panel.Title);
-			UILabel[] labels = panel.GetComponentsInChildren<UILabel>(includeInactive: false);
-			body = new string[labels.Length];
-			for (int i = 0; i < labels.Length; i++)
-				body[i] = labels[i].text;
 		}
 	}
 }

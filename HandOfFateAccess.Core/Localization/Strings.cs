@@ -57,6 +57,11 @@ namespace HandOfFateAccess.Localization {
 		public static readonly string CardCharge = "charge";
 		public static readonly string CardCharges = "charges";
 
+		// Appended after an archetype's (Fates) name when it is not yet unlocked: a darkened
+		// card whose action is buy rather than continue. The lock shows as a darkened card and
+		// sprite with no text, so the word is authored here. Silence means it is available.
+		public static readonly string CardLocked = "locked";
+
 		// Deck-builder pile status, appended after a pile's count when the deck is off its
 		// required limit ("Equipment, 8/12, insufficient" / "Encounter, 15/12, too many").
 		// The game flags this only with coloured icons (a tick, a cross) and no text, so the

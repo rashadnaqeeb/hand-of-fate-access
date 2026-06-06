@@ -45,6 +45,15 @@ namespace HandOfFateAccess.Screens {
 		// examined card changes rather than repeated on every section page.
 		private string _lastCabinetText;
 		private string _lastCabinetCardName;
+		// The Fates pile's info panel, the same display-only surface as the cabinet: the
+		// archetype name (announced when the selected archetype changes) and the active
+		// section (announced when it changes, by selection or by paging). The panel rebuilds
+		// over a frame or two, so the read is debounced: pending holds the last read, spoken
+		// holds what was last announced once the read settled.
+		private string _archetypePendingText;
+		private string _archetypePendingName;
+		private string _archetypeSpokenText;
+		private string _archetypeSpokenName;
 		private string _lastDeathText;
 		private string _lastScoreboardText;
 		private string _lastSubtitleText;
@@ -129,6 +138,7 @@ namespace HandOfFateAccess.Screens {
 			PumpDialogue();
 			PumpEncounterText();
 			PumpCabinetText();
+			PumpArchetypeText();
 			PumpDeathText();
 			PumpScoreboardText();
 			PumpSubtitleText();
@@ -191,6 +201,42 @@ namespace HandOfFateAccess.Screens {
 			if (text == _lastCabinetText) return;
 			_lastCabinetText = text;
 			if (!string.IsNullOrEmpty(text))
+				SpeechPipeline.SpeakQueued(text);
+		}
+
+		// The Fates pile's archetype info panel is the same display-only CabinetCardInfo the
+		// cabinet uses, but the focused archetype card is suppressed, so this is the sole
+		// announcer. The panel tears down and rebuilds its card list over a frame or two when
+		// a new archetype is selected, so the read is debounced: only once it stops changing
+		// is it announced, which keeps a settling panel from being read (and re-cut) repeatedly.
+		// The name interrupts as the navigation feedback; the section queues behind it so it is
+		// never cut off. Empty (outside the Fates pile) settles to empty and clears the markers,
+		// so re-entry re-announces.
+		private void PumpArchetypeText() {
+			string name;
+			string text;
+			try {
+				ArchetypeReader.Read(out var rawName, out var locked, out var section, out var body);
+				name = ArchetypeNarration.ComposeName(rawName, locked);
+				text = ArchetypeNarration.ComposeSection(section, body);
+			} catch (Exception ex) {
+				Log.Error("archetype text readout failed: " + ex);
+				return;
+			}
+			// Still changing this frame: hold it and wait for the rebuild to settle.
+			if (name != _archetypePendingName || text != _archetypePendingText) {
+				_archetypePendingName = name;
+				_archetypePendingText = text;
+				return;
+			}
+			bool nameChanged = name != _archetypeSpokenName;
+			bool textChanged = text != _archetypeSpokenText;
+			if (!nameChanged && !textChanged) return;
+			_archetypeSpokenName = name;
+			_archetypeSpokenText = text;
+			if (nameChanged && !string.IsNullOrEmpty(name))
+				SpeechPipeline.SpeakInterrupt(name);
+			if (textChanged && !string.IsNullOrEmpty(text))
 				SpeechPipeline.SpeakQueued(text);
 		}
 

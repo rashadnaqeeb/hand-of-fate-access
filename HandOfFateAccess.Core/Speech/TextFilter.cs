@@ -40,6 +40,12 @@ namespace HandOfFateAccess.Speech {
 		private static readonly Regex WhitespaceRegex =
 			new Regex(@"\s+");
 
+		// A leading list bullet ("- " or "• ") the game prefixes to resource and card lines.
+		// Spoken, a bare dash reads as "dash", so drop it. The trailing space is required so a
+		// negative number ("-10") is never mistaken for a bullet.
+		private static readonly Regex LeadingBulletRegex =
+			new Regex(@"^[-•]\s+");
+
 		public static string FilterForSpeech(string text) {
 			if (string.IsNullOrEmpty(text)) return "";
 
@@ -49,7 +55,7 @@ namespace HandOfFateAccess.Speech {
 
 			// Fast path: plain text with no markup delimiters.
 			if (text.IndexOf('[') < 0 && text.IndexOf('<') < 0)
-				return WhitespaceRegex.Replace(text, " ").Trim();
+				return LeadingBulletRegex.Replace(WhitespaceRegex.Replace(text, " ").Trim(), "");
 
 			text = UrlTagRegex.Replace(text, "$1");
 			text = ColorStartRegex.Replace(text, "");
@@ -57,8 +63,8 @@ namespace HandOfFateAccess.Speech {
 			text = StyleTagRegex.Replace(text, "");
 			text = UnityRichTextRegex.Replace(text, "");
 
-			text = WhitespaceRegex.Replace(text, " ");
-			return text.Trim();
+			text = WhitespaceRegex.Replace(text, " ").Trim();
+			return LeadingBulletRegex.Replace(text, "");
 		}
 
 		private static string StripControlChars(string text) {
