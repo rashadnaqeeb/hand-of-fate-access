@@ -61,9 +61,11 @@ namespace HandOfFateAccess.Screens {
 				return info;
 			}
 
-			info.Card = ProxyFactory.ExtractCard(card);
+			// The deck-builder zoom prints the card's description on its panel, so include the
+			// encounter scenario the focus path omits (no event panel doubles it here).
+			info.Card = ProxyFactory.ExtractCard(card, includeEncounterDescription: PanelShows(card));
 			if (ShowsLore(card))
-				info.Lore = UIUtils.GetString(card.Lore);
+				info.Lore = ComposeLore(card);
 			info.OldItem = ReadOldItem();
 			return info;
 		}
@@ -75,18 +77,42 @@ namespace HandOfFateAccess.Screens {
 			return (args != null && args.Length > 0) ? UIUtils.GetString(key, (object[])args) : UIUtils.GetString(key);
 		}
 
-		// Mirrors ZoomContainer.ShowLorePanel: lore shows in the deck builder, and for boss
-		// (SpecialEncounterCard) and upgrade-reference cards anywhere. Read it only then, so
-		// a card whose zoom shows no lore panel does not get lore a sighted player can't see.
-		// The lore panel also hides lore for an equipment card the player cannot equip (it
-		// shows a "cannot equip" warning there instead), so exclude that case too.
-		private static bool ShowsLore(Card card) {
-			bool panelShows = Game.Instance.ActiveGameState is GameState_DeckBuilder
+		// Mirrors ZoomContainer.ShowLorePanel: the zoom builds its description/lore panel in the
+		// deck builder for any card, and for boss (SpecialEncounterCard) and upgrade-reference
+		// cards anywhere. The panel prints the card's description, so its presence is also what
+		// makes an encounter's scenario visible (and worth reading) in the deck-builder zoom.
+		private static bool PanelShows(Card card) {
+			return Game.Instance.ActiveGameState is GameState_DeckBuilder
 				|| card is SpecialEncounterCard
 				|| card is UpgradeRefCard;
-			if (!panelShows) return false;
+		}
+
+		// Lore shows on that panel too, so read it only then (a card whose zoom shows no panel
+		// must not get lore a sighted player cannot see). The panel hides lore for an equipment
+		// card the player cannot equip (a "cannot equip" warning takes its place), so exclude that.
+		private static bool ShowsLore(Card card) {
+			if (!PanelShows(card)) return false;
 			var equipment = card as EquipmentCard;
 			return equipment == null || Player.Instance.CanEquip(equipment);
+		}
+
+		// The lore panel appends a non-special encounter's category names ("Combat, Event") to
+		// its lore label, so fold them into the lore the same way for parity.
+		private static string ComposeLore(Card card) {
+			string lore = UIUtils.GetString(card.Lore);
+			var encounter = card as EncounterCard;
+			if (encounter == null || encounter is SpecialEncounterCard)
+				return lore;
+			var categories = encounter.EncounterPrefab.CategoryStrings;
+			if (categories == null || categories.Count == 0)
+				return lore;
+			string joined = string.Empty;
+			for (int i = 0; i < categories.Count; i++) {
+				if (i > 0)
+					joined += ", ";
+				joined += UIUtils.GetString(categories[i]);
+			}
+			return string.IsNullOrEmpty(lore) ? joined : lore + ", " + joined;
 		}
 
 		// The equipped item a replace would swap out, shown on the old compare panel; only

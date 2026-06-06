@@ -29,11 +29,14 @@ namespace HandOfFateAccess.Focus {
 		private static readonly FieldInfo BlockerGroupField = AccessTools.Field(typeof(UISelection), "m_selectionBlockerGroup");
 		private static readonly FieldInfo ChoiceTextField = AccessTools.Field(typeof(UIChoiceButton), "m_choiceText");
 		private static readonly FieldInfo ChoiceLetterField = AccessTools.Field(typeof(UIChoiceButton), "m_letterText");
-		// The card's "new" and "pinned" badges are unlabelled sprites set only by the
-		// containers that draw them (deck builder, shop, zoom, card choices), so reading their
-		// live state matches the visual per context instead of re-deriving from cross-screen data.
+		// The card's "new" and "pinned" badges and its token gem are unlabelled sprites the
+		// game sets only where it draws them, so reading their live state matches the visual
+		// per context instead of re-deriving from cross-screen data. The gem in particular
+		// also lights for a token granted by a later stage of a sequenced encounter, which a
+		// per-card CanGiveTokens check would miss; the sprite already accounts for it.
 		private static readonly FieldInfo CardNewBadgeField = AccessTools.Field(typeof(CardTemplate), "m_new");
 		private static readonly FieldInfo CardPinnedBadgeField = AccessTools.Field(typeof(CardTemplate), "m_pinned");
+		private static readonly FieldInfo CardTokenSpriteField = AccessTools.Field(typeof(CardTemplate), "m_tokenSprite");
 
 		// Generic NGUI placeholder names that carry no information. A label-less stop
 		// can only ever speak its raw object name; when that name is one of these (the
@@ -197,7 +200,7 @@ namespace HandOfFateAccess.Focus {
 		// Shared with the ZoomReader, which reads the zoomed card the same way (the
 		// encounter-scenario omission applies in the zoom too: examining a card must not
 		// pre-read the scenario the event panel reads when it is played).
-		internal static CardInfo ExtractCard(Card card) {
+		internal static CardInfo ExtractCard(Card card, bool includeEncounterDescription = false) {
 			// A face-down card withholds its identity (the card back a sighted player sees),
 			// the same rule the map and zoom readers apply. The focus path lands directly on
 			// cabinet cards, where the locked court cards and locked artifacts are flipped, so
@@ -207,12 +210,8 @@ namespace HandOfFateAccess.Focus {
 				return new CardInfo(null, null, null, null, faceDown: true);
 
 			bool complete = false;
-			bool hasToken = false;
 			var encounter = card as EncounterCard;
 			if (encounter != null) {
-				// Mirrors the token gem the card shows: a token can be won here. The
-				// reward cards are not displayed to the player, so we read only this.
-				hasToken = encounter.CanGiveTokens;
 				// In the cabinet a court card reads as "completed" when the player has beaten
 				// it, which the cabinet shows by darkening the card (its id is in the save
 				// profile). EncounterCard.Complete is the in-dungeon flag and is always false
@@ -222,11 +221,12 @@ namespace HandOfFateAccess.Focus {
 				complete = cabinet != null ? cabinet.CheckDarken(card) : encounter.Complete;
 			}
 
-			// An encounter card's description is the encounter scenario, which is not on
-			// the table card (a sighted player sees only art and title) and is read by the
-			// event panel when the encounter is played. Reading it on focus too would
-			// duplicate it, so omit it here for encounters; the panel is the source.
-			string description = encounter != null ? null : card.LocalisedDescription;
+			// An encounter card's description is the encounter scenario. On the table and map
+			// it is omitted: the card face shows only art and title, and the event panel reads
+			// the scenario when the encounter is played, so reading it on focus would duplicate
+			// it. The deck-builder zoom is the exception (it prints the scenario on its panel
+			// with no event panel to double), and asks for it via includeEncounterDescription.
+			string description = encounter == null || includeEncounterDescription ? card.LocalisedDescription : null;
 
 			// Equipment traits (e.g. "Two-handed, Fast") live only on the inventory detail
 			// panel, which the focus model never reaches, so fold them into the card's own
@@ -239,17 +239,22 @@ namespace HandOfFateAccess.Focus {
 			// and shows no counter, and non-equipment cards have no counter at all.
 			int charges = equipment != null && equipment.CardData.Quantity >= 0 ? equipment.CardData.Quantity : -1;
 
-			// Read the "new" and "pinned" badges off the card's live template so they speak
-			// only where the game draws them. The template loads art asynchronously and can be
-			// momentarily absent, in which case no badge is shown.
+			// Read the "new" and "pinned" badges and the token gem off the card's live template
+			// so they speak only where the game draws them. The token gem also mirrors a token
+			// granted by a later stage of a sequenced encounter, which a per-card token check
+			// misses. The template loads art asynchronously and can be momentarily absent, in
+			// which case no badge is shown.
 			bool isNew = false;
 			bool pinned = false;
+			bool hasToken = false;
 			CardTemplate template = card.CardTemplate;
 			if (template != null) {
 				var newBadge = (GameObject)CardNewBadgeField.GetValue(template);
 				isNew = newBadge != null && newBadge.activeSelf;
 				var pinnedBadge = (UISprite)CardPinnedBadgeField.GetValue(template);
 				pinned = pinnedBadge != null && pinnedBadge.enabled;
+				var tokenSprite = (UISprite)CardTokenSpriteField.GetValue(template);
+				hasToken = tokenSprite != null && tokenSprite.enabled;
 			}
 
 			// Card.Title is a raw localization key (e.g. ENCOUNTER_TITLE_TWISTED_CANYON);
