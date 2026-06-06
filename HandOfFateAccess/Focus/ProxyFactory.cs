@@ -29,6 +29,11 @@ namespace HandOfFateAccess.Focus {
 		private static readonly FieldInfo BlockerGroupField = AccessTools.Field(typeof(UISelection), "m_selectionBlockerGroup");
 		private static readonly FieldInfo ChoiceTextField = AccessTools.Field(typeof(UIChoiceButton), "m_choiceText");
 		private static readonly FieldInfo ChoiceLetterField = AccessTools.Field(typeof(UIChoiceButton), "m_letterText");
+		// The card's "new" and "pinned" badges are unlabelled sprites set only by the
+		// containers that draw them (deck builder, shop, zoom, card choices), so reading their
+		// live state matches the visual per context instead of re-deriving from cross-screen data.
+		private static readonly FieldInfo CardNewBadgeField = AccessTools.Field(typeof(CardTemplate), "m_new");
+		private static readonly FieldInfo CardPinnedBadgeField = AccessTools.Field(typeof(CardTemplate), "m_pinned");
 
 		// Generic NGUI placeholder names that carry no information. A label-less stop
 		// can only ever speak its raw object name; when that name is one of these (the
@@ -229,6 +234,24 @@ namespace HandOfFateAccess.Focus {
 			var equipment = card as EquipmentCard;
 			string traits = equipment != null ? equipment.TraitString : null;
 
+			// The charge counter (an artifact/consumable's remaining ability uses) shows only
+			// when the quantity is non-negative; unlimited or non-ability equipment sits at -1
+			// and shows no counter, and non-equipment cards have no counter at all.
+			int charges = equipment != null && equipment.CardData.Quantity >= 0 ? equipment.CardData.Quantity : -1;
+
+			// Read the "new" and "pinned" badges off the card's live template so they speak
+			// only where the game draws them. The template loads art asynchronously and can be
+			// momentarily absent, in which case no badge is shown.
+			bool isNew = false;
+			bool pinned = false;
+			CardTemplate template = card.CardTemplate;
+			if (template != null) {
+				var newBadge = (GameObject)CardNewBadgeField.GetValue(template);
+				isNew = newBadge != null && newBadge.activeSelf;
+				var pinnedBadge = (UISprite)CardPinnedBadgeField.GetValue(template);
+				pinned = pinnedBadge != null && pinnedBadge.enabled;
+			}
+
 			// Card.Title is a raw localization key (e.g. ENCOUNTER_TITLE_TWISTED_CANYON);
 			// there is no LocalisedTitle, so localize it here the same way the game's own
 			// LocalisedDescription wraps Description. UIUtils.GetString returns the key
@@ -240,7 +263,10 @@ namespace HandOfFateAccess.Focus {
 				card.ValueString,
 				hasToken,
 				complete,
-				traits);
+				traits,
+				isNew: isNew,
+				pinned: pinned,
+				charges: charges);
 		}
 
 		private static string LabelText(FieldInfo field, object owner) {

@@ -43,6 +43,22 @@ namespace HandOfFateAccess.UI {
 		/// </summary>
 		public string Traits { get; }
 
+		/// <summary>True when the game badges the card as unseen ("new").</summary>
+		public bool New { get; }
+
+		/// <summary>True when the card is pinned into the deck and cannot be removed.</summary>
+		public bool Pinned { get; }
+
+		/// <summary>
+		/// An equipment card's remaining ability uses (artifact/consumable charges), or -1
+		/// when the card shows no charge counter (unlimited or non-ability equipment, and
+		/// every non-equipment card). HasCharges gates whether it is spoken.
+		/// </summary>
+		public int Charges { get; }
+
+		/// <summary>True when a charge count should be spoken.</summary>
+		public bool HasCharges => Charges >= 0;
+
 		public CardInfo(
 			string title,
 			string description,
@@ -51,7 +67,10 @@ namespace HandOfFateAccess.UI {
 			bool hasToken = false,
 			bool complete = false,
 			string traits = null,
-			bool faceDown = false) {
+			bool faceDown = false,
+			bool isNew = false,
+			bool pinned = false,
+			int charges = -1) {
 			Title = title;
 			Description = description;
 			StatValueString = statValueString;
@@ -60,6 +79,9 @@ namespace HandOfFateAccess.UI {
 			Complete = complete;
 			Traits = traits;
 			FaceDown = faceDown;
+			New = isNew;
+			Pinned = pinned;
+			Charges = charges;
 		}
 	}
 }

@@ -41,6 +41,22 @@ namespace HandOfFateAccess.Localization {
 		// already been finished, e.g. "Bandit Camp, completed".
 		public static readonly string CardCompleted = "completed";
 
+		// Appended after a card's name when the game badges it as unseen ("new"), the same
+		// badge a sighted player sees in the deck builder, shop and card choices. The badge
+		// is an unlabelled sprite, so the word is authored here. Silence means already seen.
+		public static readonly string CardNew = "new";
+
+		// Appended after a card's name when it is pinned into the deck and so cannot be taken
+		// out (the game blocks removal with a dialogue). Pinned shows as an unlabelled sprite,
+		// so the words are authored here. Silence means the card can be removed.
+		public static readonly string CardPinned = "cannot remove";
+
+		// The ability-use counter on an artifact or consumable equipment card ("3 charges"),
+		// the number a sighted player reads off the card's counter. The counter is a bare
+		// number with no label, so the noun is authored here. Singular/plural per count.
+		public static readonly string CardCharge = "charge";
+		public static readonly string CardCharges = "charges";
+
 		// Deck-builder pile status, appended after a pile's count when the deck is off its
 		// required limit ("Equipment, 8/12, insufficient" / "Encounter, 15/12, too many").
 		// The game flags this only with coloured icons (a tick, a cross) and no text, so the

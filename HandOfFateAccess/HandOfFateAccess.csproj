@@ -55,6 +55,10 @@
       <HintPath>$(HofManaged)\Assembly-CSharp-firstpass.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="DomainModel">
+      <HintPath>$(HofManaged)\DomainModel.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
 </Project>

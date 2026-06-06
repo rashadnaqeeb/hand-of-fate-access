@@ -59,8 +59,18 @@ namespace HandOfFateAccess.UI {
 			var message = new Message().Add(_info.Title);
 			if (_info.Complete)
 				message.Add(Strings.CardCompleted);
+			if (_info.New)
+				message.Add(Strings.CardNew);
+			// Pinned cards cannot be taken out of the deck; the player needs to know before
+			// trying. Silence means the card can be removed.
+			if (_info.Pinned)
+				message.Add(Strings.CardPinned);
+			message.Add(_info.StatValueString);
+			// The charge count follows the stat (and is the key number for artifacts, which
+			// carry no stat), ahead of the rules text that says what the ability does.
+			if (_info.HasCharges)
+				message.Add(_info.Charges + " " + (_info.Charges == 1 ? Strings.CardCharge : Strings.CardCharges));
 			message
-				.Add(_info.StatValueString)
 				.Add(_info.Description)
 				.Add(_info.Traits)
 				.Add(_info.ValueString);

@@ -1,3 +1,4 @@
+using HandOfFateAccess.Localization;
 using HandOfFateAccess.UI;
 using Xunit;
 
@@ -103,6 +104,62 @@ namespace HandOfFateAccess.Tests {
 		public void No_traits_field_leaves_readout_unchanged() {
 			var info = new CardInfo("Iron Sword", "A reliable blade.", "Damage: 5", "");
 			Assert.Equal("Iron Sword, Damage: 5, A reliable blade.", Describe(info));
+		}
+
+		[Fact]
+		public void New_badge_announces_new_after_title() {
+			var info = new CardInfo("Iron Sword", "A reliable blade.", "Damage: 5", "", isNew: true);
+			Assert.Equal("Iron Sword, " + Strings.CardNew + ", Damage: 5, A reliable blade.", Describe(info));
+		}
+
+		[Fact]
+		public void Pinned_card_announces_cannot_remove() {
+			var info = new CardInfo("Sword", "A blade.", "Damage: 5", "", pinned: true);
+			Assert.Equal("Sword, " + Strings.CardPinned + ", Damage: 5, A blade.", Describe(info));
+		}
+
+		[Fact]
+		public void New_and_pinned_both_read_new_first() {
+			var info = new CardInfo("Sword", "", "", "", isNew: true, pinned: true);
+			Assert.Equal("Sword, " + Strings.CardNew + ", " + Strings.CardPinned, Describe(info));
+		}
+
+		[Fact]
+		public void Unflagged_card_omits_new_and_pinned() {
+			var info = new CardInfo("Sword", "A blade.", "Damage: 5", "");
+			Assert.Equal("Sword, Damage: 5, A blade.", Describe(info));
+		}
+
+		[Fact]
+		public void Charges_follow_stat_before_rules() {
+			var info = new CardInfo("Throwing Axe", "Hurl at a foe.", "Damage: 4", "", charges: 3);
+			Assert.Equal("Throwing Axe, Damage: 4, 3 " + Strings.CardCharges + ", Hurl at a foe.", Describe(info));
+		}
+
+		[Fact]
+		public void Single_charge_reads_singular() {
+			var info = new CardInfo("Bomb", "Explodes.", "", "", charges: 1);
+			Assert.Equal("Bomb, 1 " + Strings.CardCharge + ", Explodes.", Describe(info));
+		}
+
+		[Fact]
+		public void Artifact_with_no_stat_leads_with_charges() {
+			// Artifacts carry no damage/defence stat, so the charge count is their key number.
+			var info = new CardInfo("Holy Grenade", "Smite a foe.", "", "", charges: 2);
+			Assert.Equal("Holy Grenade, 2 " + Strings.CardCharges + ", Smite a foe.", Describe(info));
+		}
+
+		[Fact]
+		public void Zero_charges_still_reads() {
+			// The game shows the counter at 0 (a spent consumable); -1 is the hidden case.
+			var info = new CardInfo("Bomb", "", "", "", charges: 0);
+			Assert.Equal("Bomb, 0 " + Strings.CardCharges, Describe(info));
+		}
+
+		[Fact]
+		public void No_charges_when_negative() {
+			var info = new CardInfo("Sword", "A blade.", "Damage: 5", "", charges: -1);
+			Assert.Equal("Sword, Damage: 5, A blade.", Describe(info));
 		}
 
 		[Fact]
