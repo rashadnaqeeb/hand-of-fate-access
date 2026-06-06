@@ -61,11 +61,25 @@ namespace HandOfFateAccess.Screens {
 				return info;
 			}
 
-			// The deck-builder zoom prints the card's description on its panel, so include the
-			// encounter scenario the focus path omits (no event panel doubles it here).
-			info.Card = ProxyFactory.ExtractCard(card, includeEncounterDescription: PanelShows(card));
-			if (ShowsLore(card))
-				info.Lore = ComposeLore(card);
+			// A seen equipment card prints its stat, rules, traits, value and charges on its
+			// face, so focus already read them; the deck-builder examine zoom adds only the lore,
+			// or the cannot-equip warning that replaces it when the archetype's locked gear owns
+			// the slot. Carry just the title and that one line. Other equipment zooms (the
+			// in-dungeon equip or shop buy decision, where PanelShows is false) keep the full
+			// readout, since the player may not have focused the card first and needs the stats.
+			var equipment = card as EquipmentCard;
+			if (equipment != null && PanelShows(card)) {
+				info.Card = new CardInfo(UIUtils.GetString(card.Title), null, null, null);
+				info.Lore = Player.Instance.CanEquip(equipment)
+					? UIUtils.GetString(card.Lore)
+					: UIUtils.GetString("ARCHETYPE_CANNOT_EQUIP");
+			} else {
+				// The deck-builder zoom prints the card's description on its panel, so include the
+				// encounter scenario the focus path omits (no event panel doubles it here).
+				info.Card = ProxyFactory.ExtractCard(card, includeEncounterDescription: PanelShows(card));
+				if (ShowsLore(card))
+					info.Lore = ComposeLore(card);
+			}
 			info.OldItem = ReadOldItem();
 			return info;
 		}
