@@ -13,10 +13,14 @@ namespace HandOfFateAccess.Resources {
 	/// any pending changes from the old one.
 	///
 	/// Changes are recorded in the event callbacks and spoken from Pump (the update
-	/// loop), never mid-event. An encounter's result panel already narrates its outcomes
-	/// in the game's own words, so changes are suppressed while an encounter is resolving
-	/// and not in combat; combat changes DO speak, since the player wants to hear hits
-	/// land. Changes during the game's own loading setup are skipped via IsLoading.
+	/// loop), never mid-event. This is the audio equivalent of the floating "+10"/"-5"
+	/// the game pops over a stat card: that popup is the game's only indication of the
+	/// amount (the encounter result panel narrates the story but never the numbers, and
+	/// combat shows no text at all), so every change is announced, in encounters and
+	/// combat alike. Changes are scoped to resources the game is currently showing (their
+	/// stat card is on the table), which mirrors when the popup appears: the starting
+	/// values written during run setup, before any stat card is dealt, are not announced.
+	/// Changes during a save resume are skipped via IsLoading.
 	/// </summary>
 	internal sealed class ResourceWatcher {
 		private Player _subscribed;
@@ -47,21 +51,20 @@ namespace HandOfFateAccess.Resources {
 			if (diff == 0) return;
 			Player p = Player.Instance;
 			if (p == null || p.IsLoading) return;
+			// Only announce a resource the game is actually showing the player. Starting
+			// values are written by Player.Reset during GameState_Init, before any stat
+			// card is on the table and before the run begins; without this a launch or
+			// replay would speak "+20 food" with no run in progress.
+			if (!ResourceReader.IsVisible(kind)) return;
 			_pending.Add(new KeyValuePair<ResourceKind, int>(kind, diff));
 		}
 
 		private void Flush() {
 			if (_pending.Count == 0) return;
-			// Suppress only while an encounter is resolving and not in combat: the result
-			// panel narrates those outcomes. Combat (with or without an owning encounter)
-			// still announces, and so do plain map/passive changes.
-			bool suppress = Encounter.Instance != null && CombatEncounter.Instance == null;
-			if (!suppress) {
-				foreach (KeyValuePair<ResourceKind, int> change in _pending) {
-					string line = ResourceText.Delta(change.Key, change.Value);
-					if (!string.IsNullOrEmpty(line))
-						SpeechPipeline.SpeakQueued(line);
-				}
+			foreach (KeyValuePair<ResourceKind, int> change in _pending) {
+				string line = ResourceText.Delta(change.Key, change.Value);
+				if (!string.IsNullOrEmpty(line))
+					SpeechPipeline.SpeakQueued(line);
 			}
 			_pending.Clear();
 		}

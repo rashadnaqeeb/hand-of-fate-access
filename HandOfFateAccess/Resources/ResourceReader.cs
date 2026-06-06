@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using HandOfFateAccess.Resources;
 using UnityEngine;
 
@@ -19,16 +20,10 @@ namespace HandOfFateAccess.Resources {
 			Player p = Player.Instance;
 			if (p == null) return s;
 
-			DeckManager deck = DeckManager.Instance;
-			StatHand hand = deck != null ? deck.PlayerStatHand : null;
-			if (hand != null && hand.Cards != null) {
-				foreach (Card c in hand.Cards) {
-					if (c is HealthStatCard) s.HasHealth = true;
-					else if (c is FoodStatCard) s.HasFood = true;
-					else if (c is GoldStatCard) s.HasGold = true;
-					else if (c is IronOreStatCard) s.HasIronOre = true;
-				}
-			}
+			s.HasHealth = IsVisible(ResourceKind.Health);
+			s.HasFood = IsVisible(ResourceKind.Food);
+			s.HasGold = IsVisible(ResourceKind.Gold);
+			s.HasIronOre = IsVisible(ResourceKind.IronOre);
 
 			if (s.HasHealth) {
 				s.Health = Mathf.CeilToInt(p.Health);
@@ -39,6 +34,46 @@ namespace HandOfFateAccess.Resources {
 			if (s.HasIronOre) s.IronOre = p.IronOre.BaseValue;
 			s.Tokens = p.Tokens.Count;
 			return s;
+		}
+
+		/// <summary>
+		/// Whether the game is currently showing this resource to a sighted player, i.e.
+		/// its stat card is on the table. The stat hand is dealt when a run begins and
+		/// drained when it ends, so this is false in menus and during the launch/run-start
+		/// setup where Player.Reset writes the starting values, and true throughout a live
+		/// run. During combat the cards leave the hand for its combat container
+		/// (Hand.SendToCombatContainer), so both are checked: the resource is shown in
+		/// either, which is exactly when the game pops its floating amount. MaxHealth
+		/// shares the health card.
+		/// </summary>
+		public static bool IsVisible(ResourceKind kind) {
+			DeckManager deck = DeckManager.Instance;
+			StatHand hand = deck != null ? deck.PlayerStatHand : null;
+			if (hand == null) return false;
+			return HasStatCard(hand.Cards, kind)
+				|| HasStatCard(hand.CombatContainer.Cards, kind);
+		}
+
+		private static bool HasStatCard(List<Card> cards, ResourceKind kind) {
+			if (cards == null) return false;
+			foreach (Card c in cards) {
+				switch (kind) {
+					case ResourceKind.Health:
+					case ResourceKind.MaxHealth:
+						if (c is HealthStatCard) return true;
+						break;
+					case ResourceKind.Food:
+						if (c is FoodStatCard) return true;
+						break;
+					case ResourceKind.Gold:
+						if (c is GoldStatCard) return true;
+						break;
+					case ResourceKind.IronOre:
+						if (c is IronOreStatCard) return true;
+						break;
+				}
+			}
+			return false;
 		}
 	}
 }
