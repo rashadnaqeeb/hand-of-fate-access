@@ -1,6 +1,9 @@
 # Decompiled game source — reference only, not part of the build
 HoF-Decompiled/
 
+# Local planning notes — scratch design docs, not part of the repo
+.planning/
+
 # .NET build output
 bin/
 obj/
