@@ -89,6 +89,41 @@ namespace HandOfFateAccess.UI {
 	}
 
 	/// <summary>
+	/// Readout for a focused map slot. The top card (the encounter) is read first as a
+	/// normal card, or as face-down when hidden; then each card stacked under it by a
+	/// spice event is read as an attached item ("with Apple, restores 5 food"). This
+	/// replaces the generic label sweep that read every card on the slot as one
+	/// undifferentiated jumble, while still surfacing the attached cards a sighted player
+	/// sees peeking out, in order and clearly framed.
+	/// </summary>
+	public sealed class MapSlotElement : UIElement {
+		private readonly MapSlotInfo _info;
+
+		public MapSlotElement(MapSlotInfo info) {
+			_info = info;
+		}
+
+		public override Message Describe() {
+			var message = new Message();
+			message.Add(Face(_info.Top));
+			foreach (CardFace spice in _info.Spices) {
+				string line = Face(spice);
+				if (line.Length > 0)
+					message.Add(Strings.MapSlotAttached + " " + line);
+			}
+			return message;
+		}
+
+		// A face-down card withholds its identity (the card back a sighted player sees);
+		// a face-up one reads as a normal card.
+		private static string Face(CardFace face) {
+			if (face.FaceDown)
+				return Strings.CardFaceDown;
+			return new CardElement(face.Card).Describe().Resolve();
+		}
+	}
+
+	/// <summary>
 	/// Readout for an encounter choice button. The number comes first: the game's focus
 	/// skips disabled/unavailable choices (they are non-selectable), so a gap in the
 	/// spoken numbers (1 then 3) is the only cue to the player that a choice was passed

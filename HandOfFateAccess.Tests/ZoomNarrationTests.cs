@@ -53,7 +53,7 @@ namespace HandOfFateAccess.Tests {
 		public void Flipped_reads_face_down_only() {
 			var z = new ZoomInfo { Flipped = true, Card = null, Confirm = "Reveal" };
 			var a = ZoomNarration.Compose(z);
-			Assert.Equal(Strings.ZoomFaceDown, a.Main);
+			Assert.Equal(Strings.CardFaceDown, a.Main);
 			Assert.Equal("Reveal", a.Hint);
 		}
 

@@ -55,7 +55,7 @@ namespace HandOfFateAccess.Screens {
 			var ann = new ZoomAnnouncement();
 			if (z == null) return ann;
 			if (z.Flipped) {
-				ann.Main = new Message().Add(Strings.ZoomFaceDown).Resolve();
+				ann.Main = new Message().Add(Strings.CardFaceDown).Resolve();
 				ann.Hint = Hint(z);
 				return ann;
 			}

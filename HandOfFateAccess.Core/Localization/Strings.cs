@@ -80,9 +80,17 @@ namespace HandOfFateAccess.Localization {
 		// text and the decision prompt come from the game, only this connective is authored.
 		public static readonly string ZoomReplacing = "replacing";
 
-		// Spoken for a face-down card being examined, whose identity is withheld until the
-		// player reveals it (matching what a sighted player sees: a card back).
-		public static readonly string ZoomFaceDown = "face down card";
+		// Spoken in place of a face-down card's identity, withheld until the player reveals
+		// it (matching the card back a sighted player sees). Used for a flipped card in a
+		// zoom and for a face-down quest/special encounter on the map.
+		public static readonly string CardFaceDown = "face down card";
+
+		// Map slot. Joins an encounter to a card stacked under it by a spice event (a
+		// supply/equipment/pain reward or hazard attached to that encounter), which sits
+		// offset and peeks out on the board: "Goblins, token available, with Apple". The
+		// attached card's own name and text come from the game; only this connective is
+		// authored.
+		public static readonly string MapSlotAttached = "with";
 
 		// Plugin lifecycle. Spoken once at startup to confirm the accessibility mod
 		// is running. {0} is the mod version (e.g. "0.1.0"). The product name is part

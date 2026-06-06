@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using HandOfFateAccess.Localization;
+using HandOfFateAccess.Screens;
 using HandOfFateAccess.UI;
 using HandOfFateAccess.Util;
 using HarmonyLib;
@@ -57,6 +58,19 @@ namespace HandOfFateAccess.Focus {
 			// here to avoid double-speaking the card when focus does land.
 			if (go.GetComponentInParent<ZoomContainer>() != null)
 				return null;
+
+			// A map slot is a card stack, not a single card: an event can deal extra cards
+			// under the encounter, and the generic sweep below would read every one as a
+			// jumble. Route the whole slot through MapSlotReader, which reads the top card
+			// plus any attached cards structurally. Checked before the Card branch so a map
+			// card resolves to its slot whether focus lands on the slot or the card. An
+			// empty slot yields null here and falls through to generic handling.
+			MapLayoutSlot mapSlot = go.GetComponentInParent<MapLayoutSlot>();
+			if (mapSlot != null) {
+				MapSlotInfo slotInfo = MapSlotReader.Read(mapSlot);
+				if (slotInfo != null)
+					return new MapSlotElement(slotInfo);
+			}
 
 			Card card = go.GetComponentInParent<Card>();
 			if (card != null)
