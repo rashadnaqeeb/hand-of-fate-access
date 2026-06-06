@@ -40,8 +40,11 @@ namespace HandOfFateAccess.Screens {
 		// is always re-read and spoken, this just marks the scenario->result change.
 		private string _lastEncounterText;
 		// Same edge markers for the other display-only surfaces the focus model never
-		// reaches: the cabinet examine panel and the death/forfeit results line.
+		// reaches: the cabinet examine panel and the death/forfeit results line. The cabinet
+		// also tracks the examined card's name separately, so it is announced once when the
+		// examined card changes rather than repeated on every section page.
 		private string _lastCabinetText;
+		private string _lastCabinetCardName;
 		private string _lastDeathText;
 		private string _lastScoreboardText;
 		private string _lastSubtitleText;
@@ -167,12 +170,23 @@ namespace HandOfFateAccess.Screens {
 		// Empty text (panel closed) just clears the edge marker.
 		private void PumpCabinetText() {
 			string text;
+			string cardName;
 			try {
-				CabinetReader.Read(out var section, out var body);
+				CabinetReader.Read(out var name, out var section, out var body);
 				text = CabinetNarration.Compose(section, body);
+				cardName = new Message().Add(name).Resolve();
 			} catch (Exception ex) {
 				Log.Error("cabinet text readout failed: " + ex);
 				return;
+			}
+			// Announce the examined card's name once, when the examined card changes. The
+			// examine banner shows it (even for a card face-down on the rack), and the
+			// per-section readout never includes it, so it would otherwise be dropped. Queued
+			// ahead of the section text, which changes in the same frame on a fresh examine.
+			if (cardName != _lastCabinetCardName) {
+				_lastCabinetCardName = cardName;
+				if (!string.IsNullOrEmpty(cardName))
+					SpeechPipeline.SpeakQueued(cardName);
 			}
 			if (text == _lastCabinetText) return;
 			_lastCabinetText = text;

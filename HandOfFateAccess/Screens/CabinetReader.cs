@@ -4,12 +4,13 @@ using UnityEngine;
 
 namespace HandOfFateAccess.Screens {
 	/// <summary>
-	/// Reads the cabinet's examine panel: the section the player is viewing (lore, deck
-	/// changes, upgrades...) and that section's body text. Pressing a court card opens a
-	/// CabinetCardInfo panel that is not a MenuManager push and carries no focusable
-	/// control, so the focus model never reaches it; the screen watcher edge-polls this
-	/// and announces it. The court card itself stays focused and speaks its own name, so
-	/// only the section detail is read here.
+	/// Reads the cabinet's examine panel: the examined card's name and the section the
+	/// player is viewing (lore, deck changes, upgrades...) with that section's body text.
+	/// Pressing a court card opens a CabinetCardInfo panel that is not a MenuManager push
+	/// and carries no focusable control, so the focus model never reaches it; the screen
+	/// watcher edge-polls this and announces it. The card name sits on the panel's nav bar
+	/// (shown on every section, even for a card face-down on the rack), which the focus
+	/// path never reads, so it is read here and announced once when the examined card changes.
 	///
 	/// Reached from the live StartOptions singleton, then the private CabinetCardInfo
 	/// reference and its current panel index, by reflection so a game-side rename crashes
@@ -23,11 +24,12 @@ namespace HandOfFateAccess.Screens {
 		private static readonly FieldInfo PanelsField = AccessTools.Field(typeof(CabinetCardInfo), "m_panels");
 
 		/// <summary>
-		/// The active section title and its body labels, or nulls when no panel is shown
-		/// (panel index below zero). Cheap index check first, so the label sweep only runs
-		/// while the panel is actually open.
+		/// The examined card's name, the active section title, and its body labels, or nulls
+		/// when no panel is shown (panel index below zero). Cheap index check first, so the
+		/// label sweep only runs while the panel is actually open.
 		/// </summary>
-		public static void Read(out string section, out string[] body) {
+		public static void Read(out string cardName, out string section, out string[] body) {
+			cardName = null;
 			section = null;
 			body = null;
 			UIManager ui = UIManager.Instance;
@@ -44,6 +46,12 @@ namespace HandOfFateAccess.Screens {
 			if (idx < 0 || panels == null || idx >= panels.Length) return;
 			CabinetCardInfoPanel panel = panels[idx];
 			if (panel == null) return;
+
+			// The examine banner shows the card's name on every section. Card.Title is a
+			// localization key; GetString localizes it (and returns plain text unchanged).
+			Card card = info.Card;
+			if (card != null)
+				cardName = UIUtils.GetString(card.Title);
 
 			// Title is a serialized string (already display text or a key); GetString
 			// localizes a key and returns plain text unchanged.
