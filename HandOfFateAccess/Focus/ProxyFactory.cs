@@ -125,17 +125,41 @@ namespace HandOfFateAccess.Focus {
 				return new DeckPileElement(info);
 			}
 
-			// An equipment slot in the paperdoll is a CardContainer carrying only sprites,
-			// no label. A filled slot forwards focus to its card (handled by the Card branch
-			// above); an empty one keeps focus on itself and would otherwise fall through to
-			// its bare object name ("PaperdollSlot(Clone)"). Announce the slot's category from
-			// the game's own localized title, plus that it is empty. GetCategoryTitle returns
-			// a localization key; UIUtils.GetString localizes it (and returns "" for none).
+			// An equipment slot in the paperdoll is a CardContainer that holds its equipped
+			// card(s) as child objects, so the Card branch above (GetComponentInParent) never
+			// reaches them and the slot itself carries only sprites, no label. Read the slot's
+			// own cards through the card model, the same way the cabinet container is read; an
+			// empty slot has none and reads as empty rather than falling through to its bare
+			// object name ("PaperdollSlot(Clone)"). The single-equip slots (weapon, armour...)
+			// hold one card; the trinket and modifier slots hold several. The category comes
+			// from the game's own localized title (GetCategoryTitle returns a localization key;
+			// UIUtils.GetString localizes it, returning "" for none).
 			PaperdollSlot slot = go.GetComponent<PaperdollSlot>();
-			if (slot != null && slot.TopCard == null) {
+			if (slot != null) {
 				string category = UIUtils.GetString(InventoryCategoryData.GetCategoryTitle(slot.CategoryData.type));
-				return new EquipmentSlotElement(category);
+				var cards = new List<CardInfo>();
+				foreach (Card equipped in slot.Cards)
+					cards.Add(ExtractCard(equipped));
+				return new EquipmentSlotElement(category, cards);
 			}
+
+			// The inventory's owned-item list slots and the inspect/compare spread are
+			// CardContainers that hold their card as a child, so the Card branch above
+			// (GetComponentInParent) never reaches them and they would fall through to their
+			// bare object name. Read the shown card through the card model the same way the
+			// cabinet is read. Focus landing directly on a selectable card is already handled
+			// by the Card branch above, so these only fire when focus rests on the container.
+			// A list slot holds a single owned card.
+			InventorySlotContainer listSlot = go.GetComponentInParent<InventorySlotContainer>();
+			if (listSlot != null && listSlot.TopCard != null)
+				return new CardElement(ExtractCard(listSlot.TopCard));
+
+			// The inspect spread stacks the clicked card plus every other owned card, but
+			// hides all but the first (the game fades index > 0 to alpha 0 and treats Cards[0]
+			// as the inspected card), so read the first card, not the last.
+			InventoryInspectContainer inspect = go.GetComponentInParent<InventoryInspectContainer>();
+			if (inspect != null && inspect.Cards.Count > 0)
+				return new CardElement(ExtractCard(inspect.Cards[0]));
 
 			// An encounter choice button focuses a UISelectableItem that is a separate
 			// object from its labels, so the generic child sweep misses them. Resolve the

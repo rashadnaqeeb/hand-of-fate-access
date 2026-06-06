@@ -83,22 +83,31 @@ namespace HandOfFateAccess.UI {
 	}
 
 	/// <summary>
-	/// Readout for an empty equipment slot in the paperdoll. A filled slot forwards
-	/// focus to its card (read as a CardElement); an empty one is sprite-only with no
-	/// label, so without this it would speak only its raw object name. The category
+	/// Readout for a paperdoll equipment slot. The slot is sprite-only with no label
+	/// of its own, and its equipped card(s) sit as child objects the focus path cannot
+	/// reach, so without this it would speak only its raw object name. The category
 	/// (weapon, armour...) comes first as the distinguishing word across slots, then
-	/// that the slot is empty. The category text is the game's own localized title,
-	/// extracted by the adapter; only the "empty" suffix is mod-authored.
+	/// each equipped card read as a normal card, or "empty" when nothing is equipped.
+	/// The single-equip slots hold one card; the trinket and modifier slots hold
+	/// several. The category text is the game's own localized title, extracted by the
+	/// adapter; only the "empty" suffix is mod-authored.
 	/// </summary>
 	public sealed class EquipmentSlotElement : UIElement {
 		private readonly string _category;
+		private readonly System.Collections.Generic.IList<CardInfo> _cards;
 
-		public EquipmentSlotElement(string category) {
+		public EquipmentSlotElement(string category, System.Collections.Generic.IList<CardInfo> cards) {
 			_category = category;
+			_cards = cards;
 		}
 
 		public override Message Describe() {
-			return new Message().Add(_category).Add(Strings.SlotEmpty);
+			var message = new Message().Add(_category);
+			if (_cards == null || _cards.Count == 0)
+				return message.Add(Strings.SlotEmpty);
+			foreach (CardInfo card in _cards)
+				message.Add(new CardElement(card).Describe().Resolve());
+			return message;
 		}
 	}
 
