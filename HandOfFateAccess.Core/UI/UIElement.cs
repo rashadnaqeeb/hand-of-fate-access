@@ -52,6 +52,10 @@ namespace HandOfFateAccess.UI {
 		}
 
 		public override Message Describe() {
+			// A face-down card withholds its identity (the card back a sighted player
+			// sees), matching the map and zoom readers.
+			if (_info.FaceDown)
+				return new Message().Add(Strings.CardFaceDown);
 			var message = new Message().Add(_info.Title);
 			if (_info.Complete)
 				message.Add(Strings.CardCompleted);

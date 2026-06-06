@@ -30,6 +30,13 @@ namespace HandOfFateAccess.UI {
 		public bool Complete { get; }
 
 		/// <summary>
+		/// True when the card is face-down (the card back a sighted player sees): its
+		/// identity is withheld and only "face down card" is spoken. Used for locked
+		/// cabinet cards and any other face-down card the focus path lands on.
+		/// </summary>
+		public bool FaceDown { get; }
+
+		/// <summary>
 		/// Equipment trait names (e.g. "Two-handed, Fast"), comma-joined by the game.
 		/// Empty for non-equipment cards. Shown on the inventory detail panel, which the
 		/// focus model never reaches, so it is folded into the card's own readout here.
@@ -43,7 +50,8 @@ namespace HandOfFateAccess.UI {
 			string valueString,
 			bool hasToken = false,
 			bool complete = false,
-			string traits = null) {
+			string traits = null,
+			bool faceDown = false) {
 			Title = title;
 			Description = description;
 			StatValueString = statValueString;
@@ -51,6 +59,7 @@ namespace HandOfFateAccess.UI {
 			HasToken = hasToken;
 			Complete = complete;
 			Traits = traits;
+			FaceDown = faceDown;
 		}
 	}
 }

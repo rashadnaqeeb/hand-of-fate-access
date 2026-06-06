@@ -104,5 +104,13 @@ namespace HandOfFateAccess.Tests {
 			var info = new CardInfo("Iron Sword", "A reliable blade.", "Damage: 5", "");
 			Assert.Equal("Iron Sword, Damage: 5, A reliable blade.", Describe(info));
 		}
+
+		[Fact]
+		public void Face_down_card_withholds_identity() {
+			// A face-down card (a locked cabinet card, say) is the card back a sighted
+			// player sees: only "face down card" is spoken, never the withheld details.
+			var info = new CardInfo("Lich King", "Final boss.", "Damage: 99", "", faceDown: true);
+			Assert.Equal("face down card", Describe(info));
+		}
 	}
 }

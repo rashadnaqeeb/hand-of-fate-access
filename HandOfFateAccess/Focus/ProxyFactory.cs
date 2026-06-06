@@ -76,6 +76,16 @@ namespace HandOfFateAccess.Focus {
 			if (card != null)
 				return new CardElement(ExtractCard(card));
 
+			// A cabinet card is focused through its CardContainer's selectable, which shares
+			// the container's GameObject while the card sits as a child, so the Card branch
+			// above (GetComponentInParent) never reaches it and the generic sweep below would
+			// read the raw title label, missing completion and leaking face-down identities.
+			// Read the container's top card through the card model instead. An empty cabinet
+			// slot has no top card and falls through to generic handling.
+			CabinetContainer cabinet = go.GetComponentInParent<CabinetContainer>();
+			if (cabinet != null && cabinet.TopCard != null)
+				return new CardElement(ExtractCard(cabinet.TopCard));
+
 			// An equipment slot in the paperdoll is a CardContainer carrying only sprites,
 			// no label. A filled slot forwards focus to its card (handled by the Card branch
 			// above); an empty one keeps focus on itself and would otherwise fall through to
@@ -160,14 +170,28 @@ namespace HandOfFateAccess.Focus {
 		// encounter-scenario omission applies in the zoom too: examining a card must not
 		// pre-read the scenario the event panel reads when it is played).
 		internal static CardInfo ExtractCard(Card card) {
+			// A face-down card withholds its identity (the card back a sighted player sees),
+			// the same rule the map and zoom readers apply. The focus path lands directly on
+			// cabinet cards, where the locked court cards and locked artifacts are flipped, so
+			// guarding here keeps their names from leaking. Callers that handle flipping
+			// themselves (map, zoom) never reach this with a flipped card.
+			if (card.Flipped)
+				return new CardInfo(null, null, null, null, faceDown: true);
+
 			bool complete = false;
 			bool hasToken = false;
 			var encounter = card as EncounterCard;
 			if (encounter != null) {
-				complete = encounter.Complete;
 				// Mirrors the token gem the card shows: a token can be won here. The
 				// reward cards are not displayed to the player, so we read only this.
 				hasToken = encounter.CanGiveTokens;
+				// In the cabinet a court card reads as "completed" when the player has beaten
+				// it, which the cabinet shows by darkening the card (its id is in the save
+				// profile). EncounterCard.Complete is the in-dungeon flag and is always false
+				// here, so source completion from the container's own darken in the cabinet
+				// and from Complete everywhere else.
+				var cabinet = card.Container as CabinetContainer;
+				complete = cabinet != null ? cabinet.CheckDarken(card) : encounter.Complete;
 			}
 
 			// An encounter card's description is the encounter scenario, which is not on
