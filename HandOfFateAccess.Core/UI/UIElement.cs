@@ -128,6 +128,35 @@ namespace HandOfFateAccess.UI {
 	}
 
 	/// <summary>
+	/// Readout for a focused deck-builder pile on the select-mode screen. The pile's
+	/// title comes first as the distinguishing word; for the limited piles (equipment,
+	/// encounter) the card count toward the required limit follows, then a status word
+	/// when the deck is off that limit. This mirrors the game's DeckInfoPanel, which
+	/// shows the same title, an "N/M" counter, and an insufficient / too-many icon. The
+	/// Archetype pile has no count and reads as title only. A count exactly on the limit
+	/// reads without a status word; the equal count already conveys it.
+	/// </summary>
+	public sealed class DeckPileElement : UIElement {
+		private readonly DeckPileInfo _info;
+
+		public DeckPileElement(DeckPileInfo info) {
+			_info = info;
+		}
+
+		public override Message Describe() {
+			var message = new Message().Add(_info.Title);
+			if (_info.HasCount) {
+				message.Add(_info.Count + "/" + _info.Limit);
+				if (_info.Count < _info.Limit)
+					message.Add(Strings.DeckInsufficient);
+				else if (_info.Count > _info.Limit)
+					message.Add(Strings.DeckTooMany);
+			}
+			return message;
+		}
+	}
+
+	/// <summary>
 	/// Readout for an encounter choice button. The number comes first: the game's focus
 	/// skips disabled/unavailable choices (they are non-selectable), so a gap in the
 	/// spoken numbers (1 then 3) is the only cue to the player that a choice was passed

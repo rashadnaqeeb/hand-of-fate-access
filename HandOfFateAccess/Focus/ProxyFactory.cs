@@ -86,6 +86,29 @@ namespace HandOfFateAccess.Focus {
 			if (cabinet != null && cabinet.TopCard != null)
 				return new CardElement(ExtractCard(cabinet.TopCard));
 
+			// In the deck builder's select-mode screen the player moves across the deck
+			// piles (Archetype, Equipment, Encounter). Each pile is focused through its
+			// DeckBuilderMode's CardContainer selectable, which shares the container's
+			// GameObject while the deck's cards sit as children, so the Card branch above
+			// never reaches it and the generic sweep below would read the top card's title
+			// (e.g. "Monk", "Twisted Canyon") as if it were the pile's label. Announce the
+			// mode's own title instead (mode.TitleText is a localization key; UIUtils.GetString
+			// localizes it), plus the card count and ready state the game shows on the pile.
+			DeckBuilderMode mode = go.GetComponentInParent<DeckBuilderMode>();
+			if (mode != null && mode.Container != null && mode.Container.gameObject == go) {
+				// The container identity above is the reliable gate, so commit to the pile
+				// readout here rather than ever falling back to the generic sweep, which would
+				// read the top card's title as the pile name (the bug this block fixes). Only
+				// the limited piles (equipment, encounter) carry a count toward a required
+				// limit; the Archetype pile is a single pick and reads title only.
+				string title = UIUtils.GetString(mode.TitleText);
+				var limited = mode as DeckBuilderLimitedMode;
+				DeckPileInfo info = limited != null
+					? new DeckPileInfo(title, limited.CardCount, limited.CardLimit)
+					: new DeckPileInfo(title);
+				return new DeckPileElement(info);
+			}
+
 			// An equipment slot in the paperdoll is a CardContainer carrying only sprites,
 			// no label. A filled slot forwards focus to its card (handled by the Card branch
 			// above); an empty one keeps focus on itself and would otherwise fall through to

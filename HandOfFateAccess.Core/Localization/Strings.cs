@@ -41,6 +41,14 @@ namespace HandOfFateAccess.Localization {
 		// already been finished, e.g. "Bandit Camp, completed".
 		public static readonly string CardCompleted = "completed";
 
+		// Deck-builder pile status, appended after a pile's count when the deck is off its
+		// required limit ("Equipment, 8/12, insufficient" / "Encounter, 15/12, too many").
+		// The game flags this only with coloured icons (a tick, a cross) and no text, so the
+		// words are authored here. A pile exactly on its limit reads just the count, with no
+		// status word, since the equal count already conveys it.
+		public static readonly string DeckInsufficient = "insufficient";
+		public static readonly string DeckTooMany = "too many";
+
 		// Readouts for focusable controls that carry no label of their own, so the
 		// raw object name would otherwise be spoken. The game has no single reusable
 		// localized "continue" label (only per-encounter ones), so it is authored here.
