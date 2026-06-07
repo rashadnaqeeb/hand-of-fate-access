@@ -127,6 +127,25 @@ namespace HandOfFateAccess.Localization {
 		// authored.
 		public static readonly string MapSlotAttached = "with";
 
+		// A map card's state word, spoken after its card by the free-roam cursor. "here"
+		// marks the player's own slot; "reachable" an unlocked move orthogonally adjacent to
+		// the player; "locked" a slot still sealed; "open" an unlocked slot not adjacent, so
+		// not a move yet. The completed state reuses CardCompleted. The game shows these as
+		// highlight/darken/lock sprites with no text.
+		public static readonly string MapCellHere = "here";
+		public static readonly string MapCellReachable = "reachable";
+		public static readonly string MapCellLocked = "locked";
+		public static readonly string MapCellOpen = "open";
+
+		// The directions the cursor can step from a card (where a neighbouring card sits),
+		// e.g. "exits up, right". The lead word and the four directions (matching the
+		// movement keys) are authored here; the game shows the board shape only visually.
+		public static readonly string MapExits = "exits";
+		public static readonly string DirUp = "up";
+		public static readonly string DirDown = "down";
+		public static readonly string DirLeft = "left";
+		public static readonly string DirRight = "right";
+
 		// Plugin lifecycle. Spoken once at startup to confirm the accessibility mod
 		// is running. {0} is the mod version (e.g. "0.1.0"). The product name is part
 		// of this string and IS meant to be translated: render "Hand of Fate Access"

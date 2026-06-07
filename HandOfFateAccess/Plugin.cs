@@ -5,6 +5,7 @@ using BepInEx;
 using HandOfFateAccess.Focus;
 using HandOfFateAccess.Input;
 using HandOfFateAccess.Localization;
+using HandOfFateAccess.Maps;
 using HandOfFateAccess.Patches;
 using HandOfFateAccess.Patching;
 using HandOfFateAccess.Resources;
@@ -45,6 +46,9 @@ namespace HandOfFateAccess {
 		private ResourceWatcher _resourceWatcher;
 		private ProgressWatcher _progressWatcher;
 		private InputRouter _input;
+		private MapCursor _mapCursor;
+		private bool _wasOnMap;
+		private GameObject _lastMapSelection;
 
 		private void Awake() {
 			LogBepInExBackend.Install(Logger);
@@ -64,6 +68,7 @@ namespace HandOfFateAccess {
 				_resourceWatcher.Pump();
 				_progressWatcher.Pump();
 				PumpFocus();
+				PumpMapScope();
 				_input.Pump();
 			}
 		}
@@ -101,6 +106,15 @@ namespace HandOfFateAccess {
 				ResourceStatus.Speak,
 				new[] { KeyCode.Slash },
 				new[] { InControl.InputControlType.RightStickButton }));
+
+			// Map cursor: a free-roam survey of the board, scoped to the map screen. Ctrl+
+			// arrows (consumed in the OnKey patch) and the right stick move it; both are free
+			// on the map.
+			_mapCursor = new MapCursor();
+			_input.Register(new DirectionalAction(
+				"map cursor",
+				_mapCursor.Move,
+				() => MapInput.OnMap));
 
 			// A control auto-selected before our patches were live (the main menu's
 			// initial button at launch) fired its selection where we couldn't hear
@@ -193,6 +207,27 @@ namespace HandOfFateAccess {
 				SpeechPipeline.SpeakQueued(current);
 			else
 				SpeechPipeline.SpeakInterrupt(current);
+		}
+
+		// Publish whether the map is the active screen, so the cursor's input binding and the
+		// OnKey patch agree on when Ctrl+arrows belong to the cursor. Re-anchor the cursor on
+		// the player each time the map becomes active (after launch or returning from an
+		// encounter), so it always opens where the player stands. While on the map, snap the
+		// free cursor onto the game's own selected slot whenever that selection moves (plain
+		// arrows), so the free cursor follows the game's cursor. Our own Ctrl+arrow moves are
+		// swallowed in the OnKey patch, so they never change the game's selection and so never
+		// trigger this reset.
+		private void PumpMapScope() {
+			bool onMap = _screenWatcher.Stack.Top == ScreenId.Map;
+			MapInput.OnMap = onMap;
+			if (onMap) {
+				if (!_wasOnMap)
+					_mapCursor.OnMapEntered();
+				else if (UICamera.selectedObject != _lastMapSelection)
+					_mapCursor.AnchorToGameCursor();
+				_lastMapSelection = UICamera.selectedObject;
+			}
+			_wasOnMap = onMap;
 		}
 
 		// Reading the focused control touches live game model state (e.g.
