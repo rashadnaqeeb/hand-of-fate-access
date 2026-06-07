@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using BepInEx;
+using HandOfFateAccess.Audio;
 using HandOfFateAccess.Focus;
 using HandOfFateAccess.Input;
 using HandOfFateAccess.Localization;
@@ -78,6 +79,12 @@ namespace HandOfFateAccess {
 			Assembly assembly = Assembly.GetExecutingAssembly();
 			string pluginDir = Path.GetDirectoryName(assembly.Location);
 			NativeLoader.Preload(pluginDir, "Tolk.dll");
+
+			// Non-speech audio voice pool. Independent of speech (combat sonification
+			// needs no screen reader), so it comes up regardless of the Tolk result. No
+			// feature drives it yet; it is the seam the combat and gambit layers register
+			// clips and play voices through.
+			AudioEngine.Initialize(new UnityAudioBackend());
 
 			if (!SpeechEngine.Initialize(new TolkBackend())) {
 				Log.Warn("speech unavailable; focus announcements disabled");
