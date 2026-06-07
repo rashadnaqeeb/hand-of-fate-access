@@ -37,6 +37,10 @@ namespace HandOfFateAccess.Focus {
 		private static readonly FieldInfo CardNewBadgeField = AccessTools.Field(typeof(CardTemplate), "m_new");
 		private static readonly FieldInfo CardPinnedBadgeField = AccessTools.Field(typeof(CardTemplate), "m_pinned");
 		private static readonly FieldInfo CardTokenSpriteField = AccessTools.Field(typeof(CardTemplate), "m_tokenSprite");
+		// A monster card's creature name (the suit shown on its face) is the private title
+		// key the game feeds its template; MonsterCard has no public getter for it alone
+		// (LocalisedTitle bakes in the count), so it is read here to compose the title.
+		private static readonly FieldInfo MonsterCreatureField = AccessTools.Field(typeof(MonsterCard), "m_cardTitle");
 
 		// Generic NGUI placeholder names that carry no information. A label-less stop
 		// can only ever speak its raw object name; when that name is one of these (the
@@ -260,7 +264,10 @@ namespace HandOfFateAccess.Focus {
 			// the scenario when the encounter is played, so reading it on focus would duplicate
 			// it. The deck-builder zoom is the exception (it prints the scenario on its panel
 			// with no event panel to double), and asks for it via includeEncounterDescription.
-			string description = encounter == null || includeEncounterDescription ? card.LocalisedDescription : null;
+			// A monster card has no description on its face at all.
+			var monster = card as MonsterCard;
+			string description = monster != null ? null
+				: encounter == null || includeEncounterDescription ? card.LocalisedDescription : null;
 
 			// Equipment traits (e.g. "Two-handed, Fast") live only on the inventory detail
 			// panel, which the focus model never reaches, so fold them into the card's own
@@ -294,9 +301,10 @@ namespace HandOfFateAccess.Focus {
 			// Card.Title is a raw localization key (e.g. ENCOUNTER_TITLE_TWISTED_CANYON);
 			// there is no LocalisedTitle, so localize it here the same way the game's own
 			// LocalisedDescription wraps Description. UIUtils.GetString returns the key
-			// unchanged if no entry exists, so this is safe for any already-human string.
+			// unchanged if no entry exists, so this is safe for any already-human string. A
+			// monster card's title is the composed playing-card header instead.
 			return new CardInfo(
-				UIUtils.GetString(card.Title),
+				monster != null ? MonsterTitle(monster) : UIUtils.GetString(card.Title),
 				description,
 				card.StatValueString,
 				card.ValueString,
@@ -306,6 +314,26 @@ namespace HandOfFateAccess.Focus {
 				isNew: isNew,
 				pinned: pinned,
 				charges: charges);
+		}
+
+		// A monster card's title is the playing-card header "N of Creature" (number card) or
+		// "Jack/Queen/King of Creature" (face card). MonsterCard.LocalisedTitle cannot be used:
+		// it always builds the count form, so a face card reads "1 of Creature". Compose it from
+		// the model instead. The rank is the creature count for a number card, or the face rank
+		// for a face card; the connective and ranks are the game's own localized strings (the
+		// same keys MonsterCard.Build feeds the template), so the phrase matches the card face
+		// and stays translatable. Shared by the focus/zoom path and the combat-roster reader.
+		internal static string MonsterTitle(MonsterCard monster) {
+			string creature = UIUtils.GetString((string)MonsterCreatureField.GetValue(monster));
+			string connector = UIUtils.GetString("MONSTER_CARD_TITLE_OF");
+			string rank;
+			switch (monster.Face) {
+				case MonsterCard.FaceType.Jack: rank = UIUtils.GetString("MONSTER_CARD_TITLE_JACK"); break;
+				case MonsterCard.FaceType.Queen: rank = UIUtils.GetString("MONSTER_CARD_TITLE_QUEEN"); break;
+				case MonsterCard.FaceType.King: rank = UIUtils.GetString("MONSTER_CARD_TITLE_KING"); break;
+				default: rank = monster.Count.ToString(); break;
+			}
+			return MonsterNarration.Title(rank, connector, creature);
 		}
 
 		private static string LabelText(FieldInfo field, object owner) {
