@@ -1,3 +1,4 @@
+using HandOfFateAccess.Localization;
 using HandOfFateAccess.UI;
 
 namespace HandOfFateAccess.Resources {
@@ -44,6 +45,16 @@ namespace HandOfFateAccess.Resources {
 			if (s.Tokens > 0)
 				message.Add(s.Tokens + " " + ResourceText.Noun(ResourceKind.Tokens));
 			return message.Resolve();
+		}
+
+		/// <summary>
+		/// The on-demand status readout for the status key: the full resource line, or a
+		/// short "no run" line when nothing is visible (menus, between runs). Never empty,
+		/// so the key always speaks rather than feeling dead when pressed off a run.
+		/// </summary>
+		public static string ComposeStatus(ResourceSnapshot s) {
+			string readout = Compose(s);
+			return readout.Length > 0 ? readout : Strings.StatusNoRun;
 		}
 	}
 }

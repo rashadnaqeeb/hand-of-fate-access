@@ -11,8 +11,8 @@ namespace HandOfFateAccess.Resources {
 	/// Tokens have no stat card and are reported by count, shown only when collected.
 	/// Values are read live at call time; nothing is cached.
 	///
-	/// This is the data half of the resource readout. The trigger (a key) is not wired
-	/// yet: the mod has no custom input layer, so Read stands ready for that to call.
+	/// This is the data half of the resource readout: ResourceStatus.Speak calls Read on
+	/// the status key and composes the spoken line through Core's ResourceReadout.
 	/// </summary>
 	internal static class ResourceReader {
 		public static ResourceSnapshot Read() {

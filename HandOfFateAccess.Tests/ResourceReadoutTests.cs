@@ -58,6 +58,18 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
+		public void Status_reads_resources_when_a_run_is_live() {
+			var s = new ResourceSnapshot { HasHealth = true, Health = 20, MaxHealth = 20, HasGold = true, Gold = 7 };
+			Assert.Equal("20/20 health, 7 gold", ResourceReadout.ComposeStatus(s));
+		}
+
+		[Fact]
+		public void Status_falls_back_to_no_run_when_nothing_visible() {
+			Assert.Equal(Strings.StatusNoRun, ResourceReadout.ComposeStatus(new ResourceSnapshot()));
+			Assert.Equal(Strings.StatusNoRun, ResourceReadout.ComposeStatus(null));
+		}
+
+		[Fact]
 		public void Delta_gain_has_plus_sign() {
 			Assert.Equal("+3 " + Strings.ResourceGold, ResourceText.Delta(ResourceKind.Gold, 3));
 		}

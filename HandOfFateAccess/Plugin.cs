@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using BepInEx;
 using HandOfFateAccess.Focus;
+using HandOfFateAccess.Input;
 using HandOfFateAccess.Localization;
 using HandOfFateAccess.Patches;
 using HandOfFateAccess.Patching;
@@ -43,6 +44,7 @@ namespace HandOfFateAccess {
 		private GameScreenWatcher _screenWatcher;
 		private ResourceWatcher _resourceWatcher;
 		private ProgressWatcher _progressWatcher;
+		private InputRouter _input;
 
 		private void Awake() {
 			LogBepInExBackend.Install(Logger);
@@ -62,6 +64,7 @@ namespace HandOfFateAccess {
 				_resourceWatcher.Pump();
 				_progressWatcher.Pump();
 				PumpFocus();
+				_input.Pump();
 			}
 		}
 
@@ -87,6 +90,17 @@ namespace HandOfFateAccess {
 
 			_resourceWatcher = new ResourceWatcher();
 			_progressWatcher = new ProgressWatcher();
+
+			// Status key: speak the player's resources on demand, anywhere. "/" on the
+			// keyboard and right-stick click on the controller, both unbound by the game
+			// (verified against its keyboard and controller binding tables), so reading
+			// them never competes with a game action and needs no fall-through handling.
+			_input = new InputRouter();
+			_input.Register(new ButtonAction(
+				"status",
+				ResourceStatus.Speak,
+				new[] { KeyCode.Slash },
+				new[] { InControl.InputControlType.RightStickButton }));
 
 			// A control auto-selected before our patches were live (the main menu's
 			// initial button at launch) fired its selection where we couldn't hear

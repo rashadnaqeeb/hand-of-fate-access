@@ -98,6 +98,12 @@ namespace HandOfFateAccess.Localization {
 		public static readonly string ResourceIronOre = "iron ore";
 		public static readonly string ResourceTokens = "tokens";
 
+		// Spoken when the player asks for the resource status (the status key) while no
+		// run is live, so no stat cards are on the table to read. Keeps the key from
+		// being silent in menus and between runs. The game has no such string of its
+		// own, so it is authored here.
+		public static readonly string StatusNoRun = "No run in progress";
+
 		// The score noun in the dungeon-progress readout ("1200 score"). The HUD shows the
 		// score as a bare number beside an icon with no word, so the noun is authored here.
 		// The accompanying level word is reused from the game's own SCORE_LEVEL string.
