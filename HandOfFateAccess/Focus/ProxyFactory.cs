@@ -232,13 +232,15 @@ namespace HandOfFateAccess.Focus {
 		// Shared with the ZoomReader, which reads the zoomed card the same way (the
 		// encounter-scenario omission applies in the zoom too: examining a card must not
 		// pre-read the scenario the event panel reads when it is played).
-		internal static CardInfo ExtractCard(Card card, bool includeEncounterDescription = false) {
-			// A face-down card withholds its identity (the card back a sighted player sees),
-			// the same rule the map and zoom readers apply. The focus path lands directly on
-			// cabinet cards, where the locked court cards and locked artifacts are flipped, so
-			// guarding here keeps their names from leaking. Callers that handle flipping
-			// themselves (map, zoom) never reach this with a flipped card.
-			if (card.Flipped)
+		internal static CardInfo ExtractCard(Card card, bool includeEncounterDescription = false, bool ignoreFlippedFaceDown = false) {
+			// A face-down card withholds its identity (the card back a sighted player sees).
+			// In the cabinet and zoom the Flipped flag marks the hidden state: the focus path
+			// lands directly on cabinet cards, where locked court cards and locked artifacts are
+			// flipped, so guarding here keeps their names from leaking. The map is the exception:
+			// it decides face-up/down from board orientation (where a flipped card can be face-UP)
+			// and passes ignoreFlippedFaceDown once it has judged a card visible, so this guard
+			// does not then re-hide it. Other callers leave the flag false and keep Flipped=hidden.
+			if (card.Flipped && !ignoreFlippedFaceDown)
 				return new CardInfo(null, null, null, null, faceDown: true);
 
 			bool complete = false;
