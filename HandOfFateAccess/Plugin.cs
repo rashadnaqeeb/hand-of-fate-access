@@ -29,13 +29,14 @@ namespace HandOfFateAccess {
 	/// game is live. Thereafter Update pumps focus announcements once per frame.
 	/// </summary>
 	[BepInPlugin(PluginGuid, PluginName, PluginVersion)]
-	public class Plugin : BaseUnityPlugin {
+	public partial class Plugin : BaseUnityPlugin {
 		public const string PluginGuid = "com.rashad.handoffateaccess";
 		public const string PluginName = "Hand of Fate Access";
-		// BepInPlugin needs a compile-time literal, so this cannot read the assembly.
-		// Keep it in sync with <Version> in Directory.Build.props (the source the
-		// spoken startup version is read from); bumping one means bumping both.
-		public const string PluginVersion = "0.1.0";
+		// PluginVersion is generated from <Version> in Directory.Build.props at build
+		// time (see the GeneratePluginVersion target), so the props file is the single
+		// source of truth for the version that both BepInPlugin and the spoken startup
+		// line use. BepInPlugin needs a compile-time literal, which the generated const
+		// satisfies; the spoken version is read from the assembly at runtime.
 
 		// Frames to wait in Update before initializing, so the game loop is live
 		// and the first scene is up before we touch the screen reader.
@@ -189,31 +190,25 @@ namespace HandOfFateAccess {
 		// Selectors and toggles change their value in place (e.g. the language picker
 		// rewrites its label on left/right) without firing a selection change, so they
 		// are invisible to the focus path. While the watched control is still the live
-		// selection, re-read it and speak when its readout changed.
-		//
-		// Two kinds of in-place change are handled differently. A selector/toggle changes
-		// from the user's own input, so it is polled only just after input (so an
-		// unrelated label that animates on its own is not announced as if they changed it)
-		// and interrupts, as their direct response. A stat card (gold, food, health)
-		// instead changes from game events with no input of its own, so it is polled every
-		// frame and queued, so an automatic resource change while the card holds focus is
-		// still heard without cutting off whatever is speaking.
+		// selection, re-read it and speak when its readout changed. ValuePollPolicy
+		// decides whether to poll this frame and whether the change interrupts or queues.
 		private void PollWatchedValue() {
 			if (_watched == null) return;
 			if (UICamera.selectedObject != _watched) return;
 
 			bool isStat = _watched.GetComponentInParent<StatCard>() != null;
-			if (!isStat && !NavigationState.WasRecent) return;
+			bool wasRecentInput = NavigationState.WasRecent;
+			if (!ValuePollPolicy.ShouldPoll(isStat, wasRecentInput)) return;
 
 			string current = BuildReadout(_watched);
 			if (current == _watchedReadout) return;
 			_watchedReadout = current;
 			if (string.IsNullOrEmpty(current)) return;
 
-			if (isStat && !NavigationState.WasRecent)
-				SpeechPipeline.SpeakQueued(current);
-			else
+			if (ValuePollPolicy.Delivery(isStat, wasRecentInput) == SpeechMode.Interrupt)
 				SpeechPipeline.SpeakInterrupt(current);
+			else
+				SpeechPipeline.SpeakQueued(current);
 		}
 
 		// Publish whether the map is the active screen, so the cursor's input binding and the

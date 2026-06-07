@@ -23,6 +23,24 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
 
+  <!-- Generate the Plugin.PluginVersion constant from <Version> (Directory.Build.props)
+       so the BepInPlugin attribute, which requires a compile-time literal, has a single
+       source of truth instead of a hand-synced copy. Mirrors what GenerateAssemblyInfo
+       does for the assembly version (which the spoken startup line reads at runtime).
+       The file lands under obj\, excluded from the default Compile glob, so adding it
+       explicitly does not double-include; the ";" is escaped as %3B in MSBuild. -->
+  <Target Name="GeneratePluginVersion" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <GeneratedVersionFile>$(IntermediateOutputPath)PluginVersion.g.cs</GeneratedVersionFile>
+      <GeneratedVersionSource>namespace HandOfFateAccess { public partial class Plugin { public const string PluginVersion = "$(Version)"%3B } }</GeneratedVersionSource>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(GeneratedVersionFile)" Lines="$(GeneratedVersionSource)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(GeneratedVersionFile)" />
+      <FileWrites Include="$(GeneratedVersionFile)" />
+    </ItemGroup>
+  </Target>
+
   <!-- Engine-agnostic logic lives in Core; deployed alongside this DLL. -->
   <ItemGroup>
     <ProjectReference Include="..\HandOfFateAccess.Core\HandOfFateAccess.Core.csproj" />
