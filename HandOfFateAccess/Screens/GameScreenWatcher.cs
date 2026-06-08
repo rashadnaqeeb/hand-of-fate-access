@@ -149,6 +149,7 @@ namespace HandOfFateAccess.Screens {
 			PumpScoreboardText();
 			PumpSubtitleText();
 			PumpZoomText();
+			PumpRewardReveal();
 		}
 
 		// The death line and the scoreboard are both display-only surfaces on the results
@@ -365,6 +366,24 @@ namespace HandOfFateAccess.Screens {
 			SpeechPipeline.SpeakInterrupt(announcement.Main);
 			if (!string.IsNullOrEmpty(announcement.Hint))
 				SpeechPipeline.SpeakQueued(announcement.Hint);
+		}
+
+		// A reward card flipped face-up on the end-of-run reward screen is read here: the
+		// game moves focus straight to the next card when one is clicked, so the focus path
+		// never reads the revealed reward. The OnCardClicked hook records the flipped card;
+		// this reads its identity off the model the same way the focus path reads a card.
+		// Routed through Speak so it interrupts as the reveal and the following focus (the
+		// next face-down card, or the add button) queues behind it rather than cutting it off.
+		private void PumpRewardReveal() {
+			if (!RewardReveal.TryConsume(out Card card)) return;
+			string text;
+			try {
+				text = new CardElement(ProxyFactory.ExtractCard(card)).Describe().Resolve();
+			} catch (Exception ex) {
+				Log.Error("reward reveal readout failed: " + ex);
+				return;
+			}
+			Speak(text);
 		}
 
 		// A modal dialogue is a MenuManager push on the Dialogue stack, invisible to

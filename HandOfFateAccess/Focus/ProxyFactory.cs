@@ -41,6 +41,12 @@ namespace HandOfFateAccess.Focus {
 		// key the game feeds its template; MonsterCard has no public getter for it alone
 		// (LocalisedTitle bakes in the count), so it is read here to compose the title.
 		private static readonly FieldInfo MonsterCreatureField = AccessTools.Field(typeof(MonsterCard), "m_cardTitle");
+		// The reward modifier screen's add button and its banner label, both private. The
+		// banner holds the localized "what is being added" text the game sets when the reward
+		// set is assigned; the add selectable identifies the button so it is not confused
+		// with the reward cards in the same container.
+		private static readonly FieldInfo ModifierAddSelectableField = AccessTools.Field(typeof(CardSetModifierContainer), "m_addSelectable");
+		private static readonly FieldInfo ModifierTitleField = AccessTools.Field(typeof(CardSetModifierContainer), "m_titleText");
 
 		// Generic NGUI placeholder names that carry no information. A label-less stop
 		// can only ever speak its raw object name; when that name is one of these (the
@@ -175,6 +181,32 @@ namespace HandOfFateAccess.Focus {
 				string text = LabelText(ChoiceTextField, choice);
 				if (!string.IsNullOrEmpty(text))
 					return new ChoiceElement(new ChoiceInfo(LabelText(ChoiceLetterField, choice), text));
+			}
+
+			// A reward token won at the end of a run is a 3D gem prop with a UISelectableItem
+			// but no label, so it falls to its raw object name ("Token_WhiteMinotaur5(Clone)").
+			// The game gives it no localized name; a sighted player recognises it by its gem
+			// art. Resolve the localized title of the card that grants it (whose token sprite
+			// is that gem art) and pass it with the raw object name; RewardTokenElement speaks
+			// the title verbatim (it already carries the tier number), or synthesises a name
+			// from the id when no granter is found. The cards it grants stay hidden until the
+			// player activates it and flips them, surfaced then by the per-card reveal.
+			Token token = go.GetComponentInParent<Token>();
+			if (token != null)
+				return new RewardTokenElement(TokenReader.GrantingTitle(token), token.gameObject.name);
+
+			// The reward modifier screen's "add to deck" button is a label-less UISelectableItem
+			// that falls to its raw object name ("AddSelectable"). The reward cards in the same
+			// container are read by the Card branch above, so reaching here on this container is
+			// the add button; confirm against the add selectable to be sure, then read the banner
+			// (what is being added, shown above the button) plus the authored action word.
+			CardSetModifierContainer modifier = go.GetComponentInParent<CardSetModifierContainer>();
+			if (modifier != null) {
+				var addSelectable = (UISelectableItem)ModifierAddSelectableField.GetValue(modifier);
+				if (addSelectable != null && go == addSelectable.gameObject) {
+					var bannerLabel = (UILabel)ModifierTitleField.GetValue(modifier);
+					return new RewardAddElement(bannerLabel != null ? bannerLabel.text : null);
+				}
 			}
 
 			// A UISelectableGroup is a structural container in NGUI's selection model,

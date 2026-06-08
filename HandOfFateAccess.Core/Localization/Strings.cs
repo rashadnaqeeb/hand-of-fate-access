@@ -75,6 +75,18 @@ namespace HandOfFateAccess.Localization {
 		// localized "continue" label (only per-encounter ones), so it is authored here.
 		public static readonly string ControlContinue = "Continue";
 
+		// The end-of-run reward token: a 3D gem prop the player activates to unlock the
+		// cards it grants. It carries no label, and a sighted player cannot read its reward
+		// either until they activate it and flip the cards it deals, so it announces only as
+		// a collectible token; the rewards are discovered through the per-card reveal as each
+		// face-down card is flipped. The game has no localized noun for it, so it is here.
+		public static readonly string TokenReward = "reward token";
+
+		// The "add to deck" button on the reward screen, which adds the revealed reward cards
+		// to the player's collection. The button is a label-less sprite, so the action word
+		// is authored here; the banner above it (what is being added) comes from the game.
+		public static readonly string AddToDeck = "add to deck";
+
 		// Appended after an equipment slot's category (e.g. "Weapons, empty") when the
 		// paperdoll slot holds no equipped card. An empty slot is sprite-only with no
 		// label, and the game has no localized "empty slot" string, so it is authored

@@ -176,6 +176,14 @@ namespace HandOfFateAccess {
 				new System.Type[0],
 				prefix: AccessTools.Method(typeof(UISelectable_DoClick_Patch), "Prefix"),
 				postfix: null);
+			// A flipped reward card on the end-of-run reward screen is read from this hook:
+			// the game moves focus past it before the focus path can, so the reveal is
+			// announced from the Update pump instead.
+			patcher.Patch(
+				typeof(CardSetModifierContainer), "OnCardClicked",
+				new[] { typeof(Card) },
+				prefix: null,
+				postfix: AccessTools.Method(typeof(CardSetModifierContainer_OnCardClicked_Patch), "Postfix"));
 			// Suppress the player's footsteps while blocked against a wall. OnFootstep takes
 			// the private nested Footstep enum, resolved here to disambiguate it from the
 			// two-argument material overload.

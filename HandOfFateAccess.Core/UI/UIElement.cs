@@ -1,4 +1,5 @@
 using HandOfFateAccess.Localization;
+using HandOfFateAccess.Screens;
 
 namespace HandOfFateAccess.UI {
 	/// <summary>
@@ -172,6 +173,48 @@ namespace HandOfFateAccess.UI {
 					message.Add(Strings.DeckTooMany);
 			}
 			return message;
+		}
+	}
+
+	/// <summary>
+	/// Readout for an end-of-run reward token: a gem prop the player activates to unlock the
+	/// cards it grants. It has no label and no localized name, so the adapter resolves the
+	/// localized title of the card that grants it (the token's gem art is that card's token
+	/// sprite) and passes that plus the raw object id; TokenNarration composes the spoken name
+	/// (the granting title verbatim, which already carries the tier number, or an id-synthesised
+	/// name when no granter was found). The authored "reward token" follows so the type is
+	/// clear. When neither source yields a name, only the type word is spoken.
+	/// </summary>
+	public sealed class RewardTokenElement : UIElement {
+		private readonly string _grantingTitle;
+		private readonly string _rawId;
+
+		public RewardTokenElement(string grantingTitle, string rawId) {
+			_grantingTitle = grantingTitle;
+			_rawId = rawId;
+		}
+
+		public override Message Describe() {
+			return new Message().Add(TokenNarration.Compose(_grantingTitle, _rawId)).Add(Strings.TokenReward);
+		}
+	}
+
+	/// <summary>
+	/// Readout for the "add to deck" button on the end-of-run reward screen, which adds
+	/// the revealed reward cards to the player's collection. The button carries no label
+	/// of its own (it would otherwise speak its raw object name), so the action word is
+	/// authored. The banner above it, the game's own localized text for what is being
+	/// added, leads as the distinguishing content; it is dropped when empty.
+	/// </summary>
+	public sealed class RewardAddElement : UIElement {
+		private readonly string _banner;
+
+		public RewardAddElement(string banner) {
+			_banner = banner;
+		}
+
+		public override Message Describe() {
+			return new Message().Add(_banner).Add(Strings.AddToDeck);
 		}
 	}
 
