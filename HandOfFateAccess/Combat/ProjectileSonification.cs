@@ -43,9 +43,6 @@ namespace HandOfFateAccess.Combat {
 		private int _lastTotal = -1;
 		private int _lastEnemy = -1;
 
-		/// <summary>The projectile voice pool, shared with the F9 test sweep. Null until built.</summary>
-		public ProjectileVoicePool Voices => _pool;
-
 		/// <summary>
 		/// Stand up the synthesized-voice pool. Skipped (logged) when the audio backend never
 		/// came up, so a headless or audio-less run degrades quietly rather than crashing.
