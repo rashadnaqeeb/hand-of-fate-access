@@ -342,11 +342,16 @@ namespace HandOfFateAccess.Focus {
 			// LocalisedDescription wraps Description. UIUtils.GetString returns the key
 			// unchanged if no entry exists, so this is safe for any already-human string. A
 			// monster card's title is the composed playing-card header instead.
+			// The buy/sell value renders as "$<value>", so a card with no sale value
+			// (m_value 0, e.g. a gold/supply reward card) would speak a meaningless "$0".
+			// Match the game's own CanSell (m_value > 0) and drop it when there is none.
+			string valueString = card.Value > 0 ? card.ValueString : null;
+
 			return new CardInfo(
 				monster != null ? MonsterTitle(monster) : UIUtils.GetString(card.Title),
 				description,
 				card.StatValueString,
-				card.ValueString,
+				valueString,
 				hasToken,
 				complete,
 				traits,
