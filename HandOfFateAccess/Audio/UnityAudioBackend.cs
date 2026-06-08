@@ -22,6 +22,8 @@ namespace HandOfFateAccess.Audio {
 	/// Awake.
 	/// </summary>
 	public sealed class UnityAudioBackend : IAudioBackend {
+		// The four wall tones plus a few transient one-shots (the collision cue). Projectiles
+		// no longer draw from here: they use their own PitchVoicePool of pitch-shift voices.
 		private const int VoiceCount = 24;
 
 		private GameObject _root;

@@ -51,6 +51,8 @@ namespace HandOfFateAccess {
 		private InputRouter _input;
 		private WallTones _wallTones;
 		private CollisionCue _collisionCue;
+		private ProjectileSonification _projectiles;
+		private ProjectileTestSweep _testSweep;
 		private MapCursor _mapCursor;
 		private bool _wasOnMap;
 		private GameObject _lastMapSelection;
@@ -74,6 +76,8 @@ namespace HandOfFateAccess {
 			PlayerMotion.Pump();
 			_wallTones.Pump();
 			_collisionCue.Pump();
+			_projectiles.Pump();
+			_testSweep.Pump();
 
 			if (_speechReady) {
 				_screenWatcher.Pump();
@@ -103,6 +107,9 @@ namespace HandOfFateAccess {
 			_wallTones.Initialize(pluginDir);
 			_collisionCue = new CollisionCue();
 			_collisionCue.Initialize(pluginDir);
+			_projectiles = new ProjectileSonification();
+			_projectiles.Initialize();
+			_testSweep = new ProjectileTestSweep(_projectiles.Voices);
 
 			if (!SpeechEngine.Initialize(new TolkBackend())) {
 				Log.Warn("speech unavailable; focus announcements disabled");
