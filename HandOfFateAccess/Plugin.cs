@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using BepInEx;
 using HandOfFateAccess.Audio;
+using HandOfFateAccess.Combat;
 using HandOfFateAccess.Focus;
 using HandOfFateAccess.Input;
 using HandOfFateAccess.Localization;
@@ -48,6 +49,8 @@ namespace HandOfFateAccess {
 		private ResourceWatcher _resourceWatcher;
 		private ProgressWatcher _progressWatcher;
 		private InputRouter _input;
+		private WallTones _wallTones;
+		private CollisionCue _collisionCue;
 		private MapCursor _mapCursor;
 		private bool _wasOnMap;
 		private GameObject _lastMapSelection;
@@ -64,6 +67,13 @@ namespace HandOfFateAccess {
 				Initialize();
 				return;
 			}
+
+			// Wall tones need no screen reader, so they run whether or not speech came up.
+			// PlayerMotion feeds both the wall feel and the footstep-suppression patch, so
+			// it is refreshed first.
+			PlayerMotion.Pump();
+			_wallTones.Pump();
+			_collisionCue.Pump();
 
 			if (_speechReady) {
 				_screenWatcher.Pump();
@@ -86,6 +96,13 @@ namespace HandOfFateAccess {
 			// feature drives it yet; it is the seam the combat and gambit layers register
 			// clips and play voices through.
 			AudioEngine.Initialize(new UnityAudioBackend());
+
+			// Wall tones ride on the audio backend alone, so they come up here, before the
+			// speech path, and keep working even if the screen reader never initializes.
+			_wallTones = new WallTones();
+			_wallTones.Initialize(pluginDir);
+			_collisionCue = new CollisionCue();
+			_collisionCue.Initialize(pluginDir);
 
 			if (!SpeechEngine.Initialize(new TolkBackend())) {
 				Log.Warn("speech unavailable; focus announcements disabled");
@@ -154,6 +171,14 @@ namespace HandOfFateAccess {
 				typeof(UISelectable), "DoClick",
 				new System.Type[0],
 				prefix: AccessTools.Method(typeof(UISelectable_DoClick_Patch), "Prefix"),
+				postfix: null);
+			// Suppress the player's footsteps while blocked against a wall. OnFootstep takes
+			// the private nested Footstep enum, resolved here to disambiguate it from the
+			// two-argument material overload.
+			patcher.Patch(
+				typeof(Controller), "OnFootstep",
+				new[] { AccessTools.Inner(typeof(Controller), "Footstep") },
+				prefix: AccessTools.Method(typeof(Controller_OnFootstep_Patch), "Prefix"),
 				postfix: null);
 		}
 

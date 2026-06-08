@@ -92,5 +92,18 @@ foreach ($f in $TolkFiles) {
 }
 Write-Host "Deployed $($TolkFiles.Count) Tolk runtime file(s) to $PluginsDir" -ForegroundColor Green
 
+# Deploy the authored audio cues (wall tones, etc). The plugin loads these at
+# runtime from a sounds folder beside its DLL, so mirror the repo's sounds folder.
+$SoundsSrc = "$PSScriptRoot\sounds"
+if (Test-Path $SoundsSrc) {
+    $SoundsDst = "$PluginsDir\sounds"
+    if (-not (Test-Path $SoundsDst)) { New-Item -ItemType Directory -Path $SoundsDst -Force | Out-Null }
+    $SoundFiles = Get-ChildItem -Path $SoundsSrc -Filter *.wav -File
+    foreach ($f in $SoundFiles) {
+        Copy-Item $f.FullName "$SoundsDst\$($f.Name)" -Force
+    }
+    Write-Host "Deployed $($SoundFiles.Count) sound file(s) to $SoundsDst" -ForegroundColor Green
+}
+
 Write-Host ""
 Write-Host "Done. Launch the game and listen for the startup line." -ForegroundColor Cyan

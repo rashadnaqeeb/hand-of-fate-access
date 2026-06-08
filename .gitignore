@@ -23,6 +23,10 @@ obj/
 .vs/
 .idea/
 
+# Python bytecode cache (audio-demo generator scripts)
+__pycache__/
+*.pyc
+
 # OS cruft
 Thumbs.db
 desktop.ini
