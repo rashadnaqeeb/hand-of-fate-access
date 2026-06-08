@@ -121,6 +121,13 @@ namespace HandOfFateAccess.Localization {
 		// The accompanying level word is reused from the game's own SCORE_LEVEL string.
 		public static readonly string ProgressScore = "score";
 
+		// The end-of-run scoreboard draws each entry's points as a symbol ("x2" for a
+		// multiplier, "+50" for a bonus). A screen reader voices the "x" as the letter and may
+		// drop the "+", so the symbol is spoken as a word instead; the number comes from the
+		// game. A row's total has no symbol and reads as the bare number.
+		public static readonly string ScorePlus = "plus";
+		public static readonly string ScoreTimes = "times";
+
 		// Card zoom (a single card presented for a decision: examine, equip, buy, keep,
 		// reveal). "replacing" joins the zoomed item to the equipped item a replace would
 		// swap out ("Iron Sword, damage 5, replacing Rusty Dagger, damage 3"); the item

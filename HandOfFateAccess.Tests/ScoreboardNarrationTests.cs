@@ -8,41 +8,48 @@ namespace HandOfFateAccess.Tests {
 	/// </summary>
 	public class ScoreboardNarrationTests {
 		[Fact]
-		public void Header_then_rows() {
+		public void Header_then_total_and_entries() {
+			// Total row first (bare number), then bonus and multiplier entries.
 			Assert.Equal(
-				"Your Score. Encounters, 1200. Monsters Slain, 800",
+				"Your Score. Knight of Dust, 1450. Encounters, plus 1200. Difficulty, times 2",
 				ScoreboardNarration.Compose("Your Score", new[] {
-					new[] { "Encounters", "1200" },
-					new[] { "Monsters Slain", "800" },
+					new[] { "Knight of Dust", "1450" },
+					new[] { "Encounters", "+1200" },
+					new[] { "Difficulty", "x2" },
 				}));
+		}
+
+		[Fact]
+		public void Bonus_symbol_spoken_as_word() {
+			Assert.Equal("Gold, plus 50", ScoreboardNarration.Compose(null, new[] {
+				new[] { "Gold", "+50" },
+			}));
+		}
+
+		[Fact]
+		public void Multiplier_symbol_spoken_as_word() {
+			Assert.Equal("Fame, times 3", ScoreboardNarration.Compose(null, new[] {
+				new[] { "Fame", "x3" },
+			}));
 		}
 
 		[Fact]
 		public void Repeated_scores_across_rows_kept() {
-			// Two rows share a score of 0; both must survive (no cross-row dedup).
+			// Two rows share the same points; both must survive (no cross-row dedup).
 			Assert.Equal(
-				"Gold, 0. Food, 0",
+				"Gold, plus 0. Food, plus 0",
 				ScoreboardNarration.Compose(null, new[] {
-					new[] { "Gold", "0" },
-					new[] { "Food", "0" },
+					new[] { "Gold", "+0" },
+					new[] { "Food", "+0" },
 				}));
 		}
 
 		[Fact]
-		public void Subscore_included_when_present() {
+		public void Markup_stripped_and_empty_points_dropped() {
 			Assert.Equal(
-				"Total. Fame, 50, x2",
-				ScoreboardNarration.Compose("Total", new[] {
-					new[] { "Fame", "50", "x2" },
-				}));
-		}
-
-		[Fact]
-		public void Markup_stripped_and_empty_fields_dropped() {
-			Assert.Equal(
-				"Score. Bandits, 5",
+				"Score. Bandits",
 				ScoreboardNarration.Compose("[b]Score[/b]", new[] {
-					new[] { "Bandits", "", "5" },
+					new[] { "Bandits", "" },
 				}));
 		}
 

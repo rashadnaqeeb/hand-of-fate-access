@@ -183,6 +183,13 @@ namespace HandOfFateAccess.Focus {
 					return new ChoiceElement(new ChoiceInfo(LabelText(ChoiceLetterField, choice), text));
 			}
 
+			// The end-of-run scoreboard locks selection onto a single continue control that has
+			// no label of its own, so it would fall to a bare object name. Its only action is to
+			// proceed past the results, so announce "Continue". The score breakdown itself is
+			// read off the display-only labels by ScoreboardReader.
+			if (go.GetComponentInParent<Scoreboard>() != null)
+				return new GenericElement(Strings.ControlContinue, EmptyLabels);
+
 			// A reward token won at the end of a run is a 3D gem prop with a UISelectableItem
 			// but no label, so it falls to its raw object name ("Token_WhiteMinotaur5(Clone)").
 			// The game gives it no localized name; a sighted player recognises it by its gem

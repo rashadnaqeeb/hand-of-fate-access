@@ -58,6 +58,7 @@ namespace HandOfFateAccess.Screens {
 		private string _lastScoreboardText;
 		private string _lastSubtitleText;
 		private string _lastZoomText;
+		private string _lastNavActions;
 		// The combat roster is dealt onto the table card by card over a few frames, so its
 		// read is debounced the same way the archetype panel is: pending holds the last read,
 		// spoken holds what was announced once the roster stopped growing.
@@ -150,6 +151,7 @@ namespace HandOfFateAccess.Screens {
 			PumpSubtitleText();
 			PumpZoomText();
 			PumpRewardReveal();
+			PumpNavActions();
 		}
 
 		// The death line and the scoreboard are both display-only surfaces on the results
@@ -366,6 +368,27 @@ namespace HandOfFateAccess.Screens {
 			SpeechPipeline.SpeakInterrupt(announcement.Main);
 			if (!string.IsNullOrEmpty(announcement.Hint))
 				SpeechPipeline.SpeakQueued(announcement.Hint);
+		}
+
+		// The nav bar's context-action buttons (the game's Function0/Function1: the scoreboard's
+		// high-score toggle and restart, the deck builder's fill-deck) are mapped to controller
+		// face buttons and function keys, outside the focusable selection, so the focus path
+		// never reaches them. Edge-detect their labels and announce when they change, so the
+		// available actions are discoverable. Queued so they follow the screen and focus rather
+		// than cutting them off. Empty (no such actions on this screen) clears the marker, so
+		// re-entering a screen that has them announces afresh.
+		private void PumpNavActions() {
+			string text;
+			try {
+				text = NavActionsNarration.Compose(NavBarReader.ReadActions());
+			} catch (Exception ex) {
+				Log.Error("nav actions readout failed: " + ex);
+				return;
+			}
+			if (text == _lastNavActions) return;
+			_lastNavActions = text;
+			if (!string.IsNullOrEmpty(text))
+				SpeechPipeline.SpeakQueued(text);
 		}
 
 		// A reward card flipped face-up on the end-of-run reward screen is read here: the
