@@ -110,6 +110,12 @@ namespace HandOfFateAccess {
 			// clips and play voices through.
 			AudioEngine.Initialize(new UnityAudioBackend());
 
+			// Every spatial feature (wall tones, projectiles, the gambit) conveys position by
+			// stereo pan; on a mono output device that cue is gone. Surface it once rather than
+			// let those features degrade silently.
+			if (AudioSettings.speakerMode == AudioSpeakerMode.Mono)
+				Log.Warn("audio output is mono; spatial cues (wall tones, projectiles, gambit) will not localize");
+
 			// Wall tones ride on the audio backend alone, so they come up here, before the
 			// speech path, and keep working even if the screen reader never initializes.
 			_wallTones = new WallTones();
