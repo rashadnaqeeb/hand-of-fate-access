@@ -13,21 +13,26 @@ namespace HandOfFateAccess.Screens {
 	internal static class EncounterEventReader {
 		private static readonly FieldInfo TextField = AccessTools.Field(typeof(UIEncounterEventPanel), "m_encounterEventText");
 		private static readonly FieldInfo InstructionsField = AccessTools.Field(typeof(UIEncounterEventPanel), "m_instructionsText");
+		private static readonly FieldInfo ShowingField = AccessTools.Field(typeof(UIEncounterEventPanel), "m_isShowing");
 
 		/// <summary>
 		/// The live narrative (scenario when the panel opens, then the result after a
 		/// choice) and the mechanical instructions (what the choice triggers: draw cards,
 		/// win a token). Both are raw label text; composition is decided in Core. The
 		/// encounter card's focus readout omits the scenario, so the panel is the single
-		/// source for it and there is no duplication. Null when no panel is live.
+		/// source for it and there is no duplication. <paramref name="showing"/> reports the
+		/// panel's own visibility flag, not just label presence, so Core can tell a transient
+		/// mid-transition blank (showing, text empty) apart from the panel being torn down.
 		/// </summary>
-		public static void Read(out string narrative, out string instructions) {
+		public static void Read(out bool showing, out string narrative, out string instructions) {
+			showing = false;
 			narrative = null;
 			instructions = null;
 			UIManager ui = UIManager.Instance;
 			if (ui == null) return;
 			UIEncounterEventPanel panel = ui.EncounterEventPanel;
 			if (panel == null) return;
+			showing = (bool)ShowingField.GetValue(panel);
 			narrative = LabelText(TextField, panel);
 			instructions = LabelText(InstructionsField, panel);
 		}

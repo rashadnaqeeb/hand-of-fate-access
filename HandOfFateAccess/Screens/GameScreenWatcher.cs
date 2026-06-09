@@ -38,7 +38,11 @@ namespace HandOfFateAccess.Screens {
 		private Dialogue _topDialogue;
 		// The encounter narrative last announced, for edge detection only: the live text
 		// is always re-read and spoken, this just marks the scenario->result change.
-		private string _lastEncounterText;
+		// The narrative and instructions last announced from the encounter panel, tracked
+		// separately so an instructions line appended under an unchanged narrative is spoken
+		// alone instead of re-reading the narrative (see EncounterNarration.Decide).
+		private string _lastEncounterNarrative;
+		private string _lastEncounterInstructions;
 		// Same edge markers for the other display-only surfaces the focus model never
 		// reaches: the cabinet examine panel and the death/forfeit results line. The cabinet
 		// also tracks the examined card's name separately, so it is announced once when the
@@ -161,25 +165,28 @@ namespace HandOfFateAccess.Screens {
 			return state is GameState_Post || state is GameState_AlphaEnd;
 		}
 
-		// The encounter event panel's narrative (scenario, then result after a choice)
-		// is display-only text the focus model never reaches. Edge-detect a change in
-		// the live text and announce it. Routed through Speak so it interrupts as the
-		// new context and the Continue button the game then selects queues behind it,
-		// the same ordering as a dialogue. Empty text (panel reset/closed) just clears
-		// the edge marker.
+		// The encounter event panel's narrative (scenario, then result after a choice) and
+		// its mechanical instructions are display-only text the focus model never reaches.
+		// Edge-detect a change and announce it. Routed through Speak so it interrupts as the
+		// new context and the Continue button the game then selects queues behind it, the
+		// same ordering as a dialogue. The narrative and instructions are tracked separately
+		// so an instructions line appended under an unchanged narrative is not re-read as the
+		// whole line; the blank flashed mid-transition is held, not reset (see
+		// EncounterNarration.Decide); the markers re-arm only when the panel stops showing.
 		private void PumpEncounterText() {
-			string text;
+			EncounterAnnouncement result;
 			try {
-				EncounterEventReader.Read(out var narrative, out var instructions);
-				text = EncounterNarration.Compose(narrative, instructions);
+				EncounterEventReader.Read(out var showing, out var narrative, out var instructions);
+				result = EncounterNarration.Decide(showing, narrative, instructions,
+					_lastEncounterNarrative, _lastEncounterInstructions);
 			} catch (Exception ex) {
 				Log.Error("encounter text readout failed: " + ex);
 				return;
 			}
-			if (text == _lastEncounterText) return;
-			_lastEncounterText = text;
-			if (!string.IsNullOrEmpty(text))
-				Speak(text);
+			_lastEncounterNarrative = result.MarkerNarrative;
+			_lastEncounterInstructions = result.MarkerInstructions;
+			if (result.Speak)
+				Speak(result.Text);
 		}
 
 		// The monster cards dealt for a combat encounter are laid on the table, then at
