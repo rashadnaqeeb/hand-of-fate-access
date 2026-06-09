@@ -71,18 +71,19 @@ namespace HandOfFateAccess.Combat {
 
 			List<CombatProxyProjectile> projectiles = CombatManager.Instance.Projectiles;
 
-			// Gather the live enemy projectiles. Team is read off the projectile's own
-			// Targetable, which the game stamps with the firer's team on engage, so the
-			// player's own shots and reflections stay silent.
+			// Gather the projectiles that started as enemy shots. Team is read off the firer (the
+			// effect's Source targetable), not the projectile object: a projectile rarely carries
+			// its own Targetable, so reading it off the projectile leaves every shot team None and
+			// silences the field. The firer's team stays Enemy even after the player reflects the
+			// shot, so reflected shots are gathered here too and voiced with a faster tumble (see
+			// the voice loop below) rather than dropped, letting the player track a bounced-back
+			// shot to the enemy while still telling it apart from an incoming threat.
 			_live.Clear();
 			for (int i = 0; i < projectiles.Count; i++) {
 				CombatProxyProjectile proj = projectiles[i];
 				if (proj == null) continue;
-				// A reflected projectile keeps its enemy team but now flies at the enemy, so it
-				// is no longer a threat to the player; voicing it would be wrong information.
-				if (proj.IsReflected) continue;
-				Targetable targetable = proj.GetComponent<Targetable>();
-				if (targetable == null || targetable.Team != TeamType.Enemy) continue;
+				Targetable source = proj.Effect.Source;
+				if (source == null || source.Team != TeamType.Enemy) continue;
 				_live.Add(proj);
 			}
 
@@ -112,13 +113,14 @@ namespace HandOfFateAccess.Combat {
 				SoundParams sp = ProjectileSonifier.Compose(
 					Vector3.Dot(rel, frame.Right), Vector3.Dot(rel, frame.Forward));
 
+				bool reflected = proj.IsReflected;
 				ProjectileVoice voice;
 				if (_voices.TryGetValue(proj, out voice)) {
-					voice.SetParams(sp.Pitch, sp.Pan, sp.Volume);
+					voice.SetParams(sp.Pitch, sp.Pan, sp.Volume, reflected);
 				} else {
 					voice = _pool.Acquire();
 					if (voice != null) {
-						voice.Play(sp.Pitch, sp.Pan, sp.Volume);
+						voice.Play(sp.Pitch, sp.Pan, sp.Volume, reflected);
 						_voices[proj] = voice;
 					}
 				}

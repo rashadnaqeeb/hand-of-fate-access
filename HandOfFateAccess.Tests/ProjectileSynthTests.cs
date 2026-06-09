@@ -46,6 +46,31 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
+		public void Reflected_TumblesFaster() {
+			// Same seed and pitch, so the only difference is the tumble rate. A reflected voice
+			// flutters faster, so its smoothed envelope crosses its own mean upward more often.
+			var normal = new ProjectileSynth(SampleRate, 9u) { Pitch = 1f };
+			var reflected = new ProjectileSynth(SampleRate, 9u) { Pitch = 1f, Reflected = true };
+			var nbuf = new float[SampleRate];
+			var rbuf = new float[SampleRate];
+			normal.Process(nbuf, 0, nbuf.Length);
+			reflected.Process(rbuf, 0, rbuf.Length);
+
+			int nOnsets = UpwardMeanCrossings(Envelope(nbuf));
+			int rOnsets = UpwardMeanCrossings(Envelope(rbuf));
+			Assert.True(rOnsets > nOnsets, $"reflected onsets {rOnsets} not faster than normal {nOnsets}");
+		}
+
+		// Count upward crossings of the signal's own mean: an onset proxy that rises with tempo.
+		private static int UpwardMeanCrossings(double[] x) {
+			double mean = Mean(x);
+			int count = 0;
+			for (int i = 1; i < x.Length; i++)
+				if (x[i - 1] <= mean && x[i] > mean) count++;
+			return count;
+		}
+
+		[Fact]
 		public void TempoIndependentOfPitch() {
 			// Same noise seed, two pitches: the filter colour differs but the tumble envelope
 			// is identical, so the smoothed amplitude envelopes line up tightly. If pitch were

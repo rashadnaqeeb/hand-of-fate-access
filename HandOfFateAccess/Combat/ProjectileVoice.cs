@@ -42,15 +42,17 @@ namespace HandOfFateAccess.Combat {
 
 		public bool IsPlaying => _playing;
 
-		public void Play(float pitch, float pan, float volume) {
-			SetParams(pitch, pan, volume);
+		public void Play(float pitch, float pan, float volume, bool reflected) {
+			SetParams(pitch, pan, volume, reflected);
 			_playing = true;
 			_source.Play();
 		}
 
-		/// <summary>Re-aim a playing voice for this frame.</summary>
-		public void SetParams(float pitch, float pan, float volume) {
+		/// <summary>Re-aim a playing voice for this frame. <paramref name="reflected"/> flags the
+		/// player's own bounced-back shot, which flutters faster so it is told apart from a threat.</summary>
+		public void SetParams(float pitch, float pan, float volume, bool reflected) {
 			_synth.Pitch = pitch;
+			_synth.Reflected = reflected;
 			_pan = pan < -1f ? -1f : (pan > 1f ? 1f : pan);
 			_volume = volume < 0f ? 0f : (volume > 1f ? 1f : volume);
 		}

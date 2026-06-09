@@ -25,6 +25,12 @@ namespace HandOfFateAccess.Audio {
 		private const float WeakOffset = 0.1f;    // when the weak pulse starts within the period
 		private const float WeakAmp = 0.55f;      // strong-then-weak, the tumble feel
 
+		// A reflected projectile (the player's own shot, bounced back at the enemy) tumbles
+		// faster: an orthogonal tag to pan/pitch/volume, so a reflected shot is instantly told
+		// apart from an incoming threat while its bearing and distance still track normally. It
+		// scales the rhythm only, never the cutoff, so the spatial cues are untouched.
+		public const float ReflectedTempoScale = 1.8f;
+
 		// Noise colour (the pitch): a resonant low-pass whose cutoff scales with the pitch
 		// param, so a lower pitch is a darker, lower whoosh with the tempo untouched.
 		private const float BaseCutoff = 3000f;   // Hz at pitch 1 (due north, brightest)
@@ -35,12 +41,13 @@ namespace HandOfFateAccess.Audio {
 		private uint _rng;
 		private float _low, _band;
 		private float _pitch = 1f;
+		private float _tempo = 1f;   // tumble-rate multiplier; >1 flutters faster (reflected)
 
 		// The tumble envelope is fixed and pitch-independent, so it is tabulated once at
 		// construction and looked up per sample. This keeps the four Math.Exp calls its shape
 		// needs off the audio thread, where with 32 voices they would be a real cost.
 		private readonly float[] _env;
-		private int _phase;   // sample index into _env, advancing one per output sample
+		private float _phasePos;   // fractional sample index into _env, advancing by _tempo per output sample
 
 		/// <param name="seed">Per-voice noise seed; give concurrent voices different seeds so
 		/// their noise does not correlate into a comb.</param>
@@ -59,6 +66,15 @@ namespace HandOfFateAccess.Audio {
 		public float Pitch {
 			get { return _pitch; }
 			set { _pitch = value; }
+		}
+
+		/// <summary>True for a reflected (outgoing) projectile: the tumble flutters faster so the
+		/// player's own bounced-back shot is unmistakable against incoming threats, while pan,
+		/// pitch, and volume still track its bearing and distance. Set from the main thread, read
+		/// on the audio thread.</summary>
+		public bool Reflected {
+			get { return _tempo > 1f; }
+			set { _tempo = value ? ReflectedTempoScale : 1f; }
 		}
 
 		/// <summary>Fill <paramref name="count"/> mono samples into <paramref name="output"/>
@@ -80,13 +96,17 @@ namespace HandOfFateAccess.Audio {
 			float f = 2f * (float)Math.Sin(Math.PI * fc / _sampleRate);
 			int len = _env.Length;
 
+			float tempo = _tempo;
+			if (!(tempo > 0f)) tempo = 1f;
+
 			for (int n = 0; n < count; n++) {
 				float input = Noise();
 				_low += f * _band;
 				float high = input - _low - Damp * _band;
 				_band += f * high;
-				output[offset + n] = _low * _env[_phase] * OutGain;
-				if (++_phase >= len) _phase = 0;
+				output[offset + n] = _low * _env[(int)_phasePos] * OutGain;
+				_phasePos += tempo;
+				if (_phasePos >= len) _phasePos -= len;
 			}
 		}
 
