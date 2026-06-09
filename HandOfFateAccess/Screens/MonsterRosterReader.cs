@@ -7,7 +7,7 @@ namespace HandOfFateAccess.Screens {
 	/// monster cards staged in the live EncounterContainer, in deal order. These cards are
 	/// never focusable (at level-in they animate straight off the table into the 3D arena
 	/// as spawners), so the focus model never reaches them; the screen watcher edge-polls
-	/// this and announces the roster while they sit on the table. Each card's title is
+	/// this and announces each card as it is dealt onto the table. Each card's title is
 	/// composed by the shared ProxyFactory path so it matches the choice-list readout.
 	/// Null when no deck/container is live; an empty list when no monsters are staged.
 	/// </summary>

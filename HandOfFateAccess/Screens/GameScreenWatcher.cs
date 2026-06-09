@@ -63,11 +63,9 @@ namespace HandOfFateAccess.Screens {
 		private string _lastSubtitleText;
 		private string _lastZoomText;
 		private string _lastNavActions;
-		// The combat roster is dealt onto the table card by card over a few frames, so its
-		// read is debounced the same way the archetype panel is: pending holds the last read,
-		// spoken holds what was announced once the roster stopped growing.
-		private string _monsterRosterPending;
-		private string _monsterRosterSpoken;
+		// How many leading combat-roster cards have been announced; advanced by
+		// MonsterNarration.RosterStep as each dealt card is spoken.
+		private int _monsterRosterSpokenCount;
 
 		// Live game types mapped to mod screens. Compile-time references against
 		// Assembly-CSharp: a renamed GameState fails the build here, by design.
@@ -191,26 +189,21 @@ namespace HandOfFateAccess.Screens {
 
 		// The monster cards dealt for a combat encounter are laid on the table, then at
 		// level-in animate off into the 3D arena; nothing ever focuses them, so the roster
-		// is read here and announced while it is on the table. The cards arrive over a few
-		// frames, so the read is debounced (announce once it stops changing) to avoid reading
-		// a partial line-up and then re-reading the full one. Queued so it follows the
-		// scenario the event panel announces rather than cutting it off. The roster empties
-		// as the cards leave for the arena, which resets the marker so the next encounter's
-		// line-up announces afresh.
+		// is read here while it is on the table. The dealer deals one card at a time and
+		// awaits its flight animation before the next, so each card is announced once as
+		// it lands (the unspoken tail per RosterStep) rather than recomposing the whole
+		// line-up, which would re-read the earlier cards. A title is complete the moment
+		// the card enters the container (read off the card model, not its labels). Queued
+		// so it follows the scenario the event panel announces rather than cutting it off.
 		private void PumpMonsterRoster() {
-			string text;
+			IList<string> titles;
 			try {
-				text = MonsterNarration.Roster(MonsterRosterReader.Read());
+				titles = MonsterRosterReader.Read();
 			} catch (Exception ex) {
 				Log.Error("monster roster readout failed: " + ex);
 				return;
 			}
-			if (text != _monsterRosterPending) {
-				_monsterRosterPending = text;
-				return;
-			}
-			if (text == _monsterRosterSpoken) return;
-			_monsterRosterSpoken = text;
+			string text = MonsterNarration.RosterStep(titles, ref _monsterRosterSpokenCount);
 			if (!string.IsNullOrEmpty(text))
 				SpeechPipeline.SpeakQueued(text);
 		}
