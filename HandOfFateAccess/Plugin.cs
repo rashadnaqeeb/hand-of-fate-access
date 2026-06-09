@@ -53,6 +53,7 @@ namespace HandOfFateAccess {
 		private WallTones _wallTones;
 		private CollisionCue _collisionCue;
 		private ProjectileSonification _projectiles;
+		private ZoneSonification _zones;
 		private AttackCues _attackCues;
 		private GambitStatusSpeech _gambitStatus;
 		private GambitWatcher _gambit;
@@ -80,6 +81,7 @@ namespace HandOfFateAccess {
 			_wallTones.Pump();
 			_collisionCue.Pump();
 			_projectiles.Pump();
+			_zones.Pump();
 			_attackCues.Pump();
 			_gambit.Pump();
 
@@ -126,6 +128,11 @@ namespace HandOfFateAccess {
 			_collisionCue.Initialize(pluginDir);
 			_projectiles = new ProjectileSonification();
 			_projectiles.Initialize();
+
+			// Zone hazards (ground areas, mines): no hooks, the game's own AllAreas registry
+			// is polled from the pump, so this needs only the audio backend.
+			_zones = new ZoneSonification();
+			_zones.Initialize();
 
 			// Attack telegraph cues (the block-or-dodge call at each enemy attack). Like the
 			// wall tones they ride on the audio backend alone, so they come up here with the
