@@ -53,6 +53,7 @@ namespace HandOfFateAccess {
 		private WallTones _wallTones;
 		private CollisionCue _collisionCue;
 		private ProjectileSonification _projectiles;
+		private AttackCues _attackCues;
 		private GambitStatusSpeech _gambitStatus;
 		private GambitWatcher _gambit;
 		private MapCursor _mapCursor;
@@ -79,6 +80,7 @@ namespace HandOfFateAccess {
 			_wallTones.Pump();
 			_collisionCue.Pump();
 			_projectiles.Pump();
+			_attackCues.Pump();
 			_gambit.Pump();
 
 			if (_speechReady) {
@@ -124,6 +126,22 @@ namespace HandOfFateAccess {
 			_collisionCue.Initialize(pluginDir);
 			_projectiles = new ProjectileSonification();
 			_projectiles.Initialize();
+
+			// Attack telegraph cues (the block-or-dodge call at each enemy attack). Like the
+			// wall tones they ride on the audio backend alone, so they come up here with the
+			// other audio features. The hooks that feed them are installed below, gated on audio
+			// being live: without it the cues cannot play, so there is no reason to patch the
+			// combat path.
+			_attackCues = new AttackCues();
+			_attackCues.Initialize(pluginDir);
+			if (AudioEngine.IsAvailable)
+				InstallCombatPatches();
+
+			// Log-only diagnostics: the damage tripwire (every player hit names its source) and
+			// the proxy reconnaissance (every non-projectile hazard spawn logs its type), both
+			// independent of the audio and speech paths so they keep auditing coverage even
+			// when the cues themselves failed to come up.
+			InstallDiagnosticPatches();
 
 			// The chance gambit's spoken card statuses render through SAPI (for pan and
 			// timing) and play off the audio voice pool, so they come up here with the other
@@ -222,6 +240,75 @@ namespace HandOfFateAccess {
 				new[] { AccessTools.Inner(typeof(Controller), "Footstep") },
 				prefix: AccessTools.Method(typeof(Controller_OnFootstep_Patch), "Prefix"),
 				postfix: null);
+		}
+
+		// The combat attack-telegraph hooks, installed with the audio path so they come up whether
+		// or not the screen-reader speech path did: the cues are non-speech audio. The cue rides
+		// the melee and ranged effect-start calls, fired as each attack's parry window opens,
+		// which carry the authoritative blockable flag.
+		private void InstallCombatPatches() {
+			var patcher = new HarmonyPatcher(new Harmony(PluginGuid + ".combat"));
+			patcher.Patch(
+				typeof(CombatUtils), "StartMeleeEffect",
+				new[] { typeof(EffectSet), typeof(Model), typeof(bool) },
+				prefix: AccessTools.Method(typeof(CombatUtils_StartMeleeEffect_Patch), "Prefix"),
+				postfix: null);
+			patcher.Patch(
+				typeof(CombatUtils), "StartRangedEffect",
+				new[] { typeof(EffectSet), typeof(Model), typeof(bool) },
+				prefix: AccessTools.Method(typeof(CombatUtils_StartRangedEffect_Patch), "Prefix"),
+				postfix: null);
+
+			// The bespoke boss attacks: direct-damage actions that bypass the effect-start
+			// chokepoint, each cued as a dodge from its own Begin override (every listed class
+			// declares one; patching an inherited Begin would hit the shared base and cue every
+			// action in the game). The Hermit's bomb hooks its throw event instead, because its
+			// Begin runs a multi-second hold first. The mage beams are intentionally absent:
+			// they will be voiced live from the proxy seam, not cued as a one-shot.
+			var bossBeginPostfix = AccessTools.Method(typeof(BossAction_Begin_Patch), "Postfix");
+			var bossActions = new[] {
+				typeof(ActionFeastOgre),
+				typeof(ActionReaperFinger),
+				typeof(ActionReaperScythe),
+				typeof(ActionSacrificeLich),
+				typeof(ActionSelfOrcShaman),
+				typeof(ActionKrakenShock),
+				typeof(ActionKrakenTentacleAttack),
+				typeof(ActionKrakenTsunami),
+				typeof(ActionKrakenSummon),
+				typeof(ActionDashRatmanKing),
+			};
+			foreach (System.Type bossAction in bossActions)
+				patcher.Patch(bossAction, "Begin", new System.Type[0], prefix: null, postfix: bossBeginPostfix);
+			patcher.Patch(
+				typeof(ActionHermitBomb), "OnThrow",
+				new System.Type[0],
+				prefix: AccessTools.Method(typeof(ActionHermitBomb_OnThrow_Patch), "Prefix"),
+				postfix: null);
+		}
+
+		// The log-only diagnostic patches: the damage tripwire on the one chokepoint all damage
+		// funnels through, and the proxy reconnaissance pair that records every non-projectile
+		// hazard spawn. Their own Harmony group so they install even when the audio path, and
+		// with it the combat cue patches, did not: they audit coverage, so they must keep
+		// recording when the cues themselves are down.
+		private void InstallDiagnosticPatches() {
+			var patcher = new HarmonyPatcher(new Harmony(PluginGuid + ".diagnostics"));
+			patcher.Patch(
+				typeof(Destroyable), "ApplyDamage",
+				new[] { typeof(Destroyable.Damage) },
+				prefix: AccessTools.Method(typeof(Destroyable_ApplyDamage_Patch), "Prefix"),
+				postfix: null);
+			patcher.Patch(
+				typeof(CombatProxy), "Engage",
+				new[] { typeof(CombatEffectProxy), typeof(CombatTarget), typeof(UnityEngine.Transform) },
+				prefix: null,
+				postfix: AccessTools.Method(typeof(CombatProxy_Engage_Patch), "Postfix"));
+			patcher.Patch(
+				typeof(CombatProxy), "Disengage",
+				new System.Type[0],
+				prefix: null,
+				postfix: AccessTools.Method(typeof(CombatProxy_Disengage_Patch), "Postfix"));
 		}
 
 		// The chance-gambit hooks, kept out of InstallPatches so they install with the audio path
