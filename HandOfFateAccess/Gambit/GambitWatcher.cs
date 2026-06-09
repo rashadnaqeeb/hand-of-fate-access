@@ -38,7 +38,7 @@ namespace HandOfFateAccess.Gambit {
 		private const float SlotGapSeconds = 0.15f;
 		private const float EstablishSafetySeconds = 12f;
 		private const float ShuffleSafetySeconds = 25f;
-		private const float ShuffleSettleSeconds = 0.1f;   // hold the final positions before picking
+		private const float ShuffleSettleSeconds = 0.15f;   // hold the final positions before picking
 		private const float PanSmoothTau = 0.12f;   // glide each tone toward its new slot pan
 
 		private enum Phase { Idle, Establishing, Shuffling, Selecting }

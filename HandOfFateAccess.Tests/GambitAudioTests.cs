@@ -149,15 +149,18 @@ namespace HandOfFateAccess.Tests {
 			const int rate = 6000;   // Nyquist 3000
 			float[] actual = GambitTones.Generate(3, rate);
 
-			// Slot 3 identity: 1046.5 Hz, tremolo 10 Hz, harmonics [1, .5, .33, .25, .20, .16].
-			// Surviving harmonics k where (k+1)*1046.5 < 3000: only k=0 (1046.5) and k=1 (2093).
-			const float freq = 1046.5f, tremolo = 10f, amplitude = 0.5f, tremoloDepth = 0.6f;
-			float[] harm = { 1f, 0.5f, 0.33f, 0.25f, 0.20f, 0.16f };
+			// Slot 3 identity: bell, 1046.5 Hz, plucked at 10/sec, no vibrato (so the accumulated
+			// phase equals 2*pi*freq*t), harmonics [1, .7, .5, .45, .35, .3, .22, .18]. Surviving
+			// harmonics k where (k+1)*1046.5 < 3000: only k=0 (1046.5) and k=1 (2093).
+			const float freq = 1046.5f, pulse = 10f, amplitude = 0.5f;
+			const float pluckAttack = 0.015f, pluckDecay = 0.30f;
+			float[] harm = { 1f, 0.7f, 0.5f, 0.45f, 0.35f, 0.3f, 0.22f, 0.18f };
 			float harmNorm = 0f;
 			foreach (float h in harm) harmNorm += Math.Abs(h);
 			int n = (int)(0.32f * rate + 0.5f);
 			int fade = (int)(0.008f * rate + 0.5f);
 			float nyquist = rate * 0.5f;
+			double pluckPeriod = 1.0 / pulse;
 			const double twoPi = 2.0 * Math.PI;
 
 			Assert.Equal(n, actual.Length);
@@ -171,11 +174,14 @@ namespace HandOfFateAccess.Tests {
 					sample += harm[k] * Math.Sin((k + 1) * phase);
 				}
 				sample /= harmNorm;
-				float trem = 1f - tremoloDepth * 0.5f * (1f + (float)Math.Sin(twoPi * tremolo * t));
+				double phf = (t % pluckPeriod) / pluckPeriod;
+				float pluck = phf < pluckAttack
+					? (float)(phf / pluckAttack)
+					: (float)Math.Exp(-(phf - pluckAttack) / pluckDecay);
 				float env = 1f;
 				if (i < fade) env = i / (float)fade;
 				else if (i >= n - fade) env = (n - 1 - i) / (float)fade;
-				Assert.Equal((float)sample * trem * env * amplitude, actual[i], 4);
+				Assert.Equal((float)sample * pluck * env * amplitude, actual[i], 4);
 			}
 			Assert.True(droppedAny, "test rate did not actually force any harmonic to be dropped");
 		}

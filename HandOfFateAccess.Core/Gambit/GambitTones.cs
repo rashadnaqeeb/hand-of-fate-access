@@ -2,10 +2,13 @@ using System;
 
 namespace HandOfFateAccess.Gambit {
 	/// <summary>
-	/// Synthesizes each card's fixed identity tone for the gambit. Every slot gets a distinct,
-	/// memorable timbre that travels with its card: one octave higher per slot, a richer
-	/// harmonic recipe per slot, and a faster tremolo per slot. The player learns "this sound
-	/// is this card" in the Establish walk, then follows that sound through the shuffle.
+	/// Synthesizes each card's fixed identity tone for the gambit. Every slot is a distinct,
+	/// memorable instrument that travels with its card: one octave higher per slot, its own
+	/// harmonic recipe, and its own pulse. Slot 0 is an organ, 1 a violin, 2 a guitar, 3 a bell.
+	/// The two low/slow voices carry on full harmonic bodies (a bare sine at 130 Hz was too thin
+	/// to localize and track); the two high voices are plucked/struck, so each pulse is a fresh
+	/// attack and reads as an instrument rather than a tremolo'd drone. The player learns "this
+	/// sound is this card" in the Establish walk, then follows that sound through the shuffle.
 	///
 	/// Two voicings share the timbre. The Establish tone (<see cref="Generate"/>) is a short
 	/// one-shot with fades, played per slot as it is taught and again as a probe while picking.
@@ -21,18 +24,24 @@ namespace HandOfFateAccess.Gambit {
 
 		private const float EstablishAmplitude = 0.5f;
 		private const float ShuffleAmplitude = 0.30f;
-		private const float FadeSeconds = 0.008f;   // click-free in/out for the one-shot
-		private const float TremoloDepth = 0.6f;    // amplitude swings between 0.4 and 1.0
+		private const float FadeSeconds = 0.008f;          // click-free in/out for the one-shot
+		private const float PluckAttackFraction = 0.015f;  // fraction of a pluck period spent ramping up
+		private const float PluckDecay = 0.30f;            // exp decay constant, in pluck-period fractions
 
-		// Per-slot identity. Indices past the table reuse the brightest harmonic recipe at a
-		// capped octave and a still-rising tremolo; chance gambits past four cards are rare.
+		private enum Artic { Sustain, Pluck }
+
+		// Per-slot identity. Indices past the table reuse the brightest (bell) recipe, plucked, at a
+		// capped octave and a still-rising pulse; chance gambits past four cards are rare.
 		private static readonly float[] Frequencies = { 130.81f, 261.63f, 523.25f, 1046.50f };
-		private static readonly float[] TremoloRates = { 2.0f, 3.5f, 6.0f, 10.0f };
+		private static readonly float[] PulseRates = { 2.5f, 4.0f, 6.0f, 10.0f };
+		private static readonly Artic[] Articulations = { Artic.Sustain, Artic.Sustain, Artic.Pluck, Artic.Pluck };
+		private static readonly float[] TremoloDepths = { 0.5f, 0.35f, 0f, 0f };   // sustain voices only
+		private static readonly float[] VibratoDepths = { 0f, 0.007f, 0f, 0f };    // violin gets a vibrato handle
 		private static readonly float[][] HarmonicSets = {
-			new[] { 1.0f },
-			new[] { 1.0f, 0f, 0.12f, 0f, 0.04f },
-			new[] { 1.0f, 0f, 0.33f, 0f, 0.20f, 0f, 0.14f },
-			new[] { 1.0f, 0.5f, 0.33f, 0.25f, 0.20f, 0.16f },
+			new[] { 1.0f, 0.6f, 0.8f, 0.4f, 0.5f, 0.25f, 0.3f, 0.15f },    // organ: full drawbar stack so a low note carries
+			new[] { 1.0f, 0.5f, 0.33f, 0.25f, 0.2f, 0.16f, 0.14f, 0.12f }, // violin: bowed sawtooth, vibrato added in Render
+			new[] { 1.0f, 0.8f, 0.6f, 0.35f, 0.18f, 0.1f },               // guitar: warm pluck, harmonics 1-3 dominant
+			new[] { 1.0f, 0.7f, 0.5f, 0.45f, 0.35f, 0.3f, 0.22f, 0.18f }, // bell: bright strike
 		};
 
 		/// <summary>The short Establish/probe one-shot for <paramref name="slotIndex"/>.</summary>
@@ -43,30 +52,40 @@ namespace HandOfFateAccess.Gambit {
 			int fade = (int)(FadeSeconds * sampleRate + 0.5f);
 			if (fade < 1) fade = 1;
 
-			float freq = SlotFrequency(slotIndex, sampleRate);
-			float tremolo = SlotTremolo(slotIndex);
-			return Render(n, sampleRate, freq, tremolo, SlotHarmonics(slotIndex), EstablishAmplitude, fade);
+			return Render(n, sampleRate, slotIndex,
+				SlotFrequency(slotIndex, sampleRate), SlotPulseRate(slotIndex), SlotVibratoRate(slotIndex),
+				EstablishAmplitude, fade);
 		}
 
-		/// <summary>The seamless shuffle loop for <paramref name="slotIndex"/>. Frequency and
-		/// tremolo are quantized to an integer number of cycles over the buffer so it loops
-		/// click-free (both return to phase zero at the wrap, where the waveform is also zero).</summary>
+		/// <summary>The seamless shuffle loop for <paramref name="slotIndex"/>. Frequency, pulse and
+		/// vibrato rates are quantized to a whole number of cycles over the buffer so it loops
+		/// click-free: the carrier returns to phase zero at the wrap, a plucked voice's last pulse
+		/// ends exactly at the buffer end, and the vibrato completes whole cycles so it adds no net
+		/// phase across the seam.</summary>
 		public static float[] GenerateSustain(int slotIndex, int sampleRate) {
 			slotIndex = Normalize(slotIndex);
 			sampleRate = sampleRate > 0 ? sampleRate : 44100;
 			int n = (int)(SustainSeconds * sampleRate + 0.5f);
 
 			double length = n / (double)sampleRate;
-			float freq = (float)(Math.Round(SlotFrequency(slotIndex, sampleRate) * length) / length);
-			float tremolo = (float)(Math.Round(SlotTremolo(slotIndex) * length) / length);
-			return Render(n, sampleRate, freq, tremolo, SlotHarmonics(slotIndex), ShuffleAmplitude, 0);
+			float freq = Quantize(SlotFrequency(slotIndex, sampleRate), length);
+			float pulse = Quantize(SlotPulseRate(slotIndex), length);
+			float vibrato = Quantize(SlotVibratoRate(slotIndex), length);
+			return Render(n, sampleRate, slotIndex, freq, pulse, vibrato, ShuffleAmplitude, 0);
 		}
 
-		// Additive harmonics times amplitude tremolo, optionally with linear fades over the
-		// first and last <paramref name="fade"/> samples (fade 0 leaves the ends untouched,
-		// for a looping buffer).
-		private static float[] Render(int n, int sampleRate, float freq, float tremolo,
-				float[] harmonics, float amplitude, int fade) {
+		// Additive harmonics over a phase-accumulated fundamental (so vibrato is a true frequency
+		// modulation that the harmonics track), shaped by the slot's articulation: a sustained
+		// tremolo swell for the organ/violin, or a per-pulse pluck envelope (sharp attack, exp
+		// decay) for the guitar/bell. Optional linear fades over the first and last
+		// <paramref name="fade"/> samples (fade 0 leaves the ends untouched, for a looping buffer).
+		private static float[] Render(int n, int sampleRate, int slotIndex,
+				float freq, float pulseRate, float vibratoRate, float amplitude, int fade) {
+			float[] harmonics = SlotHarmonics(slotIndex);
+			Artic artic = Articulations[Math.Min(slotIndex, Articulations.Length - 1)];
+			float tremoloDepth = TremoloDepths[Math.Min(slotIndex, TremoloDepths.Length - 1)];
+			float vibratoDepth = VibratoDepths[Math.Min(slotIndex, VibratoDepths.Length - 1)];
+
 			float harmNorm = 0f;
 			foreach (float h in harmonics) harmNorm += Math.Abs(h);
 			if (harmNorm <= 0f) harmNorm = 1f;
@@ -78,9 +97,10 @@ namespace HandOfFateAccess.Gambit {
 
 			float[] buffer = new float[n];
 			const double twoPi = 2.0 * Math.PI;
+			double phase = 0.0;   // accumulated fundamental phase; starts at zero (a zero crossing)
+			double pluckPeriod = (artic == Artic.Pluck && pulseRate > 0f) ? 1.0 / pulseRate : 0.0;
 			for (int i = 0; i < n; i++) {
 				double t = i / (double)sampleRate;
-				double phase = twoPi * freq * t;
 
 				double sample = 0.0;
 				for (int k = 0; k < harmonics.Length; k++)
@@ -88,28 +108,51 @@ namespace HandOfFateAccess.Gambit {
 						sample += harmonics[k] * Math.Sin((k + 1) * phase);
 				sample /= harmNorm;
 
-				float tremGain = tremolo > 0f
-					? 1f - TremoloDepth * 0.5f * (1f + (float)Math.Sin(twoPi * tremolo * t))
-					: 1f;
+				// Advance the fundamental phase, vibrato included so the harmonics wobble with it.
+				double f = vibratoDepth != 0f
+					? freq * (1.0 + vibratoDepth * Math.Sin(twoPi * vibratoRate * t))
+					: freq;
+				phase += twoPi * f / sampleRate;
+
+				float artGain;
+				if (pluckPeriod > 0.0) {
+					double ph = (t % pluckPeriod) / pluckPeriod;   // 0..1 within the current pluck
+					artGain = ph < PluckAttackFraction
+						? (float)(ph / PluckAttackFraction)
+						: (float)Math.Exp(-(ph - PluckAttackFraction) / PluckDecay);
+				} else if (pulseRate > 0f && tremoloDepth > 0f) {
+					artGain = 1f - tremoloDepth * 0.5f * (1f + (float)Math.Sin(twoPi * pulseRate * t));
+				} else {
+					artGain = 1f;
+				}
+
 				float env = 1f;
 				if (fade > 0) {
 					if (i < fade) env = i / (float)fade;
 					else if (i >= n - fade) env = (n - 1 - i) / (float)fade;
 				}
-				buffer[i] = (float)sample * tremGain * env * amplitude;
+				buffer[i] = (float)sample * artGain * env * amplitude;
 			}
 			return buffer;
 		}
+
+		// Round a rate to a whole number of cycles over a buffer of the given length, so it tiles
+		// the loop seamlessly. A zero rate (no vibrato) stays zero.
+		private static float Quantize(float rate, double length) =>
+			(float)(Math.Round(rate * length) / length);
 
 		private static int Normalize(int slotIndex) => slotIndex < 0 ? 0 : slotIndex;
 
 		private static float[] SlotHarmonics(int slotIndex) =>
 			HarmonicSets[Math.Min(slotIndex, HarmonicSets.Length - 1)];
 
-		private static float SlotTremolo(int slotIndex) =>
-			slotIndex < TremoloRates.Length
-				? TremoloRates[slotIndex]
-				: TremoloRates[TremoloRates.Length - 1] + (slotIndex - TremoloRates.Length + 1) * 4f;
+		private static float SlotPulseRate(int slotIndex) =>
+			slotIndex < PulseRates.Length
+				? PulseRates[slotIndex]
+				: PulseRates[PulseRates.Length - 1] + (slotIndex - PulseRates.Length + 1) * 4f;
+
+		private static float SlotVibratoRate(int slotIndex) =>
+			slotIndex < VibratoDepths.Length && VibratoDepths[slotIndex] != 0f ? 5.5f : 0f;
 
 		private static float SlotFrequency(int slotIndex, int sampleRate) {
 			float freq = slotIndex < Frequencies.Length
