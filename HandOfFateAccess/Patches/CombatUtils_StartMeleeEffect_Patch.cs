@@ -20,7 +20,8 @@ namespace HandOfFateAccess.Patches {
 	internal static class CombatUtils_StartMeleeEffect_Patch {
 		private static void Prefix(Model a_model, bool a_blockable) {
 			try {
-				AttackCues.RecordAction(a_blockable, a_model.transform.position);
+				AttackCues.RecordAction(a_blockable, a_model.transform.position,
+					AttackCues.SourceKeyFrom(a_model));
 			} catch (Exception ex) {
 				Log.Error("melee action cue failed: " + ex);
 			}

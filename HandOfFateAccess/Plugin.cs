@@ -285,6 +285,22 @@ namespace HandOfFateAccess {
 				new System.Type[0],
 				prefix: AccessTools.Method(typeof(ActionHermitBomb_OnThrow_Patch), "Prefix"),
 				postfix: null);
+
+			// The mover hazards: lobs and lightning heads fly like projectiles but never enter
+			// CombatManager's projectile list, so each class's own OnEngage override (both
+			// verified to declare one; the base would catch every proxy type) feeds the flight
+			// voice and the per-attacker-gated launch cue through one shared postfix.
+			var moverEngagePostfix = AccessTools.Method(typeof(CombatProxyMover_OnEngage_Patch), "Postfix");
+			patcher.Patch(
+				typeof(CombatProxyLob), "OnEngage",
+				new System.Type[0],
+				prefix: null,
+				postfix: moverEngagePostfix);
+			patcher.Patch(
+				typeof(CombatProxyLightning), "OnEngage",
+				new System.Type[0],
+				prefix: null,
+				postfix: moverEngagePostfix);
 		}
 
 		// The log-only diagnostic patches: the damage tripwire on the one chokepoint all damage

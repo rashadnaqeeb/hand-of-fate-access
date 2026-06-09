@@ -24,11 +24,20 @@ namespace HandOfFateAccess.Combat {
 	///
 	/// Core's <see cref="AttackCueComposer"/> decides the sample and its pan/pitch/volume from the
 	/// attacker's offset; this reads that offset off the live combat frame and owns the playback.
+	///
+	/// Mover hazards (lobs, lightning heads) also cue here as they launch, always as a dodge:
+	/// their proxies announce no parry window, but the launch is the moment to start moving.
+	/// Whether the launch actually plays is decided by Core's <see cref="MoverCueGate"/>: an
+	/// attack that already telegraphed (the Hermit's throw, a boss's Begin) must not crack a
+	/// second time when its proxy engages, so every cue record carries its attacker's key and
+	/// a launch goes silent while that attacker's last cue is fresh.
 	/// </summary>
 	internal sealed class AttackCues {
 		private struct Pending {
 			public string Key;
 			public Vector3 Position;
+			public int SourceKey;
+			public bool IsLaunch;
 		}
 
 		// Single Unity thread: the hooks fire during the game's combat update and this pump runs
@@ -46,10 +55,45 @@ namespace HandOfFateAccess.Combat {
 		private static float _lastCueTime = -1f;
 		public static float LastCueTime => _lastCueTime;
 
+		// Per-source launch dedup, fed by the pump as cues actually play. Mod-side event
+		// bookkeeping; cleared whenever combat is not live.
+		private readonly MoverCueGate _gate = new MoverCueGate();
+
 		/// <summary>Record an attack's cue (block when <paramref name="blockable"/>, else dodge)
-		/// at the attacker's world position. Called from the effect-start hooks.</summary>
-		public static void RecordAction(bool blockable, Vector3 position) {
-			_pending.Enqueue(new Pending { Key = AttackCueComposer.ActionKey(blockable), Position = position });
+		/// at the attacker's world position, keyed by <paramref name="sourceKey"/> (see
+		/// <see cref="SourceKeyFrom"/>) so the attacker's mover launches dedupe against it.
+		/// Called from the effect-start hooks.</summary>
+		public static void RecordAction(bool blockable, Vector3 position, int sourceKey) {
+			_pending.Enqueue(new Pending {
+				Key = AttackCueComposer.ActionKey(blockable),
+				Position = position,
+				SourceKey = sourceKey,
+			});
+		}
+
+		/// <summary>
+		/// Record a mover hazard's launch cue, always a dodge (nothing about a lob or a
+		/// lightning head can be blocked), at the proxy's spawn position: the cue names where
+		/// the threat comes from, then the flight voice carries it. Whether it actually plays
+		/// is the pump's gate call. Called from the mover engage hook, which has already
+		/// filtered for hostile sources.
+		/// </summary>
+		public static void RecordMoverLaunch(Vector3 position, int sourceKey) {
+			_pending.Enqueue(new Pending {
+				Key = AttackCueComposer.DodgeKey,
+				Position = position,
+				SourceKey = sourceKey,
+				IsLaunch = true,
+			});
+		}
+
+		/// <summary>The dedup key for the attacker behind a cue: its <c>Targetable</c>'s
+		/// instance id, found on or above <paramref name="attacker"/> (an attack's Model or an
+		/// action's ActorTransform sits inside the actor hierarchy that carries it). 0 when
+		/// none is found, which the gate treats as "unknown: never note, never suppress".</summary>
+		public static int SourceKeyFrom(Component attacker) {
+			Targetable targetable = attacker.GetComponentInParent<Targetable>();
+			return targetable != null ? targetable.GetInstanceID() : MoverCueGate.UnknownSource;
 		}
 
 		/// <summary>
@@ -89,12 +133,20 @@ namespace HandOfFateAccess.Combat {
 			if (!AudioEngine.IsAvailable || CombatEncounter.Instance == null
 					|| !CombatFrame.TryGet(out CombatFrame frame)) {
 				_pending.Clear();
+				_gate.Clear();
 				return;
 			}
 
 			while (_pending.Count > 0) {
 				Pending cue = _pending.Dequeue();
 				if (!_loaded.Contains(cue.Key)) continue;
+				if (cue.IsLaunch) {
+					// One attack, one cue: a mover whose attacker telegraphed within the
+					// window stays silent.
+					if (!_gate.ShouldCueLaunch(cue.SourceKey, Time.time)) continue;
+				} else {
+					_gate.NoteAttackCue(cue.SourceKey, Time.time);
+				}
 				Vector3 rel = cue.Position - frame.Origin;
 				SoundParams sp = AttackCueComposer.Compose(
 					Vector3.Dot(rel, frame.Right), Vector3.Dot(rel, frame.Forward));

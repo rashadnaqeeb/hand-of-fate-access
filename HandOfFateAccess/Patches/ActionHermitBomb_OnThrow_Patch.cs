@@ -14,7 +14,8 @@ namespace HandOfFateAccess.Patches {
 	internal static class ActionHermitBomb_OnThrow_Patch {
 		private static void Prefix(ActionHermitBomb __instance) {
 			try {
-				AttackCues.RecordAction(false, __instance.ActorTransform.position);
+				AttackCues.RecordAction(false, __instance.ActorTransform.position,
+					AttackCues.SourceKeyFrom(__instance.ActorTransform));
 			} catch (Exception ex) {
 				Log.Error("hermit bomb cue failed: " + ex);
 			}
