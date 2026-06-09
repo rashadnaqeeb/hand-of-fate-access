@@ -1,0 +1,7 @@
+# Build byproducts. The source (hofsapi.cpp) and the vendored HofSapi.dll are tracked;
+# everything the compiler emits alongside them is not.
+*.obj
+*.lib
+*.exp
+*.log
+exports.txt

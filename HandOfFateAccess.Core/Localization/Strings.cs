@@ -165,6 +165,19 @@ namespace HandOfFateAccess.Localization {
 		public static readonly string DirLeft = "left";
 		public static readonly string DirRight = "right";
 
+		// The chance gambit's spoken card statuses are NOT authored here: the game has its
+		// own localized outcome titles (CHANCE_TITLE_SUCCESS and friends), read live through
+		// Localization.Localize in GambitStatusSpeech so they speak in the player's language.
+
+		// A chance card's current left-to-right position while picking, spoken in place of its
+		// hidden "face down card" identity so the player can navigate to the slot they tracked
+		// by ear. {0} is the 1-based slot number. The shuffled face-down cards are otherwise
+		// indistinguishable, so position is the one thing worth saying. The game has no such
+		// label, so it is authored here.
+		public static string GambitSlot(int number) {
+			return string.Format("Slot {0}", number);
+		}
+
 		// Plugin lifecycle. Spoken once at startup to confirm the accessibility mod
 		// is running. {0} is the mod version (e.g. "0.1.0"). The product name is part
 		// of this string and IS meant to be translated: render "Hand of Fate Access"

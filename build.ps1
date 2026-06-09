@@ -92,6 +92,17 @@ foreach ($f in $TolkFiles) {
 }
 Write-Host "Deployed $($TolkFiles.Count) Tolk runtime file(s) to $PluginsDir" -ForegroundColor Green
 
+# Deploy the vendored x86 SAPI shim (HofSapi.dll). Built separately from native\hofsapi
+# via build.bat; the gambit's spoken card statuses render through it. Co-located with the
+# plugin so NativeLoader can find it.
+$SapiDll = "$PSScriptRoot\native\hofsapi\HofSapi.dll"
+if (Test-Path $SapiDll) {
+    Copy-Item $SapiDll "$PluginsDir\HofSapi.dll" -Force
+    Write-Host "Deployed HofSapi.dll to $PluginsDir" -ForegroundColor Green
+} else {
+    Write-Host "WARNING: HofSapi.dll not found at $SapiDll; build it via native\hofsapi\build.bat" -ForegroundColor Yellow
+}
+
 # Deploy the authored audio cues (wall tones, etc). The plugin loads these at
 # runtime from a sounds folder beside its DLL, so mirror the repo's sounds folder.
 $SoundsSrc = "$PSScriptRoot\sounds"

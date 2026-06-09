@@ -5,6 +5,7 @@ using BepInEx;
 using HandOfFateAccess.Audio;
 using HandOfFateAccess.Combat;
 using HandOfFateAccess.Focus;
+using HandOfFateAccess.Gambit;
 using HandOfFateAccess.Input;
 using HandOfFateAccess.Localization;
 using HandOfFateAccess.Maps;
@@ -52,6 +53,8 @@ namespace HandOfFateAccess {
 		private WallTones _wallTones;
 		private CollisionCue _collisionCue;
 		private ProjectileSonification _projectiles;
+		private GambitStatusSpeech _gambitStatus;
+		private GambitWatcher _gambit;
 		private MapCursor _mapCursor;
 		private bool _wasOnMap;
 		private GameObject _lastMapSelection;
@@ -76,6 +79,7 @@ namespace HandOfFateAccess {
 			_wallTones.Pump();
 			_collisionCue.Pump();
 			_projectiles.Pump();
+			_gambit.Pump();
 
 			if (_speechReady) {
 				_screenWatcher.Pump();
@@ -87,11 +91,18 @@ namespace HandOfFateAccess {
 			}
 		}
 
+		// Release the native SAPI voice (and its COM init) on teardown. Other subsystems are
+		// left to process exit; the SAPI shim owns an out-of-process COM voice worth releasing.
+		private void OnDestroy() {
+			_gambitStatus?.Shutdown();
+		}
+
 		private void Initialize() {
 			Log.Info("update reached; initializing speech");
 			Assembly assembly = Assembly.GetExecutingAssembly();
 			string pluginDir = Path.GetDirectoryName(assembly.Location);
 			NativeLoader.Preload(pluginDir, "Tolk.dll");
+			NativeLoader.Preload(pluginDir, "HofSapi.dll");
 
 			// Non-speech audio voice pool. Independent of speech (combat sonification
 			// needs no screen reader), so it comes up regardless of the Tolk result. No
@@ -107,6 +118,19 @@ namespace HandOfFateAccess {
 			_collisionCue.Initialize(pluginDir);
 			_projectiles = new ProjectileSonification();
 			_projectiles.Initialize();
+
+			// The chance gambit's spoken card statuses render through SAPI (for pan and
+			// timing) and play off the audio voice pool, so they come up here with the other
+			// audio features, independent of the screen-reader speech path. The watcher adds
+			// the per-slot identity tones and drives the Establish walk.
+			_gambitStatus = new GambitStatusSpeech();
+			_gambitStatus.Initialize();
+			_gambit = new GambitWatcher(_gambitStatus);
+			// Install the gambit hooks here, with the audio path, so they come up whether or not
+			// the screen-reader speech path does: the gambit's audio is independent of Tolk. Only
+			// patch when the feature is actually available (SAPI rendered the tones/words).
+			if (_gambit.Initialize())
+				InstallGambitPatches();
 
 			if (!SpeechEngine.Initialize(new TolkBackend())) {
 				Log.Warn("speech unavailable; focus announcements disabled");
@@ -194,6 +218,26 @@ namespace HandOfFateAccess {
 				postfix: null);
 		}
 
+		// The chance-gambit hooks, kept out of InstallPatches so they install with the audio path
+		// regardless of whether the screen-reader speech path came up.
+		private void InstallGambitPatches() {
+			var patcher = new HarmonyPatcher(new Harmony(PluginGuid + ".gambit"));
+			// Chance cards flip face up here just before the held shuffle; the postfix flags it
+			// for the gambit pump to run the Establish walk.
+			patcher.Patch(
+				typeof(CardContainer), "FlipCards",
+				new[] { typeof(bool), typeof(bool) },
+				prefix: null,
+				postfix: AccessTools.Method(typeof(CardContainer_FlipCards_Patch), "Postfix"));
+			// The shuffle coroutine starting is the cue to follow the cards by ear. AnimatedShuffle
+			// is an iterator, so the postfix fires when the coroutine is created, as it begins.
+			patcher.Patch(
+				typeof(CardChoiceContainer), "AnimatedShuffle",
+				new[] { typeof(int), typeof(float) },
+				prefix: null,
+				postfix: AccessTools.Method(typeof(CardChoiceContainer_AnimatedShuffle_Patch), "Postfix"));
+		}
+
 		// The focused control and its last spoken readout, kept so an in-place value
 		// change (a selector/toggle that updates its label without moving focus) is
 		// detected by re-reading it each frame.
@@ -279,6 +323,10 @@ namespace HandOfFateAccess {
 			string label = "focus";
 			try {
 				label = go.name;
+				// While picking a shuffled chance card, speak its current slot number instead of
+				// the identical "face down card", so the player can reach the slot they tracked.
+				if (_gambit != null && _gambit.TrySlotName(go, out int slot))
+					return Strings.GambitSlot(slot);
 				UIElement element = ProxyFactory.Create(go);
 				if (element == null) {
 					// A structural selectable (group/blocker) grabbed focus with no content

@@ -33,6 +33,23 @@ namespace HandOfFateAccess.Focus {
 		}
 
 		/// <summary>
+		/// Forces the current selection to be re-announced even though it has not changed, for
+		/// when its readout changed because the context did, not the selection: the chance
+		/// gambit entering its pick phase, where the already-selected card now reads as a slot
+		/// number rather than "face down card". Without this the focus path, which only fires on
+		/// a selection change, would not speak the new readout until the player first moved.
+		/// No-op if nothing is selected.
+		/// </summary>
+		public static void Refresh(bool userInitiated) {
+			GameObject go = UICamera.selectedObject;
+			if (go == null) return;
+			_pending = go;
+			_lastRecorded = go;
+			_pendingUserInitiated = userInitiated;
+			_dirty = true;
+		}
+
+		/// <summary>
 		/// If focus changed since the last call, hand back the focused object and
 		/// whether the user drove the change, and clear the dirty flag. Returns false
 		/// when nothing is pending.
