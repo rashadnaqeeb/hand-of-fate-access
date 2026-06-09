@@ -1,4 +1,3 @@
-using HandOfFateAccess.Audio;
 using HandOfFateAccess.Focus;
 using HandOfFateAccess.Util;
 using UnityEngine;
@@ -20,15 +19,15 @@ namespace HandOfFateAccess.Gambit {
 	/// position they tracked through the shuffle and end hold; making any sound per card here
 	/// would either reveal the hidden outcome or clutter the pick.
 	///
-	/// Each card's identity is its starting slot; it travels with the card (held by live
-	/// reference, the sanctioned exception to the no-cached-state rule) while its type and
-	/// position are re-read every frame. Sequencing uses unscaled time. The Harmony hooks only
-	/// set flags; all work runs from the Update pump. A frozen-time safety guarantees time is
-	/// restored so the gambit can never hang the game.
+	/// Tones and words play through <see cref="GambitVoice"/> objects (equal-power panning,
+	/// like the projectile voices and the validated prototype), not the panStereo audio backend,
+	/// so positions read evenly across the field. Each card's identity is its starting slot; it
+	/// travels with the card (held by live reference, the sanctioned exception to the
+	/// no-cached-state rule) while its type and position are re-read every frame. Sequencing uses
+	/// unscaled time. The Harmony hooks only set flags; all work runs from the Update pump. A
+	/// frozen-time safety guarantees time is restored so the gambit can never hang the game.
 	/// </summary>
 	public sealed class GambitWatcher {
-		private const string TonePrefix = "gambit.tone.";
-		private const string SustainPrefix = "gambit.sustain.";
 		private const int MaxSlots = 9;             // CardChoiceContainer.maxCards
 		private const float SlotGapSeconds = 0.15f;
 		private const float EstablishSafetySeconds = 12f;
@@ -39,8 +38,20 @@ namespace HandOfFateAccess.Gambit {
 		private enum Phase { Idle, Establishing, Shuffling, Selecting }
 
 		private readonly GambitStatusSpeech _speech;
-		private readonly float[] _toneDurations = new float[MaxSlots];
 		private bool _available;
+		private int _outRate;
+
+		// Identity tone buffers, generated once at the output rate. _toneBuffers are the short
+		// Establish/probe one-shots; _sustainBuffers are the seamless shuffle loops.
+		private float[][] _toneBuffers;
+		private float[][] _sustainBuffers;
+		private readonly float[] _toneDurations = new float[MaxSlots];
+
+		// Equal-power voices: one per card for the shuffle, plus a tone and a word voice for the
+		// sequential Establish walk.
+		private GambitVoice[] _cardVoices;
+		private GambitVoice _toneVoice;
+		private GambitVoice _wordVoice;
 
 		private Phase _phase;
 		// True from establishing a set until its cards clear, so a gambit establishes once even
@@ -63,9 +74,7 @@ namespace HandOfFateAccess.Gambit {
 		private float _pendingPan;
 		private float _establishDeadline;
 
-		// Shuffle voices, one per tracked card; index matches _cards. _voicePan is each tone's
-		// current (eased) pan, gliding toward the card's live slot.
-		private HandOfFateAccess.Audio.Voice[] _voices;
+		// Shuffle: _voicePan is each tone's current (eased) pan, gliding toward its card's slot.
 		private float[] _voicePan;
 		private float _shuffleDeadline;
 		private bool _settling;        // in the brief end-of-shuffle hold
@@ -75,22 +84,44 @@ namespace HandOfFateAccess.Gambit {
 			_speech = speech;
 		}
 
-		/// <summary>Registers the per-slot identity tones (one-shot and sustained) as clips.
+		/// <summary>Generates the identity tone buffers and creates the equal-power voices.
 		/// Available only if the gambit speech (SAPI) came up, since the tones are useless
 		/// without the spoken outcomes that name them.</summary>
 		public bool Initialize() {
+			if (_toneVoice != null) return _available;   // idempotent: never build a second voice set
 			_available = _speech != null && _speech.IsAvailable;
 			if (!_available) return false;
 
-			int rate = AudioSettings.outputSampleRate > 0 ? AudioSettings.outputSampleRate : 44100;
+			_outRate = AudioSettings.outputSampleRate > 0 ? AudioSettings.outputSampleRate : 44100;
+			_toneBuffers = new float[MaxSlots][];
+			_sustainBuffers = new float[MaxSlots][];
 			for (int i = 0; i < MaxSlots; i++) {
-				float[] tone = GambitTones.Generate(i, rate);
-				AudioEngine.Register(TonePrefix + i, tone, 1, rate);
-				_toneDurations[i] = tone.Length / (float)rate;
-				AudioEngine.Register(SustainPrefix + i, GambitTones.GenerateSustain(i, rate), 1, rate);
+				_toneBuffers[i] = GambitTones.Generate(i, _outRate);
+				_toneDurations[i] = _toneBuffers[i].Length / (float)_outRate;
+				_sustainBuffers[i] = GambitTones.GenerateSustain(i, _outRate);
 			}
-			Log.Info("gambit identity tones ready");
+
+			var root = new GameObject("HoFAccess_GambitVoices");
+			UnityEngine.Object.DontDestroyOnLoad(root);
+			// A silent looping clip keeps each voice's filter callback firing; the callback
+			// overwrites it with the panned buffer.
+			AudioClip silence = AudioClip.Create("hofaccess_gambit_silence", 2048, 1, _outRate, false);
+			_toneVoice = CreateVoice(root, "GambitToneVoice", silence);
+			_wordVoice = CreateVoice(root, "GambitWordVoice", silence);
+			_cardVoices = new GambitVoice[MaxSlots];
+			for (int i = 0; i < MaxSlots; i++)
+				_cardVoices[i] = CreateVoice(root, "GambitCardVoice" + i, silence);
+
+			Log.Info("gambit voices ready");
 			return true;
+		}
+
+		private static GambitVoice CreateVoice(GameObject root, string name, AudioClip silence) {
+			var go = new GameObject(name);
+			go.transform.parent = root.transform;
+			var voice = go.AddComponent<GambitVoice>();
+			voice.Init(silence);
+			return voice;
 		}
 
 		public void Pump() {
@@ -141,6 +172,12 @@ namespace HandOfFateAccess.Gambit {
 		// holds a non-chance card choice, since FlipCards face-up fires for those too.
 		private bool Capture(CardChoiceContainer container) {
 			var cards = container.Cards;
+			if (cards.Count > MaxSlots) {
+				// The container caps at MaxSlots; guard anyway so a larger set degrades to no
+				// audio rather than an out-of-range crash on the per-slot voice arrays.
+				Log.Warn($"gambit has {cards.Count} cards, more than {MaxSlots}; skipping gambit audio");
+				return false;
+			}
 			var refs = new ChanceCard[cards.Count];
 			for (int i = 0; i < cards.Count; i++) {
 				ChanceCard card = cards[i] as ChanceCard;
@@ -149,7 +186,6 @@ namespace HandOfFateAccess.Gambit {
 			}
 			_cards = refs;
 			_count = cards.Count;
-			_voices = new HandOfFateAccess.Audio.Voice[_count];
 			_voicePan = new float[_count];
 			return true;
 		}
@@ -157,7 +193,7 @@ namespace HandOfFateAccess.Gambit {
 		// --- Establish ---
 
 		private void BeginEstablish() {
-			_speech.Prepare();   // render the localized words so their durations are known
+			_speech.Prepare();   // render the localized words so their buffers/durations are known
 			_establishedThisGambit = true;
 			_phase = Phase.Establishing;
 			Freeze();
@@ -179,7 +215,8 @@ namespace HandOfFateAccess.Gambit {
 			if (Time.unscaledTime < _nextEventTime) return;
 
 			if (_wordPending) {
-				_speech.Speak(_pendingOutcome, _pendingPan);
+				if (_speech.TryGetWord(_pendingOutcome, out float[] pcm, out int rate))
+					_wordVoice.Play(pcm, rate, false, _pendingPan, 1f);
 				float wordSeconds;
 				if (!_speech.TryGetDuration(_pendingOutcome, out wordSeconds)) wordSeconds = 0.4f;
 				_nextEventTime = Time.unscaledTime + wordSeconds + SlotGapSeconds;
@@ -196,14 +233,13 @@ namespace HandOfFateAccess.Gambit {
 
 		private void StartSlotTone(int index) {
 			float pan = GambitLayout.SlotPan(index, _count);
+			_toneVoice.Play(_toneBuffers[index], _outRate, false, pan, 1f);
 			if (_cards[index] != null) {
-				AudioEngine.PlayOneShot(TonePrefix + index, new SoundParams(pan, 1f, 1f));
 				_pendingOutcome = ToOutcome(_cards[index].ChanceType);
 			} else {
 				// A card vanished mid-walk (unexpected while time is frozen): play the tone but
 				// log rather than silently speaking a possibly-wrong outcome.
 				Log.Warn($"gambit establish: card at slot {index} is gone; outcome unknown");
-				AudioEngine.PlayOneShot(TonePrefix + index, new SoundParams(pan, 1f, 1f));
 				_pendingOutcome = ChanceOutcome.Success;
 			}
 			_pendingPan = pan;
@@ -234,7 +270,7 @@ namespace HandOfFateAccess.Gambit {
 				if (_cards[i] == null) continue;
 				float pan = SlotPan(cards, _cards[i], i);
 				_voicePan[i] = pan;
-				_voices[i] = AudioEngine.Play(SustainPrefix + i, new SoundParams(pan, 1f, 1f), true);
+				_cardVoices[i].Play(_sustainBuffers[i], _outRate, true, pan, 1f);
 			}
 			Log.Info("gambit shuffle: following cards");
 		}
@@ -251,10 +287,10 @@ namespace HandOfFateAccess.Gambit {
 			var cards = container.Cards;
 			float k = 1f - Mathf.Exp(-Time.unscaledDeltaTime / PanSmoothTau);
 			for (int i = 0; i < _count; i++) {
-				if (!_voices[i].IsValid || _cards[i] == null) continue;
+				if (_cards[i] == null) continue;
 				float target = SlotPan(cards, _cards[i], i);
 				_voicePan[i] += (target - _voicePan[i]) * k;
-				AudioEngine.Update(_voices[i], new SoundParams(_voicePan[i], 1f, 1f));
+				_cardVoices[i].SetPan(_voicePan[i]);
 			}
 
 			// The cards become pickable when the shuffle ends; the first focus on one is the cue.
@@ -339,11 +375,11 @@ namespace HandOfFateAccess.Gambit {
 		}
 
 		private void StopVoices() {
-			if (_voices == null) return;
-			for (int i = 0; i < _voices.Length; i++) {
-				if (_voices[i].IsValid) AudioEngine.Stop(_voices[i]);
-				_voices[i] = HandOfFateAccess.Audio.Voice.None;
-			}
+			if (_toneVoice != null) _toneVoice.Stop();
+			if (_wordVoice != null) _wordVoice.Stop();
+			if (_cardVoices == null) return;
+			for (int i = 0; i < _cardVoices.Length; i++)
+				if (_cardVoices[i] != null) _cardVoices[i].Stop();
 		}
 
 		private void Freeze() {

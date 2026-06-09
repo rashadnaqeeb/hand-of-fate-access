@@ -83,6 +83,14 @@ namespace HandOfFateAccess.Speech {
 				byte[] wav = new byte[len];
 				Marshal.Copy(buf, wav, 0, len);
 				WavAudio.Decode(wav, out pcm, out channels, out sampleRate);
+				// Log the raw format so a stereo render (which Unity's panStereo would place
+				// differently than a mono tone at the same pan) is visible, not guessed.
+				Log.Info($"SAPI render '{text}': {channels}ch, {sampleRate}Hz, {pcm.Length} samples");
+				// Fold to mono so panning matches the mono identity tones, then trim SAPI's
+				// leading/trailing digital silence so the spoken word starts tight against its tone.
+				pcm = Pcm.DownmixToMono(pcm, channels);
+				channels = 1;
+				pcm = Pcm.TrimSilence(pcm, 0.003f, (int)(0.005f * sampleRate));
 				return true;
 			} catch (Exception ex) {
 				Log.Error($"SAPI render of '{text}' failed: {ex}");

@@ -18,12 +18,18 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void InteriorSlots_SpreadEvenlyAndSymmetric() {
-			Assert.Equal(-1f / 3f, GambitLayout.SlotPan(1, 4), 5);
-			Assert.Equal(1f / 3f, GambitLayout.SlotPan(2, 4), 5);
-			// Symmetric about centre.
+		public void FourCards_MatchValidatedWideLayout() {
+			// The prototype layout, inner cards pushed out to +-0.5 rather than +-0.33.
+			Assert.Equal(-1f, GambitLayout.SlotPan(0, 4), 5);
+			Assert.Equal(-0.5f, GambitLayout.SlotPan(1, 4), 5);
+			Assert.Equal(0.5f, GambitLayout.SlotPan(2, 4), 5);
+			Assert.Equal(1f, GambitLayout.SlotPan(3, 4), 5);
+		}
+
+		[Fact]
+		public void InteriorSlots_Symmetric() {
 			Assert.Equal(0f, GambitLayout.SlotPan(1, 4) + GambitLayout.SlotPan(2, 4), 5);
-			Assert.Equal(0f, GambitLayout.SlotPan(1, 3), 5);
+			Assert.Equal(0f, GambitLayout.SlotPan(1, 3), 5);   // centre card of three
 		}
 
 		[Fact]
