@@ -1,4 +1,5 @@
 using HandOfFateAccess.Focus;
+using HandOfFateAccess.Speech;
 using HandOfFateAccess.Util;
 using UnityEngine;
 
@@ -17,7 +18,12 @@ namespace HandOfFateAccess.Gambit {
 	///
 	/// Select: once the cards are pickable the gambit goes silent. The player navigates to the
 	/// position they tracked through the shuffle and end hold; making any sound per card here
-	/// would either reveal the hidden outcome or clutter the pick.
+	/// would either reveal the hidden outcome or clutter the pick. When the player commits, the
+	/// game reveals the chosen card and its localized outcome ("success", "huge failure") is
+	/// spoken through the screen reader (not the SAPI tone-teaching voice, which only names the
+	/// tones during Establish). With the guardian angel blessing the reveal is a zoomed
+	/// keep-or-redraw choice, so the outcome is spoken there too; a redraw reshuffles, which is
+	/// followed by ear again like the first shuffle.
 	///
 	/// Tones and words play through <see cref="GambitVoice"/> objects (equal-power panning,
 	/// like the projectile voices and the validated prototype), not the panStereo audio backend,
@@ -79,6 +85,9 @@ namespace HandOfFateAccess.Gambit {
 		private float _shuffleDeadline;
 		private bool _settling;        // in the brief end-of-shuffle hold
 		private float _settleDeadline;
+
+		// The chosen card whose outcome has been spoken, edge marker so the reveal speaks once.
+		private ChanceCard _announcedPick;
 
 		public GambitWatcher(GambitStatusSpeech speech) {
 			_speech = speech;
@@ -234,14 +243,17 @@ namespace HandOfFateAccess.Gambit {
 		private void StartSlotTone(int index) {
 			float pan = GambitLayout.SlotPan(index, _count);
 			_toneVoice.Play(_toneBuffers[index], _outRate, false, pan, 1f);
-			if (_cards[index] != null) {
-				_pendingOutcome = ToOutcome(_cards[index].ChanceType);
-			} else {
+			if (_cards[index] == null) {
 				// A card vanished mid-walk (unexpected while time is frozen): play the tone but
-				// log rather than silently speaking a possibly-wrong outcome.
-				Log.Warn($"gambit establish: card at slot {index} is gone; outcome unknown");
-				_pendingOutcome = ChanceOutcome.Success;
+				// skip the word and advance, rather than speak a guessed outcome the player would
+				// trust as this slot's.
+				Log.Warn($"gambit establish: card at slot {index} is gone; outcome unknown, skipping word");
+				_nextEventTime = Time.unscaledTime + _toneDurations[index] + SlotGapSeconds;
+				_wordPending = false;
+				_cursor++;
+				return;
 			}
+			_pendingOutcome = ToOutcome(_cards[index].ChanceType);
 			_pendingPan = pan;
 			_nextEventTime = Time.unscaledTime + _toneDurations[index];   // speak after the tone
 			_wordPending = true;
@@ -319,11 +331,78 @@ namespace HandOfFateAccess.Gambit {
 
 		// --- Select ---
 
-		// Silent while the player picks: they navigate to the position they tracked. End the
-		// gambit when the chosen card clears the set.
+		// Silent while the player picks: they navigate to the position they tracked. On commit
+		// the chosen card's outcome is spoken. A guardian-angel redraw re-reveals the same cards
+		// (a face-up flip with no card chosen) before reshuffling them; re-run the establish walk
+		// on that re-reveal so the tones and outcomes are taught again, exactly as the first time.
+		// EndEstablish then releases into the reshuffle through the normal awaiting-shuffle path.
 		private void DriveSelect(CardChoiceContainer container) {
+			if (ChanceFlipSignal.ConsumeFaceUp() && IsRedrawReveal()) {
+				_announcedPick = null;
+				BeginEstablish();
+				return;
+			}
+			AnnouncePick();
 			if (container.Cards.Count == 0)
 				Reset();
+		}
+
+		// Tells the guardian-angel redraw's re-reveal (RevealChances(null), which leaves
+		// RevealChancesCard null) apart from a commit reveal (RevealChances(card), which sets it).
+		// Both flip the cards face up here, but only the redraw should re-teach; the commit is
+		// handled by AnnouncePick.
+		private bool IsRedrawReveal() {
+			UIManager ui = UIManager.Instance;
+			UIEncounterEventPanel panel = ui != null ? ui.EncounterEventPanel : null;
+			return panel != null && panel.RevealChancesCard == null;
+		}
+
+		// Speak the revealed card's localized outcome through the screen reader, so the player
+		// learns what they got. Edge-detected on the chosen reference so it speaks once; a
+		// guardian-angel redraw later reveals a different card, a new reference that speaks
+		// afresh. The SAPI tone voice is deliberately not used here: it only names the identity
+		// tones during Establish; the outcome is ordinary screen-reader speech.
+		private void AnnouncePick() {
+			ChanceCard chosen = RevealedCard();
+			if (chosen == null || chosen == _announcedPick) return;
+			_announcedPick = chosen;
+
+			string text = OutcomeText(ToOutcome(chosen.ChanceType));
+			if (text == null) return;
+			SpeechPipeline.SpeakInterrupt(text);
+			Log.Info($"gambit pick revealed: {chosen.ChanceType}");
+		}
+
+		// The card whose outcome the player is being shown: the panel's RevealChancesCard when
+		// the game sets it (a normal reveal or the guardian-angel confirm), else a lone face-up
+		// card (the guardian-angel zoom reveals one card while the rest stay face down and
+		// leaves RevealChancesCard null). A redraw briefly flips every card face up, which is
+		// not a pick, so the face-up fallback counts only when exactly one card is up.
+		private ChanceCard RevealedCard() {
+			UIManager ui = UIManager.Instance;
+			UIEncounterEventPanel panel = ui != null ? ui.EncounterEventPanel : null;
+			if (panel == null) return null;
+			if (panel.RevealChancesCard != null) return panel.RevealChancesCard;
+
+			ChanceCard faceUp = null;
+			int up = 0;
+			for (int i = 0; i < _count; i++) {
+				if (_cards[i] != null && !_cards[i].Flipped) { faceUp = _cards[i]; up++; }
+			}
+			return up == 1 ? faceUp : null;
+		}
+
+		// The game's own localized outcome title, so the spoken result matches the player's
+		// language with no authored text. Null (and logged) when the key has no localized text.
+		private static string OutcomeText(ChanceOutcome outcome) {
+			string key = ChanceOutcomeKeys.Title(outcome);
+			// global:: to reach the game's Localization; HandOfFateAccess.Localization shadows it.
+			string text = global::Localization.Localize(key);
+			if (string.IsNullOrEmpty(text) || text == key) {
+				Log.Warn($"chance outcome '{key}' has no localized text; pick outcome not spoken");
+				return null;
+			}
+			return text;
 		}
 
 		// --- Shared ---
@@ -400,6 +479,7 @@ namespace HandOfFateAccess.Gambit {
 			_phase = Phase.Idle;
 			_establishedThisGambit = false;
 			_awaitingShuffle = false;
+			_announcedPick = null;
 			ChanceFlipSignal.ConsumeFaceUp();
 			ChanceShuffleSignal.ConsumeStart();
 		}

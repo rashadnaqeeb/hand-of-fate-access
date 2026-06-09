@@ -85,7 +85,7 @@ namespace HandOfFateAccess.Gambit {
 			int count = 0;
 			for (int i = 0; i < _pcm.Length; i++) { _pcm[i] = null; _rate[i] = 0; _durations[i] = 0f; }
 			foreach (ChanceOutcome outcome in Outcomes) {
-				string key = LocalizationKey(outcome);
+				string key = ChanceOutcomeKeys.Title(outcome);
 				string word = global::Localization.Localize(key);
 				// Localize returns the key unchanged when it is missing from the loaded locale.
 				// Surface that rather than render the raw key (which SAPI would spell out); the
@@ -110,24 +110,6 @@ namespace HandOfFateAccess.Gambit {
 				Log.Info($"gambit status speech rendered for language '{language}'");
 			else
 				Log.Warn($"gambit status speech incomplete for '{language}': {count}/{Outcomes.Length} words; will retry");
-		}
-
-		// The game's own localized chance-outcome titles. A renamed or removed key resolves to
-		// itself and is caught in EnsureRendered (logged, the status stays silent), so these are
-		// an audit point after a game update.
-		private static string LocalizationKey(ChanceOutcome outcome) {
-			switch (outcome) {
-				case ChanceOutcome.Success: return "CHANCE_TITLE_SUCCESS";
-				case ChanceOutcome.HugeSuccess: return "CHANCE_TITLE_HUGE_SUCCESS";
-				case ChanceOutcome.Failure: return "CHANCE_TITLE_FAILURE";
-				case ChanceOutcome.HugeFailure: return "CHANCE_TITLE_HUGE_FAILURE";
-				default:
-					// A correct caller never reaches this. Return a key that does not exist in
-					// any locale so EnsureRendered's word==key check keeps it silent, rather than
-					// speaking a real-but-wrong outcome.
-					Log.Error($"unmapped chance outcome {(int)outcome}; leaving it silent");
-					return "CHANCE_TITLE_UNMAPPED";
-			}
 		}
 	}
 }
