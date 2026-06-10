@@ -16,8 +16,7 @@ namespace HandOfFateAccess.Patches {
 	internal static class CombatProxyChain_OnEngage_Patch {
 		private static void Postfix(CombatProxy __instance) {
 			try {
-				Targetable source = __instance.Effect.Source;
-				if (source == null || source.Team != TeamType.Enemy) return;
+				if (!Hostility.ThreatensPlayer(__instance.Effect.Source)) return;
 				ZoneSonification.RecordChain(__instance);
 			} catch (Exception ex) {
 				Log.Error("chain engage hook failed: " + ex);

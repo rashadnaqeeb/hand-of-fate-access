@@ -205,8 +205,7 @@ namespace HandOfFateAccess.Combat {
 			for (int i = 0; i < areas.Count; i++) {
 				CombatProxyArea area = areas[i];
 				if (area == null || (bool)AreaExpiring.GetValue(area)) continue;
-				Targetable source = area.Effect.Source;
-				if (source == null || source.Team != TeamType.Enemy) continue;
+				if (!Hostility.ThreatensPlayer(area.Effect.Source)) continue;
 
 				// The danger bound, live off the collider (bounds are world space, so scale
 				// is folded in) - but a growing zone's collider starts at radius ZERO and

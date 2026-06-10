@@ -23,7 +23,7 @@ namespace HandOfFateAccess.Patches {
 		private static void Postfix(CombatProxy __instance) {
 			try {
 				Targetable source = __instance.Effect.Source;
-				if (source == null || source.Team != TeamType.Enemy) return;
+				if (!Hostility.ThreatensPlayer(source)) return;
 				ProjectileSonification.RecordMover(__instance);
 				AttackCues.RecordMoverLaunch(__instance.transform.position, source.GetInstanceID());
 			} catch (Exception ex) {

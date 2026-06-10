@@ -105,10 +105,10 @@ namespace HandOfFateAccess.Combat {
 
 			List<CombatProxyProjectile> projectiles = CombatManager.Instance.Projectiles;
 
-			// Gather the projectiles that started as enemy shots. Team is read off the firer (the
+			// Gather the projectiles fired by a hostile source. Team is read off the firer (the
 			// effect's Source targetable), not the projectile object: a projectile rarely carries
 			// its own Targetable, so reading it off the projectile leaves every shot team None and
-			// silences the field. The firer's team stays Enemy even after the player reflects the
+			// silences the field. The firer's team is unchanged after the player reflects the
 			// shot, so reflected shots are gathered here too and voiced with a faster tumble (see
 			// the voice loop below) rather than dropped, letting the player track a bounced-back
 			// shot to the enemy while still telling it apart from an incoming threat.
@@ -116,8 +116,7 @@ namespace HandOfFateAccess.Combat {
 			for (int i = 0; i < projectiles.Count; i++) {
 				CombatProxyProjectile proj = projectiles[i];
 				if (proj == null) continue;
-				Targetable source = proj.Effect.Source;
-				if (source == null || source.Team != TeamType.Enemy) continue;
+				if (!Hostility.ThreatensPlayer(proj.Effect.Source)) continue;
 				_live.Add(proj);
 			}
 

@@ -19,8 +19,7 @@ namespace HandOfFateAccess.Patches {
 			try {
 				CombatProxy parent = a_parent as CombatProxy;
 				if (parent != null) {
-					Targetable source = parent.Effect.Source;
-					if (source == null || source.Team != TeamType.Enemy) return;
+					if (!Hostility.ThreatensPlayer(parent.Effect.Source)) return;
 				} else {
 					Log.Warn("beam parent " + a_parent.GetType().Name +
 						" is not a CombatProxy; voicing its beams unconditionally");
