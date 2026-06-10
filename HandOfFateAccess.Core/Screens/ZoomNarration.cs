@@ -34,6 +34,11 @@ namespace HandOfFateAccess.Screens {
 		/// game's own words: "Buy"/"Back", "Smelt old"/"Smelt new"...). Null when absent.</summary>
 		public string Confirm;
 		public string Cancel;
+		/// <summary>The localized names of the physical inputs bound to confirm and cancel
+		/// on the active device ("A", "Enter Key"...), from the game's own binding tables.
+		/// Null when unavailable; the hint then carries the bare label.</summary>
+		public string ConfirmKey;
+		public string CancelKey;
 	}
 
 	/// <summary>The spoken parts of a zoom: the decision line, and the action hint (the
@@ -71,7 +76,16 @@ namespace HandOfFateAccess.Screens {
 		}
 
 		private static string Hint(ZoomInfo z) {
-			return new Message().Add(z.Confirm).Add(z.Cancel).Resolve();
+			return new Message().Add(Action(z.Confirm, z.ConfirmKey)).Add(Action(z.Cancel, z.CancelKey)).Resolve();
+		}
+
+		// "Equip: A" -- the action word leads (it is the varying, decision-relevant part),
+		// the bound key's name follows so the player knows which physical input takes the
+		// action; the zoom has no navigable buttons through which to discover that. Both
+		// words come from the game, so no authored string is needed, only punctuation.
+		private static string Action(string label, string key) {
+			if (string.IsNullOrEmpty(label)) return null;
+			return string.IsNullOrEmpty(key) ? label : label + ": " + key;
 		}
 
 		private static string Replacing(CompareItem item) {

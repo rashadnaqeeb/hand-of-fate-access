@@ -64,6 +64,32 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
+		public void Hint_pairs_each_label_with_its_bound_key() {
+			var z = new ZoomInfo {
+				Card = Card("Bandit", "", ""),
+				Confirm = "Keep", ConfirmKey = "A",
+				Cancel = "Back", CancelKey = "B",
+			};
+			Assert.Equal("Keep: A, Back: B", ZoomNarration.Compose(z).Hint);
+		}
+
+		[Fact]
+		public void Hint_label_stands_alone_when_its_key_is_unknown() {
+			var z = new ZoomInfo {
+				Card = Card("Bandit", "", ""),
+				Confirm = "Keep", ConfirmKey = "Enter Key",
+				Cancel = "Back",
+			};
+			Assert.Equal("Keep: Enter Key, Back", ZoomNarration.Compose(z).Hint);
+		}
+
+		[Fact]
+		public void Hint_ignores_a_key_without_an_action() {
+			var z = new ZoomInfo { Card = Card("Blessing", "", ""), Confirm = "Continue", CancelKey = "B" };
+			Assert.Equal("Continue", ZoomNarration.Compose(z).Hint);
+		}
+
+		[Fact]
 		public void Null_zoom_is_empty() {
 			var a = ZoomNarration.Compose(null);
 			Assert.Equal("", a.Main);

@@ -1,7 +1,9 @@
+using System;
 using System.Reflection;
 using HandOfFateAccess.Focus;
 using HandOfFateAccess.Screens;
 using HandOfFateAccess.UI;
+using HandOfFateAccess.Util;
 using HarmonyLib;
 using UnityEngine;
 
@@ -50,6 +52,12 @@ namespace HandOfFateAccess.Screens {
 				Confirm = HasAction(ClickActionField, zoom) ? UIUtils.GetString(Text(ConfirmTextField, zoom)) : null,
 				Cancel = HasAction(CancelActionField, zoom) ? UIUtils.GetString(Text(CancelTextField, zoom)) : null,
 			};
+			UIManager ui = UIManager.Instance;
+			MainNavBar bar = ui != null ? ui.PrimaryNavBar : null;
+			if (bar != null) {
+				if (info.Confirm != null) info.ConfirmKey = BoundKeyName(bar.ConfirmButton);
+				if (info.Cancel != null) info.CancelKey = BoundKeyName(bar.CancelButton);
+			}
 			if (info.Flipped) return info;
 
 			// An unseen card in the deck builder is shown as a mystery: only its title and a
@@ -82,6 +90,31 @@ namespace HandOfFateAccess.Screens {
 			}
 			info.OldItem = ReadOldItem();
 			return info;
+		}
+
+		// The zoom locks its card as the sole selection, so confirm/cancel are taken with
+		// the bound inputs directly, not through navigable buttons; the hint names those
+		// inputs. The nav bar's confirm/cancel buttons each carry a UIInputSprite whose
+		// public button-string properties resolve the live binding for the active device
+		// (controller type and keyboard rebinds included), the same path the game's
+		// tutorials use to compose "press X" text. A failed lookup drops the key name
+		// (the hint then carries the bare label) and is logged once, not per frame.
+		private static bool _keyNameWarned;
+
+		private static string BoundKeyName(NavBarButton button) {
+			if (button == null) return null;
+			UIInputSprite sprite = button.GetComponent<UIInputSprite>();
+			if (sprite == null) return null;
+			try {
+				string name = InputManager.UseGamepad ? sprite.ControllerButtonString : sprite.KMButtonString;
+				return string.IsNullOrEmpty(name) ? null : name;
+			} catch (Exception ex) {
+				if (!_keyNameWarned) {
+					_keyNameWarned = true;
+					Log.Warn("zoom hint key name lookup failed, hint will carry labels only: " + ex);
+				}
+				return null;
+			}
 		}
 
 		private static string LocalizeTitle(ZoomContainer zoom) {
