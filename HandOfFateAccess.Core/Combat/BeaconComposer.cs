@@ -13,8 +13,10 @@ namespace HandOfFateAccess.Combat {
 	/// Pings, not loops, deliberately: in the established language a continuous loop means
 	/// danger (zones, traps) and the wind means walls, so a friendly destination must not
 	/// borrow the hazard grammar; the enemy locator has already set "ping = point of
-	/// interest". The chest and exit cadences sit half a cycle apart so the two beacons
-	/// interleave instead of stacking.
+	/// interest". Each beacon repings a fixed gap of silence after its sound ends, so the
+	/// cadence follows the clip's length at the pitch it played (a pitched-down ping runs
+	/// longer and so repings later). The exit's first ping is staggered behind the chest's;
+	/// afterwards the differing clip lengths keep the two drifting apart on their own.
 	///
 	/// Unlike every hazard voice, volume floors instead of fading to silence: a beacon is a
 	/// navigation target, so silence must mean "no chest here", never "chest far away". The
@@ -29,12 +31,14 @@ namespace HandOfFateAccess.Combat {
 		/// <summary>Sample key (and sounds-folder file stem) for the level exit beacon.</summary>
 		public const string ExitKey = "beacon_exit";
 
-		/// <summary>Seconds between pings of one beacon kind.</summary>
-		public const float PingInterval = 2f;
+		/// <summary>Seconds of silence between one ping ending and the next beginning.</summary>
+		public const float PingGap = 0.5f;
 
-		/// <summary>The exit cadence's offset behind the chest's, half a cycle, so in a level
-		/// with both (a trap room before its chest is taken) the pings interleave.</summary>
-		public const float ExitPhaseOffset = PingInterval * 0.5f;
+		/// <summary>The exit's first ping waits this long behind the chest's at level entry,
+		/// so in a level with both (a trap room before its chest is taken) the opening pings
+		/// land one after the other instead of stacked. Only the first cycle needs the help:
+		/// the differing clip lengths drift the cadences apart from then on.</summary>
+		public const float ExitStagger = 1f;
 
 		/// <summary>Distance, in world units, over which volume falls from its peak to the
 		/// far floor. Longer than the hazard ranges: a beacon is navigated to from anywhere
@@ -75,6 +79,15 @@ namespace HandOfFateAccess.Combat {
 			parameters = new SoundParams(pan, ProjectileSonifier.PitchFor(deflection), volume);
 			return true;
 		}
+
+		/// <summary>
+		/// When a ping played at <paramref name="now"/> should ping again: <see cref="PingGap"/>
+		/// of silence after the sound ends. The clip's authored <paramref name="clipDuration"/>
+		/// stretches by the played <paramref name="pitch"/> (a playback-rate multiplier, so
+		/// pitched-down runs longer), keeping the gap a real gap at any bearing.
+		/// </summary>
+		public static float NextPingTime(float now, float clipDuration, float pitch) =>
+			now + clipDuration / pitch + PingGap;
 
 		/// <summary>Volume for a ground distance: <see cref="MaxVolume"/> at zero, falling
 		/// linearly to <see cref="MinVolume"/> at <see cref="FalloffRange"/> and holding

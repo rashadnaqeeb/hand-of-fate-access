@@ -11,9 +11,9 @@ namespace HandOfFateAccess.Combat {
 	/// <c>TrapChest</c> and <c>TrapExit</c>, which despite the names are its only such
 	/// components - every exit, trap room or boss escape, is a <c>TrapExit</c>, the one
 	/// object <c>CombatEncounter</c> wires as the level's completion trigger). Each live,
-	/// unconsumed object pings on its cadence with its own sample, positioned by Core's
-	/// <see cref="BeaconComposer"/>, until the player walks in and its <c>IsComplete</c>
-	/// flips.
+	/// unconsumed object pings with its own sample, positioned by Core's
+	/// <see cref="BeaconComposer"/>, repinging a beat of silence after the sound ends,
+	/// until the player walks in and its <c>IsComplete</c> flips.
 	///
 	/// Discovery is a periodic <c>FindObjectsOfType</c> scan: the components have no
 	/// registry, no Start or OnEnable to patch, and they switch on mid-level (a chest's
@@ -27,9 +27,11 @@ namespace HandOfFateAccess.Combat {
 		private const float ScanInterval = 1f;
 
 		private bool _ready;
-		// Sample keys that actually loaded, so a missing file degrades that one beacon
-		// (logged at load) instead of asking the backend for an unregistered key every ping.
-		private readonly HashSet<string> _loaded = new HashSet<string>();
+		// Each loaded sample's authored duration in seconds, keyed by sample key. Doubles as
+		// the loaded set: a missing file degrades that one beacon (logged at load) instead of
+		// asking the backend for an unregistered key every ping. The duration schedules the
+		// next ping a fixed gap after this one's sound ends.
+		private readonly Dictionary<string, float> _clips = new Dictionary<string, float>();
 
 		private TrapChest[] _chests = new TrapChest[0];
 		private TrapExit[] _exits = new TrapExit[0];
@@ -63,7 +65,7 @@ namespace HandOfFateAccess.Combat {
 				byte[] bytes = File.ReadAllBytes(path);
 				WavAudio.Decode(bytes, out float[] pcm, out int channels, out int sampleRate);
 				AudioEngine.Register(key, pcm, channels, sampleRate);
-				_loaded.Add(key);
+				_clips[key] = pcm.Length / (float)channels / sampleRate;
 			} catch (Exception ex) {
 				Log.Error("beacon sample '" + key + "' failed to load from " + path + ": " + ex);
 			}
@@ -86,7 +88,7 @@ namespace HandOfFateAccess.Combat {
 				_inLevel = true;
 				_nextScan = now;
 				_nextChestPing = now;
-				_nextExitPing = now + BeaconComposer.ExitPhaseOffset;
+				_nextExitPing = now + BeaconComposer.ExitStagger;
 			}
 
 			if (now >= _nextScan) {
@@ -94,31 +96,48 @@ namespace HandOfFateAccess.Combat {
 				_nextScan = now + ScanInterval;
 			}
 
+			// Each kind repings once its sound has ended plus the gap; a frame where nothing
+			// played (no object live, or the player standing on it) re-checks after the bare
+			// gap. With several objects of one kind the slowest ping sets the cadence, so the
+			// gap is silence after ALL of them.
 			if (now >= _nextChestPing) {
-				_nextChestPing = now + BeaconComposer.PingInterval;
-				if (_loaded.Contains(BeaconComposer.ChestKey))
+				_nextChestPing = now + BeaconComposer.PingGap;
+				if (_clips.TryGetValue(BeaconComposer.ChestKey, out float chestClip))
 					for (int i = 0; i < _chests.Length; i++) {
 						TrapChest chest = _chests[i];
 						if (chest == null || chest.IsComplete || !chest.gameObject.activeInHierarchy) continue;
-						Ping(BeaconComposer.ChestKey, chest.transform.position, frame);
+						if (Ping(BeaconComposer.ChestKey, chest.transform.position, frame, out float pitch)) {
+							float next = BeaconComposer.NextPingTime(now, chestClip, pitch);
+							if (next > _nextChestPing) _nextChestPing = next;
+						}
 					}
 			}
 
 			if (now >= _nextExitPing) {
-				_nextExitPing = now + BeaconComposer.PingInterval;
-				if (_loaded.Contains(BeaconComposer.ExitKey))
+				_nextExitPing = now + BeaconComposer.PingGap;
+				if (_clips.TryGetValue(BeaconComposer.ExitKey, out float exitClip))
 					for (int i = 0; i < _exits.Length; i++) {
 						TrapExit exit = _exits[i];
 						if (exit == null || exit.IsComplete || !exit.gameObject.activeInHierarchy) continue;
-						Ping(BeaconComposer.ExitKey, exit.transform.position, frame);
+						if (Ping(BeaconComposer.ExitKey, exit.transform.position, frame, out float pitch)) {
+							float next = BeaconComposer.NextPingTime(now, exitClip, pitch);
+							if (next > _nextExitPing) _nextExitPing = next;
+						}
 					}
 			}
 		}
 
-		private static void Ping(string key, Vector3 position, CombatFrame frame) {
+		// Plays the ping and reports the pitch it played at (a playback-rate multiplier, so
+		// the caller can tell when this sound will end); false when the ping was suppressed.
+		private static bool Ping(string key, Vector3 position, CombatFrame frame, out float pitch) {
 			frame.Project(position, out float right, out float forward);
-			if (BeaconComposer.TryCompose(right, forward, out SoundParams parameters))
-				AudioEngine.PlayOneShot(key, parameters);
+			if (!BeaconComposer.TryCompose(right, forward, out SoundParams parameters)) {
+				pitch = 1f;
+				return false;
+			}
+			AudioEngine.PlayOneShot(key, parameters);
+			pitch = parameters.Pitch;
+			return true;
 		}
 
 		private void Scan() {

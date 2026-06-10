@@ -6,16 +6,26 @@ namespace HandOfFateAccess.Tests {
 	public class BeaconComposerTests {
 		private static float MidPitch => ProjectileSonifier.PitchFor(0f);
 
-		// --- Identity: the two beacons are distinct samples on interleaved cadences. ---
+		// --- Identity: the two beacons are distinct samples. ---
 
 		[Fact]
 		public void ChestAndExit_AreDistinctSamples() {
 			Assert.NotEqual(BeaconComposer.ChestKey, BeaconComposer.ExitKey);
 		}
 
+		// --- Cadence: the next ping starts a fixed gap after this one's sound ends. ---
+
 		[Fact]
-		public void ExitCadence_SitsHalfACycleBehindTheChests() {
-			Assert.Equal(BeaconComposer.PingInterval * 0.5f, BeaconComposer.ExitPhaseOffset, 3);
+		public void NextPing_StartsTheGapAfterTheClipEnds() {
+			Assert.Equal(10f + 1.3f + BeaconComposer.PingGap, BeaconComposer.NextPingTime(10f, 1.3f, 1f), 3);
+		}
+
+		[Fact]
+		public void PitchedDownPing_RunsLonger_RepingsLater() {
+			// Pitch is a playback-rate multiplier: at 0.5 the clip takes twice its authored
+			// time, and the gap must follow the sound, not the file.
+			Assert.Equal(2f + BeaconComposer.PingGap, BeaconComposer.NextPingTime(0f, 1f, 0.5f), 3);
+			Assert.True(BeaconComposer.NextPingTime(0f, 1f, 0.8f) > BeaconComposer.NextPingTime(0f, 1f, 1f));
 		}
 
 		// --- Bearing: the shared grammar, pan east/west, down-biased pitch north/south. ---
