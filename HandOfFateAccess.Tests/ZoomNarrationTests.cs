@@ -77,10 +77,17 @@ namespace HandOfFateAccess.Tests {
 		public void Hint_label_stands_alone_when_its_key_is_unknown() {
 			var z = new ZoomInfo {
 				Card = Card("Bandit", "", ""),
-				Confirm = "Keep", ConfirmKey = "Enter Key",
+				Confirm = "Keep", ConfirmKey = "Return",
 				Cancel = "Back",
 			};
-			Assert.Equal("Keep: Enter Key, Back", ZoomNarration.Compose(z).Hint);
+			Assert.Equal("Keep: Return, Back", ZoomNarration.Compose(z).Hint);
+		}
+
+		[Fact]
+		public void Lone_action_reads_without_its_key() {
+			// With a single option there is no other input to tell apart, so the key is noise.
+			var z = new ZoomInfo { Card = Card("Blessing", "", ""), Confirm = "Continue", ConfirmKey = "Return" };
+			Assert.Equal("Continue", ZoomNarration.Compose(z).Hint);
 		}
 
 		[Fact]

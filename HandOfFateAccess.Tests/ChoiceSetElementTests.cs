@@ -30,6 +30,15 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
+		public void Lone_action_reads_without_its_key() {
+			// With a single option there is no other input to tell apart, so the key is noise.
+			string text = new ChoiceSetElement(
+				"Keep these cards?", new[] { Card("Apple") },
+				"Keep", "Return", null, null).Describe().Resolve();
+			Assert.Equal("Keep these cards?, Apple, Keep", text);
+		}
+
+		[Fact]
 		public void Empty_prompt_and_actions_drop_out() {
 			string text = new ChoiceSetElement(
 				null, new[] { Card("Apple") }, null, null, "", null).Describe().Resolve();

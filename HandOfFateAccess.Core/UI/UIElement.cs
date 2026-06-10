@@ -379,9 +379,7 @@ namespace HandOfFateAccess.UI {
 			var message = new Message().Add(_title);
 			foreach (CardInfo card in _cards)
 				message.Add(new CardElement(card).Describe().Resolve());
-			return message
-				.Add(ZoomNarration.Action(_confirm, _confirmKey))
-				.Add(ZoomNarration.Action(_cancel, _cancelKey));
+			return message.Add(ZoomNarration.Actions(_confirm, _confirmKey, _cancel, _cancelKey));
 		}
 	}
 

@@ -388,8 +388,8 @@ namespace HandOfFateAccess.Focus {
 			UIManager ui = UIManager.Instance;
 			MainNavBar bar = ui != null ? ui.PrimaryNavBar : null;
 			if (bar != null) {
-				confirmKey = ZoomReader.BoundKeyName(bar.ConfirmButton);
-				cancelKey = ZoomReader.BoundKeyName(bar.CancelButton);
+				confirmKey = ZoomReader.BoundKeyName(bar.ConfirmButton, ZoomReader.ConfirmAction);
+				cancelKey = ZoomReader.BoundKeyName(bar.CancelButton, ZoomReader.CancelAction);
 			}
 			return new ChoiceSetElement(ZoomReader.LocalizeTitle(container), cards, confirm, confirmKey, cancel, cancelKey);
 		}

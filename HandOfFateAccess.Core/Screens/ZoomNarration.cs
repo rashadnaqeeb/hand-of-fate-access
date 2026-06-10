@@ -88,16 +88,26 @@ namespace HandOfFateAccess.Screens {
 		}
 
 		private static string Hint(ZoomInfo z) {
-			return new Message().Add(Action(z.Confirm, z.ConfirmKey)).Add(Action(z.Cancel, z.CancelKey)).Resolve();
+			return Actions(z.Confirm, z.ConfirmKey, z.Cancel, z.CancelKey);
 		}
 
-		// "Equip: A" -- the action word leads (it is the varying, decision-relevant part),
-		// the bound key's name follows so the player knows which physical input takes the
-		// action; the zoom has no navigable buttons through which to discover that. Both
-		// words come from the game, so no authored string is needed, only punctuation.
-		// Shared with ChoiceSetElement (the whole-set keep-or-redraw choice), which has
-		// the same buttonless confirm/cancel.
-		public static string Action(string label, string key) {
+		// "Equip: A, Back: B" -- each action word leads (it is the varying,
+		// decision-relevant part), the bound key's name follows so the player knows which
+		// physical input takes which action; the zoom has no navigable buttons through
+		// which to discover that. Key names read only when both actions are offered: a
+		// lone action leaves no input to tell apart, so its label stands alone. All words
+		// come from the game, so no authored string is needed, only punctuation. Shared
+		// with ChoiceSetElement (the whole-set keep-or-redraw choice), which has the same
+		// buttonless confirm/cancel.
+		public static string Actions(string confirm, string confirmKey, string cancel, string cancelKey) {
+			bool both = !string.IsNullOrEmpty(confirm) && !string.IsNullOrEmpty(cancel);
+			return new Message()
+				.Add(Action(confirm, both ? confirmKey : null))
+				.Add(Action(cancel, both ? cancelKey : null))
+				.Resolve();
+		}
+
+		private static string Action(string label, string key) {
 			if (string.IsNullOrEmpty(label)) return null;
 			return string.IsNullOrEmpty(key) ? label : label + ": " + key;
 		}

@@ -33,7 +33,6 @@ namespace HandOfFateAccess.Screens {
 		private static readonly FieldInfo ClickActionField = AccessTools.Field(typeof(CardContainer), "m_cardClickAction");
 		private static readonly FieldInfo CancelActionField = AccessTools.Field(typeof(CardContainer), "m_cardCancelAction");
 		private static readonly FieldInfo OldPanelField = AccessTools.Field(typeof(ComparePanelManager), "m_old");
-		private static readonly FieldInfo InputNameField = AccessTools.Field(typeof(UIInputSprite), "m_inputName");
 		private static readonly FieldInfo InfoTitleField = AccessTools.Field(typeof(InfoPanel), "m_title");
 		private static readonly FieldInfo InfoStatTitleField = AccessTools.Field(typeof(InfoPanel), "m_statTitle");
 		private static readonly FieldInfo InfoStatValueField = AccessTools.Field(typeof(InfoPanel), "m_statValue");
@@ -56,8 +55,8 @@ namespace HandOfFateAccess.Screens {
 			UIManager ui = UIManager.Instance;
 			MainNavBar bar = ui != null ? ui.PrimaryNavBar : null;
 			if (bar != null) {
-				if (info.Confirm != null) info.ConfirmKey = BoundKeyName(bar.ConfirmButton);
-				if (info.Cancel != null) info.CancelKey = BoundKeyName(bar.CancelButton);
+				if (info.Confirm != null) info.ConfirmKey = BoundKeyName(bar.ConfirmButton, ConfirmAction);
+				if (info.Cancel != null) info.CancelKey = BoundKeyName(bar.CancelButton, CancelAction);
 			}
 			if (info.Flipped) return info;
 
@@ -113,19 +112,25 @@ namespace HandOfFateAccess.Screens {
 
 		// The zoom locks its card as the sole selection, so confirm/cancel are taken with
 		// the bound inputs directly, not through navigable buttons; the hint names those
-		// inputs. The nav bar's confirm/cancel buttons each carry a UIInputSprite holding
-		// the input's name; on keyboard its public KMButtonString resolves the live
-		// (rebind-aware) key name. A failed lookup drops the key name (the hint then
-		// carries the bare label) and is logged once, not per frame. Shared with the
-		// whole-set card choice (ProxyFactory), which has the same buttonless confirm/cancel.
+		// inputs. On keyboard the physical keys are UICamera's submit/cancel keys, which
+		// resolve from the cInput actions named "Confirm" and "Cancel" (UICamera.submitKey0
+		// / cancelKey0; defined in GameState_StartScreen.InitInput, rebindable in settings);
+		// on controller UICamera hardwires confirm to Action1 and cancel to Action2. The
+		// nav bar button's UIInputSprite serves neither device: its serialized input name
+		// is empty for confirm/cancel (the controller icon comes from a sprite override),
+		// and is not a cInput action elsewhere. A failed lookup drops the key name (the
+		// hint then carries the bare label) and is logged once, not per frame. Shared with
+		// the whole-set card choice (ProxyFactory), which has the same buttonless
+		// confirm/cancel.
+		internal const string ConfirmAction = "Confirm";
+		internal const string CancelAction = "Cancel";
+
 		private static bool _keyNameWarned;
 
-		internal static string BoundKeyName(NavBarButton button) {
+		internal static string BoundKeyName(NavBarButton button, string action) {
 			if (button == null) return null;
-			UIInputSprite sprite = button.GetComponent<UIInputSprite>();
-			if (sprite == null) return null;
 			try {
-				string name = InputManager.UseGamepad ? ControllerKeyName(sprite) : sprite.KMButtonString;
+				string name = InputManager.UseGamepad ? ControllerKeyName(action) : KeyboardKeyName(action);
 				if (string.IsNullOrEmpty(name)) {
 					WarnKeyNameOnce("zoom hint key name resolved empty for '" + button.name + "'; hint will carry labels only");
 					return null;
@@ -137,18 +142,45 @@ namespace HandOfFateAccess.Screens {
 			}
 		}
 
-		// The sprite's public ControllerButtonString resolves the binding through
-		// InputManager.GetInputControlType, whose switch maps only the combat and
-		// function inputs (all the game itself feeds it, via the trait tutorials);
-		// the nav bar's Confirm/Cancel fall to its -1 default and resolve empty.
-		// Resolve the controller binding by name instead, the same name-only lookup
-		// the sprite's own icon path uses, then localize its button string with the
-		// active controller's postfix exactly as ControllerButtonString would.
-		private static string ControllerKeyName(UIInputSprite sprite) {
-			string inputName = (string)InputNameField.GetValue(sprite);
-			if (string.IsNullOrEmpty(inputName)) return null;
-			UIInputBinding.Binding binding = UIManager.Instance.GetInputBinding(inputName);
-			return UIUtils.GetString(binding.ButtonString + ControllerIconMappings.ControllerPostfix);
+		// The nav bar sprite's KMButtonString cannot serve here: the sprite's serialized
+		// input name is not a cInput action, and cInput.GetText throws IndexOutOfRange on
+		// an undefined action. Resolve the live (rebind-aware) primary key from the action
+		// directly. A mouse binding reads the binding table's localized button name; a key
+		// reads its bare cInput name with the game's own key-label formatting (the
+		// KMButtonString "X Key" wrapper is visual presentation, noise in speech).
+		private static string KeyboardKeyName(string action) {
+			if (!cInput.IsKeyDefined(action)) return null;
+			string text = cInput.GetText(action);
+			if (string.IsNullOrEmpty(text)) return null;
+			if (text.Contains("Mouse")) {
+				UIInputBinding.Binding binding = UIManager.Instance.GetInputBinding(text);
+				return UIUtils.GetString(binding.ButtonString);
+			}
+			return SpaceKeyName(text.Replace("Arrow", string.Empty));
+		}
+
+		// The game's key-label munging (UIInputSprite.OnControllerStateChanged): a space
+		// before each capital, so "LeftShift" reads "Left Shift".
+		private static string SpaceKeyName(string text) {
+			for (int i = 1; i < text.Length; i++) {
+				if (char.IsUpper(text[i])) {
+					text = text.Insert(i, " ");
+					i++;
+				}
+			}
+			return text;
+		}
+
+		// The game's INPUT_ACTION_1/2 strings localized for the active controller through
+		// ControllerIconMappings.ControllerPostfix (the same suffixing the game's own
+		// ControllerButtonString applies); Action1/Action2 are the buttons UICamera
+		// hardwires for menu confirm/cancel. An unmapped controller has no localized
+		// string and the lookup echoes its own key; drop the name rather than speak it.
+		private static string ControllerKeyName(string action) {
+			string key = (action == CancelAction ? "INPUT_ACTION_2" : "INPUT_ACTION_1")
+				+ ControllerIconMappings.ControllerPostfix;
+			string name = UIUtils.GetString(key);
+			return name == key ? null : name;
 		}
 
 		private static void WarnKeyNameOnce(string message) {
