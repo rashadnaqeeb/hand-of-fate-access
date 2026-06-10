@@ -1,6 +1,6 @@
 # Hand of Fate Access
 
-A mod that makes Hand of Fate (the original game) playable without sight. Everything the game shows is spoken through your screen reader, and combat is made playable through a layer of added audio cues. There is no visual fallback; speech and sound are the whole interface.
+A mod that makes Hand of Fate (the original game) playable without sight. Everything the game shows is spoken through your screen reader, and combat is made playable through a layer of added audio cues.
 
 ## Requirements
 
