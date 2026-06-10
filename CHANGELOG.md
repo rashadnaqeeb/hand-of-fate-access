@@ -6,6 +6,8 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+- The sound glossary option in the pause menu now switches language with the game; it used to keep the language it was first created in until a scene change.
+
 ## 1.0.0 - 2026-06-11
 
 Initial release.

@@ -25,6 +25,7 @@ namespace HandOfFateAccess.Glossary {
 	/// </summary>
 	internal sealed class GlossaryButton {
 		private UISelectableItem _item;
+		private UILabel _label;
 		private bool _attemptedThisPause;
 
 		public void Pump(bool paused) {
@@ -32,7 +33,14 @@ namespace HandOfFateAccess.Glossary {
 				_attemptedThisPause = false;
 				return;
 			}
-			if (_item != null || _attemptedThisPause) return;
+			if (_item != null) {
+				// The game's own pause buttons follow a language switch through their
+				// UILocalize, which the clone deliberately lost; keep its caption on the
+				// active language instead (the setter is a no-op while unchanged).
+				_label.text = Strings.GlossaryTitle;
+				return;
+			}
+			if (_attemptedThisPause) return;
 
 			PauseMenuManager.State state = MenuManager.Instance.PauseMenuManager.CurrentState;
 			if (state == null || state.Name != PauseMenuManager.State.StateName.Pause) return;
@@ -84,7 +92,8 @@ namespace HandOfFateAccess.Glossary {
 
 			// The first (only) label on a pause button is its caption. Crashing here on
 			// an unexpected hierarchy is caught and logged by Pump.
-			clone.GetComponentsInChildren<UILabel>(true)[0].text = Strings.GlossaryTitle;
+			UILabel label = clone.GetComponentsInChildren<UILabel>(true)[0];
+			label.text = Strings.GlossaryTitle;
 
 			// Splice into the nav chain below the bottom item, keeping the wrap.
 			bottom.selectOnDown = item;
@@ -107,6 +116,7 @@ namespace HandOfFateAccess.Glossary {
 			};
 
 			_item = item;
+			_label = label;
 		}
 
 		private static PauseMenuButton FirstActiveButton(PauseMenuButtonSet set) {
