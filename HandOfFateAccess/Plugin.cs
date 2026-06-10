@@ -137,9 +137,9 @@ namespace HandOfFateAccess {
 			_projectiles = new ProjectileSonification();
 			_projectiles.Initialize();
 
-			// Zone hazards (ground areas, mines, traps): no hooks, the game's AllAreas
-			// registry and the level's scanned traps are polled from the pump, so this
-			// needs only the audio backend.
+			// Zone hazards (ground areas, mines, beams, segment chains, traps): polled from
+			// the pump off the game's AllAreas registry, the level's scanned traps, and the
+			// beams/chains the engage hooks below record, so this needs only the audio backend.
 			_zones = new ZoneSonification();
 			_zones.Initialize();
 
@@ -339,6 +339,32 @@ namespace HandOfFateAccess {
 				new System.Type[0],
 				prefix: null,
 				postfix: moverEngagePostfix);
+
+			// Beams (damaging lines: the mage triangle, radial bursts, the rotating boss
+			// beams) are not CombatProxy subclasses and keep no registry; the one chokepoint
+			// every beam passes through is its own Engage, so its postfix is the zone voice's
+			// discovery point for them.
+			patcher.Patch(
+				typeof(CombatProxyBeam), "Engage",
+				new[] { typeof(ICombatProxyBeamParent), typeof(Vector3), typeof(float), typeof(float) },
+				prefix: null,
+				postfix: AccessTools.Method(typeof(CombatProxyBeam_Engage_Patch), "Postfix"));
+
+			// Segment chains (fire trails, lightning paths) keep their live segments in a
+			// private list on the parent proxy; each class's own OnEngage override (both
+			// verified to declare one) registers the chain for the zone voice. The lightning's
+			// flying head is the mover postfix above; this is the damaging path it leaves.
+			var chainEngagePostfix = AccessTools.Method(typeof(CombatProxyChain_OnEngage_Patch), "Postfix");
+			patcher.Patch(
+				typeof(CombatProxyTrail), "OnEngage",
+				new System.Type[0],
+				prefix: null,
+				postfix: chainEngagePostfix);
+			patcher.Patch(
+				typeof(CombatProxyLightning), "OnEngage",
+				new System.Type[0],
+				prefix: null,
+				postfix: chainEngagePostfix);
 
 			// Traps can come active at any time (a chest or exit can switch a trap hierarchy
 			// on mid-level). Trap.Start is an iterator, so its postfix fires at coroutine

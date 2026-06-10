@@ -92,6 +92,38 @@ namespace HandOfFateAccess.Combat {
 			return BuildCue(right, forward, gap, inside, phase);
 		}
 
+		/// <summary>
+		/// The cue for a beam: a damaging line from endpoint A to endpoint B (both as
+		/// player-relative right/forward offsets) with the beam collider's half-width
+		/// <paramref name="radius"/>. The nearest dangerous point is the closest point on
+		/// the segment, and the voice sits there both outside and inside: within the beam's
+		/// width the bearing points at the beam's axis, so fleeing the sound is the
+		/// perpendicular step off the line, the shortest exit. Standing exactly on the axis
+		/// gives no bearing, which voices centered at mid pitch like a zone's center -
+		/// either side out works. A degenerate segment (A = B) composes as a point.
+		/// </summary>
+		public static ZoneCue ComposeSegment(
+			float rightA, float forwardA, float rightB, float forwardB, float radius, ZonePhase phase) {
+			float dx = rightB - rightA;
+			float df = forwardB - forwardA;
+			float lengthSq = dx * dx + df * df;
+
+			// The player sits at the origin, so the nearest point on the segment is A plus
+			// the origin's clamped projection onto A-to-B.
+			float t = 0f;
+			if (lengthSq > 1e-9f) {
+				t = -(rightA * dx + forwardA * df) / lengthSq;
+				if (t < 0f) t = 0f;
+				else if (t > 1f) t = 1f;
+			}
+			float nearRight = rightA + t * dx;
+			float nearForward = forwardA + t * df;
+
+			// From here the beam IS a disc of its half-width centered on the nearest
+			// point, so the edge, inside, and bearing semantics stay single-sourced.
+			return Compose(nearRight, nearForward, radius, 0f, phase);
+		}
+
 		private static ZoneCue BuildCue(float bx, float bf, float gap, bool inside, ZonePhase phase) {
 			if (gap >= FalloffRange) return default(ZoneCue);
 

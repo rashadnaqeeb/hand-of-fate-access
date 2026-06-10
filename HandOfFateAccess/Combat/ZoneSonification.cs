@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using HandOfFateAccess.Audio;
@@ -16,11 +17,32 @@ namespace HandOfFateAccess.Combat {
 	/// <see cref="ZoneSonifier"/> decides everything heard and is unit-tested; this adapter
 	/// only extracts each hazard's live shape and drives the voices.
 	///
-	/// No hooks: the game keeps its own public registry (<c>CombatProxyArea.AllAreas</c>),
-	/// polled here each frame exactly like the projectile list. The danger bound is read off
-	/// the area's live collider bounds, which also tracks the grow-in of expanding zones.
-	/// Holding a voice per live area object is the mod's own audio state; every shape and
-	/// state input is re-read from the game each frame.
+	/// The ground areas need no hook: the game keeps its own public registry
+	/// (<c>CombatProxyArea.AllAreas</c>), polled here each frame exactly like the projectile
+	/// list. The danger bound is read off the area's live collider bounds, which also tracks
+	/// the grow-in of expanding zones. Holding a voice per live area object is the mod's own
+	/// audio state; every shape and state input is re-read from the game each frame.
+	///
+	/// Beams (the mage triangle, radial bursts, the rotating boss beams) are damaging
+	/// lines: not CombatProxy subclasses, no registry, spawned as children of a parent
+	/// proxy, so the postfix on each beam's own Engage is the discovery point. The beam's
+	/// transform plus its authored endpoint are the live truth, re-read every frame, which
+	/// tracks a parent that rotates its beams for free. The full authored length is voiced
+	/// from frame one (the collider grows along it, and like a growing area the footprint
+	/// the beam is about to be is the warning that matters), as the arming throb until the
+	/// grow completes, then active. The grow is retroactive exactly like a trap arming -
+	/// anyone on the line when it fills gets hit - which the inside rattle already covers.
+	/// An expiring beam (fade-out particles, trigger dead) is dropped and falls silent;
+	/// expiring is terminal, and the game clears the flag again just before the deferred
+	/// destroy, so waiting for the destroy instead would re-voice the corpse for a frame.
+	///
+	/// Segment chains (fire trails, lightning paths) keep their live segments in a private
+	/// list on the parent proxy, registered by the same kind of engage postfix. One voice
+	/// per chain, placed at the nearest segment's nearest point, hopping along the chain as
+	/// the player moves: the chain is one hazard (a wall of fire), not dozens, and one
+	/// voice cannot crowd out other zones under the voice cap. Segments damage on contact
+	/// from birth, so a chain is always active; a chain whose segments all timed out simply
+	/// yields no cue, and the parent's destruction prunes it.
 	///
 	/// Traps are scene objects with no registry, so they are discovered by a
 	/// <c>FindObjectsOfType</c> scan, rerun when <c>CombatEncounter.Instance</c> changes or
@@ -45,6 +67,9 @@ namespace HandOfFateAccess.Combat {
 	/// A trap's footprint is its collider's axis-aligned bounds (Unity 5.3 has no exact
 	/// closest-point API), which over-warns rotated boxes - the safe direction. Insideness
 	/// is judged on the horizontal plane only, so a blade sweeping overhead still rattles.
+	/// A segment chain is voiced only at its nearest segment: a chain that curls around
+	/// the player warns on the near side only, the voice hopping arms as the nearer one
+	/// changes - whether that under-warns in practice is the validation pass's question.
 	/// </summary>
 	internal sealed class ZoneSonification {
 		// Voices for the nearest zones only: arenas can accumulate hazards, and three
@@ -60,7 +85,8 @@ namespace HandOfFateAccess.Combat {
 		}
 
 		private struct LiveZone {
-			// The live game object the voice belongs to: a CombatProxyArea or a Trap.
+			// The live game object the voice belongs to: an area, a beam, a chain proxy,
+			// or a trap's damage trigger.
 			public Component Key;
 			public ZoneCue Cue;
 		}
@@ -87,12 +113,29 @@ namespace HandOfFateAccess.Combat {
 		// The level's traps, rescanned when the encounter changes or a trap becomes active.
 		private readonly List<TrapEntry> _traps = new List<TrapEntry>();
 		private CombatEncounter _trapLevel;
+		// Live beams and segment chains, recorded by their engage hooks (neither has a
+		// registry) and pruned here as they end. Holding the live reference is the
+		// acceptable cache: every parameter the player hears is re-read each frame.
+		// Single Unity thread (the hooks fire during the game's update, this pump from
+		// ours), so no synchronization, same as the mover list.
+		private static readonly List<CombatProxyBeam> s_beams = new List<CombatProxyBeam>();
+		private static readonly List<ChainEntry> s_chains = new List<ChainEntry>();
+
+		// One recorded segment chain: the proxy plus its class's segment-list field,
+		// resolved at record time so the pump never type-dispatches. An unknown chain
+		// type warns once at record instead of throwing out of the pump every frame.
+		private struct ChainEntry {
+			public CombatProxy Proxy;
+			public FieldInfo Segments;
+		}
 		// Set by Trap_Start_Patch when a trap's phase coroutine is created, i.e. the trap
 		// just became active. A chest or exit can switch whole trap hierarchies on
 		// mid-level, which a once-per-level scan would miss: an invisible hazard.
 		private static bool s_trapsChanged;
 		// Last logged counts so the diagnostic line fires only on change.
 		private int _lastAreas = -1;
+		private int _lastBeams = -1;
+		private int _lastChains = -1;
 		private int _lastAudible = -1;
 
 		// The area's private shape and lifecycle fields, resolved once. m_time is the engage
@@ -108,6 +151,20 @@ namespace HandOfFateAccess.Combat {
 		// radius here at engage, then inflates the collider from zero over the grow time).
 		// Zero for zones that do not grow.
 		private static readonly FieldInfo AreaFullSize = AccessTools.Field(typeof(CombatProxyArea), "m_colliderSize");
+
+		// The beam's authored line and lifecycle: m_target is the endpoint in the beam's
+		// local space (its transform carries position and aim, so world geometry is
+		// transform plus this); m_time/m_growTime give the grow-in window; m_expireTime
+		// (a nullable, boxed null while live) marks a beam fading out, trigger already
+		// dead, which must fall silent.
+		private static readonly FieldInfo BeamTarget = AccessTools.Field(typeof(CombatProxyBeam), "m_target");
+		private static readonly FieldInfo BeamTime = AccessTools.Field(typeof(CombatProxyBeam), "m_time");
+		private static readonly FieldInfo BeamGrow = AccessTools.Field(typeof(CombatProxyBeam), "m_growTime");
+		private static readonly FieldInfo BeamExpire = AccessTools.Field(typeof(CombatProxyBeam), "m_expireTime");
+
+		// Each chain proxy's live segment list, pruned by the game as segments time out.
+		private static readonly FieldInfo TrailSegments = AccessTools.Field(typeof(CombatProxyTrail), "m_segments");
+		private static readonly FieldInfo LightningSegments = AccessTools.Field(typeof(CombatProxyLightning), "m_segments");
 
 		// The trap's armed/safe switch: the one boolean its authored phase cycle flips, and
 		// retroactive (arming hits everyone already standing inside). Polled per frame.
@@ -175,6 +232,95 @@ namespace HandOfFateAccess.Combat {
 				_live.Add(new LiveZone { Key = area, Cue = cue });
 			}
 
+			// Beams: the segment is the transform's position to its authored local endpoint,
+			// re-read live so a rotating parent sweeps the voice with the line. The full
+			// length is voiced while the collider grows along it, as arming (the grow is
+			// retroactive, but leaving during it is free - trap semantics, and standing on
+			// the line already rattles).
+			for (int i = s_beams.Count - 1; i >= 0; i--) {
+				CombatProxyBeam beam = s_beams[i];
+				// Expiring is terminal (the trigger is already dead, only the fade-out
+				// remains), so the record is dropped at first sight: the game clears the
+				// flag again just before the deferred destroy, and waiting for the destroy
+				// would re-voice the corpse as active for that frame. Inactive covers a
+				// pool-freed beam (ObjectUtils.Destroy frees pooled objects, which never go
+				// Unity-null); a pooled reuse re-fires Engage and re-records.
+				if (beam == null || !beam.gameObject.activeInHierarchy
+						|| BeamExpire.GetValue(beam) != null) {
+					s_beams.RemoveAt(i);
+					continue;
+				}
+
+				Transform beamTransform = beam.transform;
+				Vector3 start = beamTransform.position;
+				Vector3 end = beamTransform.TransformPoint((Vector3)BeamTarget.GetValue(beam));
+				ZonePhase beamPhase =
+					Time.time - (float)BeamTime.GetValue(beam) < (float)BeamGrow.GetValue(beam)
+					? ZonePhase.Arming : ZonePhase.Active;
+				// The capsule's authored radius is the beam's danger half-width (required by
+				// the class, so resolving it is not a guard). The capsule runs along local Z,
+				// so its radius scales by the larger perpendicular axis.
+				Vector3 beamScale = beamTransform.lossyScale;
+				float radius = beam.GetComponent<CapsuleCollider>().radius
+					* Mathf.Max(beamScale.x, beamScale.y);
+
+				frame.Project(start, out float rightA, out float forwardA);
+				frame.Project(end, out float rightB, out float forwardB);
+				ZoneCue beamCue = ZoneSonifier.ComposeSegment(rightA, forwardA, rightB, forwardB, radius, beamPhase);
+				if (!beamCue.Audible) continue;
+				_live.Add(new LiveZone { Key = beam, Cue = beamCue });
+			}
+
+			// Segment chains: one voice per chain at its nearest live segment, the same
+			// collider nearest-point grammar as traps. A segment that carries no collider
+			// is voiced at its position - a one-interval-long piece, so the point stands in
+			// for it safely.
+			for (int i = s_chains.Count - 1; i >= 0; i--) {
+				CombatProxy chain = s_chains[i].Proxy;
+				// Inactive covers a pool-freed proxy, which never goes Unity-null.
+				if (chain == null || !chain.gameObject.activeInHierarchy) {
+					s_chains.RemoveAt(i);
+					continue;
+				}
+
+				IList segments = (IList)s_chains[i].Segments.GetValue(chain);
+				Component nearest = null;
+				Vector3 nearestPoint = default(Vector3);
+				float nearestSq = float.MaxValue;
+				for (int s = 0; s < segments.Count; s++) {
+					Component segment = (Component)segments[s];
+					if (segment == null) continue;
+					Collider segCollider = segment.GetComponent<Collider>();
+					Vector3 point = segCollider != null
+						? segCollider.ClosestPointOnBounds(frame.Origin) : segment.transform.position;
+					float distSq = (point - frame.Origin).sqrMagnitude;
+					if (distSq < nearestSq) {
+						nearestSq = distSq;
+						nearestPoint = point;
+						nearest = segment;
+					}
+				}
+				if (nearest == null) continue;
+
+				// Insideness is horizontal like the traps'. Inside, the bearing retargets
+				// the nearest point on the chain's AXIS (each segment is spawned facing the
+				// lay direction), so fleeing the sound steps perpendicular off the line, the
+				// shortest exit - the beam's inside grammar. A segment's bounds center would
+				// instead point ALONG the trail and walk the player down the fire.
+				frame.Project(nearestPoint, out float chainRight, out float chainForward);
+				bool inside = chainRight * chainRight + chainForward * chainForward < 0.01f;
+				if (inside) {
+					Vector3 toSegment = nearest.transform.position - frame.Origin;
+					Vector3 axis = nearest.transform.forward;
+					Vector3 toAxis = toSegment - axis * Vector3.Dot(toSegment, axis);
+					frame.Project(frame.Origin + toAxis, out chainRight, out chainForward);
+				}
+
+				ZoneCue chainCue = ZoneSonifier.ComposePoint(chainRight, chainForward, inside, ZonePhase.Active);
+				if (!chainCue.Audible) continue;
+				_live.Add(new LiveZone { Key = chain, Cue = chainCue });
+			}
+
 			// Traps live for the whole level; rescan when the encounter changes or a trap
 			// becomes active (the patch flag covers traps switched on mid-level, and also
 			// levels that have traps but never an encounter, if any exist).
@@ -212,9 +358,13 @@ namespace HandOfFateAccess.Combat {
 
 			// Diagnostic: how many areas the game has live versus how many hazards are near
 			// enough to voice. Logged only when the counts change.
-			if (areas.Count != _lastAreas || _live.Count != _lastAudible) {
-				Log.Debug("zones: " + areas.Count + " areas, " + _traps.Count + " traps, " + _live.Count + " audible");
+			if (areas.Count != _lastAreas || s_beams.Count != _lastBeams
+					|| s_chains.Count != _lastChains || _live.Count != _lastAudible) {
+				Log.Debug("zones: " + areas.Count + " areas, " + s_beams.Count + " beams, "
+					+ s_chains.Count + " chains, " + _traps.Count + " traps, " + _live.Count + " audible");
 				_lastAreas = areas.Count;
+				_lastBeams = s_beams.Count;
+				_lastChains = s_chains.Count;
 				_lastAudible = _live.Count;
 			}
 
@@ -265,6 +415,29 @@ namespace HandOfFateAccess.Combat {
 			s_trapsChanged = true;
 		}
 
+		/// <summary>Track a beam from its engage hook, which has already filtered for hostile
+		/// parents; the pump voices its live line until it expires or is destroyed.</summary>
+		internal static void RecordBeam(CombatProxyBeam beam) {
+			if (!s_beams.Contains(beam)) s_beams.Add(beam);
+		}
+
+		/// <summary>Track a segment chain (trail or lightning) from its engage hook, which has
+		/// already filtered for hostile sources; the pump voices its nearest live segment
+		/// until the proxy ends. The segment-list field is bound here, where the type is
+		/// known; a chain type this does not recognize is logged, not voiced wrong.</summary>
+		internal static void RecordChain(CombatProxy chain) {
+			for (int i = 0; i < s_chains.Count; i++)
+				if (s_chains[i].Proxy == chain) return;
+			FieldInfo segments =
+				chain is CombatProxyTrail ? TrailSegments
+				: chain is CombatProxyLightning ? LightningSegments : null;
+			if (segments == null) {
+				Log.Warn("chain proxy '" + chain.GetType().Name + "' has no known segment list; it will not be voiced");
+				return;
+			}
+			s_chains.Add(new ChainEntry { Proxy = chain, Segments = segments });
+		}
+
 		/// <summary>
 		/// Find the active traps and the components read live for each: every damage trigger
 		/// (its apply flag is the armed state) and that trigger's collider (the footprint).
@@ -308,9 +481,15 @@ namespace HandOfFateAccess.Combat {
 
 		private void StopAll() {
 			_lastAreas = -1;
+			_lastBeams = -1;
+			_lastChains = -1;
 			_lastAudible = -1;
 			_traps.Clear();
 			_trapLevel = null;
+			// s_beams and s_chains are deliberately NOT cleared: the engage hooks fire once
+			// per hazard, so a transient frame without a player or camera mid-fight must not
+			// orphan records nothing can re-create (traps rescan and areas re-poll; these
+			// cannot). Entries for ended hazards prune in the pump's next live frame.
 			if (_voices.Count == 0) return;
 			foreach (KeyValuePair<Component, ZoneVoice> kv in _voices)
 				AudioEngine.Stop(kv.Value.Voice);

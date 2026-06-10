@@ -124,5 +124,81 @@ namespace HandOfFateAccess.Tests {
 			Assert.True(cue.Params.Pan > 0.9f);
 			Assert.Equal(0f, cue.Distance, 3);
 		}
+
+		// ComposeSegment is the beam path: a damaging line between two endpoints with the
+		// beam collider's half-width, the voice at the nearest point on the segment.
+
+		[Fact]
+		public void Segment_BesideTheMiddle_SoundSitsPerpendicular_AtTheGap() {
+			// A beam running south-to-north 4 east of the player: the nearest point is due
+			// east at its middle, so the voice pans hard right at gap 4 minus the width.
+			ZoneCue cue = ZoneSonifier.ComposeSegment(
+				rightA: 4f, forwardA: -5f, rightB: 4f, forwardB: 5f, radius: 0.5f, ZonePhase.Active);
+			Assert.True(cue.Audible);
+			Assert.False(cue.Inside);
+			Assert.Equal(ZoneSynth.ActiveKey, cue.ClipKey);
+			Assert.True(cue.Params.Pan > 0.9f);
+			Assert.Equal(3.5f, cue.Distance, 3);
+		}
+
+		[Fact]
+		public void Segment_BeyondTheEndpoint_SoundSitsAtTheEndpoint() {
+			// The beam spans 3 to 8 east; the player is west of its near end, so the nearest
+			// point clamps to that endpoint and the gap is measured to it, not the infinite line.
+			ZoneCue cue = ZoneSonifier.ComposeSegment(3f, 0f, 8f, 0f, 0.5f, ZonePhase.Active);
+			Assert.True(cue.Params.Pan > 0.9f);
+			Assert.Equal(2.5f, cue.Distance, 3);
+		}
+
+		[Fact]
+		public void Segment_WithinTheWidth_RattlesAtFullVolume_TowardTheAxis() {
+			// The beam runs north-south 0.3 east of the player, width 0.5: inside. The
+			// bearing points at the axis (east), so fleeing the sound steps west off the
+			// line, the shortest exit.
+			ZoneCue cue = ZoneSonifier.ComposeSegment(0.3f, -5f, 0.3f, 5f, 0.5f, ZonePhase.Active);
+			Assert.True(cue.Inside);
+			Assert.Equal(ZoneSynth.InsideKey, cue.ClipKey);
+			Assert.Equal(1f, cue.Params.Volume, 3);
+			Assert.True(cue.Params.Pan > 0.9f);
+			Assert.Equal(0f, cue.Distance, 3);
+		}
+
+		[Fact]
+		public void Segment_OnTheAxis_NoBearing_CenteredAtMidPitch() {
+			// Standing exactly on the beam's line: no bearing, centered at mid pitch like a
+			// zone's center - either side out works.
+			ZoneCue cue = ZoneSonifier.ComposeSegment(0f, -5f, 0f, 5f, 0.5f, ZonePhase.Active);
+			Assert.True(cue.Inside);
+			Assert.Equal(0f, cue.Params.Pan, 3);
+			Assert.Equal(ProjectileSonifier.PitchFor(0f), cue.Params.Pitch, 3);
+		}
+
+		[Fact]
+		public void Segment_GrowingBeam_UsesTheArmingLoop_ButStillRattlesInside() {
+			// A beam still growing in voices as arming (leaving its line is free until the
+			// grow completes), but standing on the line rattles: the delayed activation is
+			// retroactive, hitting anyone there when it fills.
+			ZoneCue outside = ZoneSonifier.ComposeSegment(4f, -5f, 4f, 5f, 0.5f, ZonePhase.Arming);
+			Assert.Equal(ZoneSynth.ArmingKey, outside.ClipKey);
+
+			ZoneCue inside = ZoneSonifier.ComposeSegment(0.2f, -5f, 0.2f, 5f, 0.5f, ZonePhase.Arming);
+			Assert.Equal(ZoneSynth.InsideKey, inside.ClipKey);
+		}
+
+		[Fact]
+		public void Segment_SilencesAtFalloff() {
+			float far = ZoneSonifier.FalloffRange + 0.5f;
+			ZoneCue cue = ZoneSonifier.ComposeSegment(far, -5f, far, 5f, 0.5f, ZonePhase.Active);
+			Assert.False(cue.Audible);
+		}
+
+		[Fact]
+		public void Segment_Degenerate_ComposesAsAPoint() {
+			// A zero-length segment (engaged at its own origin) is just a point hazard.
+			ZoneCue segment = ZoneSonifier.ComposeSegment(4f, 0f, 4f, 0f, 0.5f, ZonePhase.Active);
+			Assert.True(segment.Audible);
+			Assert.Equal(3.5f, segment.Distance, 3);
+			Assert.True(segment.Params.Pan > 0.9f);
+		}
 	}
 }
