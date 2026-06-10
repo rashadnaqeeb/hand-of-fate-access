@@ -33,6 +33,7 @@ namespace HandOfFateAccess.Screens {
 		private static readonly FieldInfo ClickActionField = AccessTools.Field(typeof(CardContainer), "m_cardClickAction");
 		private static readonly FieldInfo CancelActionField = AccessTools.Field(typeof(CardContainer), "m_cardCancelAction");
 		private static readonly FieldInfo OldPanelField = AccessTools.Field(typeof(ComparePanelManager), "m_old");
+		private static readonly FieldInfo InputNameField = AccessTools.Field(typeof(UIInputSprite), "m_inputName");
 		private static readonly FieldInfo InfoTitleField = AccessTools.Field(typeof(InfoPanel), "m_title");
 		private static readonly FieldInfo InfoStatTitleField = AccessTools.Field(typeof(InfoPanel), "m_statTitle");
 		private static readonly FieldInfo InfoStatValueField = AccessTools.Field(typeof(InfoPanel), "m_statValue");
@@ -94,11 +95,10 @@ namespace HandOfFateAccess.Screens {
 
 		// The zoom locks its card as the sole selection, so confirm/cancel are taken with
 		// the bound inputs directly, not through navigable buttons; the hint names those
-		// inputs. The nav bar's confirm/cancel buttons each carry a UIInputSprite whose
-		// public button-string properties resolve the live binding for the active device
-		// (controller type and keyboard rebinds included), the same path the game's
-		// tutorials use to compose "press X" text. A failed lookup drops the key name
-		// (the hint then carries the bare label) and is logged once, not per frame.
+		// inputs. The nav bar's confirm/cancel buttons each carry a UIInputSprite holding
+		// the input's name; on keyboard its public KMButtonString resolves the live
+		// (rebind-aware) key name. A failed lookup drops the key name (the hint then
+		// carries the bare label) and is logged once, not per frame.
 		private static bool _keyNameWarned;
 
 		private static string BoundKeyName(NavBarButton button) {
@@ -106,15 +106,36 @@ namespace HandOfFateAccess.Screens {
 			UIInputSprite sprite = button.GetComponent<UIInputSprite>();
 			if (sprite == null) return null;
 			try {
-				string name = InputManager.UseGamepad ? sprite.ControllerButtonString : sprite.KMButtonString;
-				return string.IsNullOrEmpty(name) ? null : name;
-			} catch (Exception ex) {
-				if (!_keyNameWarned) {
-					_keyNameWarned = true;
-					Log.Warn("zoom hint key name lookup failed, hint will carry labels only: " + ex);
+				string name = InputManager.UseGamepad ? ControllerKeyName(sprite) : sprite.KMButtonString;
+				if (string.IsNullOrEmpty(name)) {
+					WarnKeyNameOnce("zoom hint key name resolved empty for '" + button.name + "'; hint will carry labels only");
+					return null;
 				}
+				return name;
+			} catch (Exception ex) {
+				WarnKeyNameOnce("zoom hint key name lookup failed, hint will carry labels only: " + ex);
 				return null;
 			}
+		}
+
+		// The sprite's public ControllerButtonString resolves the binding through
+		// InputManager.GetInputControlType, whose switch maps only the combat and
+		// function inputs (all the game itself feeds it, via the trait tutorials);
+		// the nav bar's Confirm/Cancel fall to its -1 default and resolve empty.
+		// Resolve the controller binding by name instead, the same name-only lookup
+		// the sprite's own icon path uses, then localize its button string with the
+		// active controller's postfix exactly as ControllerButtonString would.
+		private static string ControllerKeyName(UIInputSprite sprite) {
+			string inputName = (string)InputNameField.GetValue(sprite);
+			if (string.IsNullOrEmpty(inputName)) return null;
+			UIInputBinding.Binding binding = UIManager.Instance.GetInputBinding(inputName);
+			return UIUtils.GetString(binding.ButtonString + ControllerIconMappings.ControllerPostfix);
+		}
+
+		private static void WarnKeyNameOnce(string message) {
+			if (_keyNameWarned) return;
+			_keyNameWarned = true;
+			Log.Warn(message);
 		}
 
 		private static string LocalizeTitle(ZoomContainer zoom) {
