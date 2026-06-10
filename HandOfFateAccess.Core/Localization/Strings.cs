@@ -13,13 +13,24 @@ namespace HandOfFateAccess.Localization {
 	/// </summary>
 	public static class Strings {
 		// One factory per translated language, keyed by the game's language codes
-		// (the 12 locales it ships: en, fr, it, de, es, pt-br, ru, hu, uk, ja, ko,
-		// zh). Add a translation here as an object initializer over StringTable;
-		// any field it leaves unset keeps its English default, so a partial
-		// translation falls back per string, not per language.
+		// (the 12 locales it ships). Each translation is an object initializer over
+		// StringTable in Tables/StringTable.<Code>.cs; any field one leaves unset
+		// keeps its English default, so a partial translation falls back per
+		// string, not per language. LanguageTableTests sweeps every entry here.
 		private static readonly Dictionary<string, Func<StringTable>> Tables =
 			new Dictionary<string, Func<StringTable>>(StringComparer.OrdinalIgnoreCase) {
 				{ "en", () => new StringTable() },
+				{ "fr", StringTableFr.Create },
+				{ "it", StringTableIt.Create },
+				{ "de", StringTableDe.Create },
+				{ "es", StringTableEs.Create },
+				{ "pt-br", StringTablePtBr.Create },
+				{ "ru", StringTableRu.Create },
+				{ "hu", StringTableHu.Create },
+				{ "uk", StringTableUk.Create },
+				{ "ja", StringTableJa.Create },
+				{ "ko", StringTableKo.Create },
+				{ "zh", StringTableZh.Create },
 			};
 
 		private static StringTable _active = new StringTable();

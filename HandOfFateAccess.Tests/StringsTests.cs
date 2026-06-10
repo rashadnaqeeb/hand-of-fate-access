@@ -26,7 +26,8 @@ namespace HandOfFateAccess.Tests {
 
 		[Fact]
 		public void Unknown_language_falls_back_to_English() {
-			Assert.False(Strings.SetLanguage("fr"));
+			// "pl" is a real language code the game does not ship a locale for.
+			Assert.False(Strings.SetLanguage("pl"));
 			Assert.Equal("en", Strings.ActiveLanguage);
 			Assert.Equal("Map", Strings.ScreenMap);
 		}
