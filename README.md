@@ -12,7 +12,7 @@ A mod that makes Hand of Fate (the original game) playable without sight. Everyt
 
 1. Download the latest release zip.
 2. Extract it directly into the game folder, the one containing `Hand of Fate.exe`. For a default Steam install that is `C:\Program Files (x86)\Steam\steamapps\common\Hand of Fate`. Allow it to merge with the existing folders.
-3. Launch the game. Shortly after launch you should hear "Hand of Fate Access loaded".
+3. Launch the game. Shortly after launch the mod speaks its name and version, for example "Hand of Fate Access version 1.0.0 loaded". That line confirms everything is installed correctly.
 
 The zip contains everything the mod needs, including the mod loader, already configured. There is nothing else to install or set up.
 
