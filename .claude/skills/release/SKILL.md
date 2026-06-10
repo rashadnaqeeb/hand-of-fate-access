@@ -40,7 +40,14 @@ Stop and report (publish nothing) if any of these fail:
 
     gh release create v<version> "release/HandOfFateAccess-v<version>.zip" --title "Hand of Fate Access v<version>" --notes-file <notes file>
 
-13. Report back: the release URL, the notes as published, and a reminder that players on the old version will hear the new number in the startup line once they update.
+## Deploy locally
+
+13. Run `build.ps1 -NoBuild` to copy the just-released binaries into the local game install. `release.ps1` already built them, so `-NoBuild` deploys exactly the bits that were published; the user's own game then runs the released version.
+14. Verify the deployed `BepInEx\plugins\HandOfFateAccess.dll` in the game folder reports the new file version.
+
+## Report
+
+15. Report back: the release URL, the notes as published, confirmation of the local deploy, and a reminder that the startup line now speaks the new version number.
 
 ## Release notes template
 
