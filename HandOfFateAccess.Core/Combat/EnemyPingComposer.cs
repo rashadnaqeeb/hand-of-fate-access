@@ -14,6 +14,10 @@ namespace HandOfFateAccess.Combat {
 	/// answer audibly.
 	/// </summary>
 	public static class EnemyPingComposer {
+		/// <summary>Loudness with the enemy on top of the player: the alert policy's
+		/// peak, the ping's own loudness identity (and the glossary demo's level).</summary>
+		public const float MaxVolume = AttackCueComposer.MaxVolume;
+
 		/// <summary>
 		/// The ping parameters for an enemy sitting <paramref name="right"/> world units to
 		/// the camera's right (negative is left) and <paramref name="forward"/> world units

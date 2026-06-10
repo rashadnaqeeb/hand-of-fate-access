@@ -50,7 +50,7 @@ namespace HandOfFateAccess.Glossary {
 				WallStep(WallSide.Below),
 			}),
 			OneShot(Strings.GlossaryWallCollision, WallToneComposer.CollisionKey, CollisionVolume),
-			OneShot(Strings.GlossaryEnemyPing, EnemyPingSynth.Key, AttackCueComposer.MaxVolume),
+			OneShot(Strings.GlossaryEnemyPing, EnemyPingSynth.Key, EnemyPingComposer.MaxVolume),
 			OneShot(Strings.GlossaryChest, BeaconComposer.ChestKey, BeaconComposer.MaxVolume),
 			OneShot(Strings.GlossaryExit, BeaconComposer.ExitKey, BeaconComposer.MaxVolume),
 		};

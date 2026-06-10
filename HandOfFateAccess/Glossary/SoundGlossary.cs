@@ -9,14 +9,19 @@ using UnityEngine;
 namespace HandOfFateAccess.Glossary {
 	/// <summary>
 	/// The sound glossary: a speech-only list of the mod's combat sounds, so the player
-	/// can learn or re-check what each one means outside a fight. Opened with
-	/// <see cref="ToggleKey"/> while the pause menu is up (the game is frozen there, so
-	/// no live cue competes with the demos); up/down speak the entries, confirm plays the
-	/// current entry's demo, and the toggle key closes it. There is no visual: the
-	/// overlay is its spoken list plus input ownership, with <see cref="GlossaryState"/>
-	/// and the selection patches keeping the arrows and confirm away from the pause menu
-	/// underneath. Escape stays with the game, so it closes the pause menu and the
-	/// glossary silently follows (the pause gate below).
+	/// can learn or re-check what each one means outside a fight. It opens from a real
+	/// pause-menu option (<see cref="GlossaryButton"/> injects it), so it is found by
+	/// arrowing through the menu and works with keyboard, controller and mouse alike.
+	/// While open, up/down speak the entries, confirm plays the current entry's demo,
+	/// and cancel (Escape or controller B) closes back to the pause list; a second
+	/// cancel then resumes the game as usual. There is no visual beyond the button: the
+	/// overlay is its spoken list plus input ownership.
+	///
+	/// All input arrives through <see cref="GlossaryState"/>, recorded by the OnKey and
+	/// DoClick patches at the game's own dispatch (which funnels every device into the
+	/// selected control), so the glossary reads no raw input. The pause gate doubles as
+	/// the teardown: anything that closes the pause menu under the glossary closes it
+	/// silently.
 	///
 	/// Demo clips are the ones the combat features registered at startup, played at the
 	/// catalog's canonical parameters; only the projectile renders are the glossary's
@@ -24,14 +29,11 @@ namespace HandOfFateAccess.Glossary {
 	/// scheduling runs on unscaled time: the pause menu freezes Time.time.
 	/// </summary>
 	internal sealed class SoundGlossary : IInputBinding {
-		private const KeyCode ToggleKey = KeyCode.G;
 		private const int RenderSampleRate = 44100;
-		// A beat after the pause menu opens, so the hint queues behind the pause
-		// announcement and the focus readout rather than crowding them.
-		private const float HintDelaySeconds = 2f;
 
 		private readonly Func<bool> _pauseActive;
 		private readonly GlossaryMenu _menu = new GlossaryMenu(GlossaryCatalog.Entries);
+		private readonly GlossaryButton _button = new GlossaryButton();
 
 		private bool _ready;
 		private bool _unavailableLogged;
@@ -45,11 +47,6 @@ namespace HandOfFateAccess.Glossary {
 		// Fully qualified: the game's Assembly-CSharp has its own global Voice type.
 		private HandOfFateAccess.Audio.Voice _voice = HandOfFateAccess.Audio.Voice.None;
 
-		// The once-per-session discovery hint, scheduled a beat after the first pause.
-		private bool _hintDone;
-		private bool _wasPaused;
-		private float _hintDueAt = -1f;
-
 		public string Name => "sound glossary";
 
 		/// <param name="pauseActive">Whether the pause menu is the active screen; the
@@ -60,36 +57,32 @@ namespace HandOfFateAccess.Glossary {
 
 		public void Poll() {
 			bool paused = _pauseActive();
-			PumpHint(paused);
+			_button.Pump(paused);
 
 			if (!paused) {
-				// The pause menu closed under us (Escape, or a quit): the glossary
-				// follows silently; announcing over the screen change would be noise.
+				// The pause menu closed under us (resume, forfeit, a scene change): the
+				// glossary follows silently; announcing over the screen change is noise.
 				if (_open) Close(silent: true);
+				GlossaryState.DropPending();
 				return;
 			}
 
-			// A key-rebind scan owns the whole keyboard; pressing the toggle key then
-			// must bind G, not also open the glossary over the controls screen.
-			if (cInput.scanning) return;
-
-			if (!_open) {
-				if (UnityEngine.Input.GetKeyDown(ToggleKey)) Open();
-				return;
-			}
+			if (GlossaryState.ConsumeOpenRequest()) Open();
+			if (!_open) return;
 
 			PumpDemo();
 
-			if (UnityEngine.Input.GetKeyDown(ToggleKey)) {
-				Close(silent: false);
-			} else if (UnityEngine.Input.GetKeyDown(KeyCode.DownArrow)) {
+			while (GlossaryState.TryDequeueKey(out KeyCode key)) {
+				if (key == KeyCode.Escape) {
+					Close(silent: false);
+					return;
+				}
 				StopDemo();
-				SpeechPipeline.SpeakInterrupt(_menu.MoveNext().Label);
-			} else if (UnityEngine.Input.GetKeyDown(KeyCode.UpArrow)) {
-				StopDemo();
-				SpeechPipeline.SpeakInterrupt(_menu.MovePrevious().Label);
-			} else if (UnityEngine.Input.GetKeyDown(KeyCode.Return)
-					|| UnityEngine.Input.GetKeyDown(KeyCode.KeypadEnter)) {
+				SpeechPipeline.SpeakInterrupt(key == KeyCode.DownArrow
+					? _menu.MoveNext().Label : _menu.MovePrevious().Label);
+			}
+
+			if (GlossaryState.ConsumePlayRequest()) {
 				StopDemo();
 				_steps = _menu.Current.Steps;
 				_stepIndex = -1;
@@ -98,12 +91,10 @@ namespace HandOfFateAccess.Glossary {
 		}
 
 		private void Open() {
-			if (!EnsureClips()) return;
+			EnsureClips();
 			_menu.Reset();
 			_open = true;
 			GlossaryState.Open = true;
-			_hintDone = true;   // they found it; never hint again this session
-			_hintDueAt = -1f;
 			SpeechPipeline.SpeakInterrupt(Strings.GlossaryTitle);
 			SpeechPipeline.SpeakQueued(_menu.Current.Label);
 		}
@@ -112,6 +103,7 @@ namespace HandOfFateAccess.Glossary {
 			StopDemo();
 			_open = false;
 			GlossaryState.Open = false;
+			GlossaryState.DropPending();
 			if (!silent) SpeechPipeline.SpeakInterrupt(Strings.GlossaryClosed);
 		}
 
@@ -156,14 +148,16 @@ namespace HandOfFateAccess.Glossary {
 		// Register the glossary's own demo renders, once. Every other catalog key was
 		// registered by its feature at startup; one whose sample failed to load plays
 		// nothing and the backend logs the unregistered key, so the gap is visible.
-		private bool EnsureClips() {
-			if (_ready) return true;
+		// With the audio backend down the glossary still opens and speaks its entries;
+		// only the demos are gone, like every other mod sound, logged once here.
+		private void EnsureClips() {
+			if (_ready) return;
 			if (!AudioEngine.IsAvailable) {
 				if (!_unavailableLogged) {
-					Log.Warn("audio backend unavailable; sound glossary disabled");
+					Log.Warn("audio backend unavailable; sound glossary demos disabled");
 					_unavailableLogged = true;
 				}
-				return false;
+				return;
 			}
 			AudioEngine.Register(GlossaryCatalog.ProjectileKey,
 				ProjectileSynth.Render(RenderSampleRate, GlossaryCatalog.ProjectileDemoSeconds, false, 1u),
@@ -173,22 +167,6 @@ namespace HandOfFateAccess.Glossary {
 				1, RenderSampleRate);
 			_ready = true;
 			Log.Debug("sound glossary ready");
-			return true;
-		}
-
-		// The glossary has no on-screen button, so it announces itself once per session:
-		// a beat after the pause menu first opens, queued so it reads after the pause
-		// announcement. Cancelled if the pause closes first; never repeated.
-		private void PumpHint(bool paused) {
-			if (paused != _wasPaused) {
-				_wasPaused = paused;
-				_hintDueAt = paused && !_hintDone && AudioEngine.IsAvailable
-					? Time.unscaledTime + HintDelaySeconds : -1f;
-			}
-			if (_hintDueAt < 0f || Time.unscaledTime < _hintDueAt) return;
-			_hintDueAt = -1f;
-			_hintDone = true;
-			SpeechPipeline.SpeakQueued(Strings.GlossaryHint(ToggleKey.ToString()));
 		}
 	}
 }

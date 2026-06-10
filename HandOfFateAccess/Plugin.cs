@@ -232,10 +232,11 @@ namespace HandOfFateAccess {
 				_mapCursor.Move,
 				() => MapInput.OnMap));
 
-			// Sound glossary: G while the pause menu is up opens a spoken list of the
-			// mod's combat sounds (G is absent from the game's default keyboard table).
-			// It polls the pause state itself rather than taking an isActive gate: it
-			// must keep running after the pause closes to shut its overlay down.
+			// Sound glossary: a spoken list of the mod's combat sounds behind an option
+			// injected into the pause menu, so any device opens it. Its input arrives
+			// through the OnKey/DoClick patches; this binding is only its pump. It polls
+			// the pause state itself rather than taking an isActive gate: it must keep
+			// running after the pause closes to shut its overlay down.
 			_input.Register(new SoundGlossary(
 				() => _screenWatcher.Stack.Top == ScreenId.Paused));
 
