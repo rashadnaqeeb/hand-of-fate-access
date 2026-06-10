@@ -309,6 +309,15 @@ namespace HandOfFateAccess {
 				new System.Type[0],
 				prefix: null,
 				postfix: moverEngagePostfix);
+
+			// Traps can come active at any time (a chest or exit can switch a trap hierarchy
+			// on mid-level). Trap.Start is an iterator, so its postfix fires at coroutine
+			// creation = activation, and the zone pump rescans on the flag.
+			patcher.Patch(
+				typeof(Trap), "Start",
+				new System.Type[0],
+				prefix: null,
+				postfix: AccessTools.Method(typeof(Trap_Start_Patch), "Postfix"));
 		}
 
 		// The log-only diagnostic patches: the damage tripwire on the one chokepoint all damage

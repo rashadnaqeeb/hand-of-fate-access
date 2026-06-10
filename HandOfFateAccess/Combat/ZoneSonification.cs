@@ -22,15 +22,19 @@ namespace HandOfFateAccess.Combat {
 	/// Holding a voice per live area object is the mod's own audio state; every shape and
 	/// state input is re-read from the game each frame.
 	///
-	/// Traps are scene objects alive for the whole level with no registry, so they are
-	/// discovered once per encounter (a <c>FindObjectsOfType</c> scan keyed on
-	/// <c>CombatEncounter.Instance</c> changing) and then read live each frame: armed is the
-	/// damage trigger's apply flag, the footprint is its collider. A trap's deterministic
-	/// phase cycle needs no rhythm machinery of its own - the voice simply follows the armed
-	/// flag, so the alternation IS the audible cycle and the player times the crossing by
-	/// ear. The safe beat voices as arming (exists, damage off, leaving free); a trap whose
-	/// authored cycle idles on a proximity trigger instead voices its quiet time as primed,
-	/// because it fires when approached and silence would read as a clear corridor.
+	/// Traps are scene objects with no registry, so they are discovered by a
+	/// <c>FindObjectsOfType</c> scan, rerun when <c>CombatEncounter.Instance</c> changes or
+	/// when <c>Trap_Start_Patch</c> flags a trap coming active (a chest or exit can switch
+	/// trap hierarchies on mid-level), and then read live each frame: armed is each damage
+	/// trigger's apply flag, the footprint is that trigger's collider, one voice per trigger
+	/// since a trap can cycle several independently. A trap's deterministic phase cycle
+	/// needs no rhythm machinery of its own - the voice simply follows the armed flag, so
+	/// the alternation IS the audible cycle and the player times the crossing by ear. The
+	/// safe beat voices as arming (exists, damage off, leaving free), as does a trigger
+	/// whose collider the cycle disabled (it cannot detect anyone, so it cannot hit, but it
+	/// is not gone); a trap whose authored cycle idles on a proximity trigger instead voices
+	/// its quiet time as primed, because it fires when approached and silence would read as
+	/// a clear corridor.
 	///
 	/// Approximations, deliberate: cones (angle-limited areas) are voiced as full discs,
 	/// over-warning rather than risking an unheard arc (the engage recon log records the
@@ -61,10 +65,11 @@ namespace HandOfFateAccess.Combat {
 			public ZoneCue Cue;
 		}
 
-		// One scanned trap: the components re-read every frame. Holding these live component
-		// references is the acceptable cache; armed state and shape are read off them fresh.
+		// One scanned damage trigger: the components re-read every frame. Holding these live
+		// component references is the acceptable cache; armed state and shape are read off
+		// them fresh. A trap can own several triggers (each phase-cycled independently), so
+		// the scan emits one entry, and one voice, per trigger, not per trap.
 		private struct TrapEntry {
-			public Trap Trap;
 			public CombatApplicantTrigger Applicant;
 			public Collider Collider;
 			// The authored cycle idles on a proximity trigger: quiet means "fires when
@@ -79,9 +84,13 @@ namespace HandOfFateAccess.Combat {
 		private readonly List<LiveZone> _live = new List<LiveZone>();
 		private readonly HashSet<Component> _keep = new HashSet<Component>();
 		private readonly List<Component> _gone = new List<Component>();
-		// The level's traps, rescanned when the encounter changes.
+		// The level's traps, rescanned when the encounter changes or a trap becomes active.
 		private readonly List<TrapEntry> _traps = new List<TrapEntry>();
 		private CombatEncounter _trapLevel;
+		// Set by Trap_Start_Patch when a trap's phase coroutine is created, i.e. the trap
+		// just became active. A chest or exit can switch whole trap hierarchies on
+		// mid-level, which a once-per-level scan would miss: an invisible hazard.
+		private static bool s_trapsChanged;
 		// Last logged counts so the diagnostic line fires only on change.
 		private int _lastAreas = -1;
 		private int _lastAudible = -1;
@@ -167,20 +176,25 @@ namespace HandOfFateAccess.Combat {
 				_live.Add(new LiveZone { Key = area, Cue = cue });
 			}
 
-			// Traps live for the whole level; rescan when the encounter changes.
+			// Traps live for the whole level; rescan when the encounter changes or a trap
+			// becomes active (the patch flag covers traps switched on mid-level, and also
+			// levels that have traps but never an encounter, if any exist).
 			CombatEncounter encounter = CombatEncounter.Instance;
-			if (encounter != _trapLevel) {
+			if (encounter != _trapLevel || s_trapsChanged) {
 				_trapLevel = encounter;
+				s_trapsChanged = false;
 				ScanTraps();
 			}
 			for (int i = 0; i < _traps.Count; i++) {
 				TrapEntry trap = _traps[i];
-				// A trap whose collider the cycle disabled (or whose object the level tore
-				// down) cannot hit, so it has no voice this frame.
-				if (trap.Collider == null || !trap.Collider.enabled || !trap.Collider.gameObject.activeInHierarchy)
+				// An inactive trigger object is genuinely absent (its trap is not running);
+				// a merely disabled collider is not: the trap exists and its cycle can
+				// re-enable it, so it keeps a voice, just never an armed one (a disabled
+				// trigger cannot detect anyone, hence cannot hit).
+				if (trap.Collider == null || !trap.Collider.gameObject.activeInHierarchy)
 					continue;
 
-				bool armed = (bool)TriggerArmed.GetValue(trap.Applicant);
+				bool armed = trap.Collider.enabled && (bool)TriggerArmed.GetValue(trap.Applicant);
 				ZonePhase phase = armed ? ZonePhase.Active
 					: trap.Primed ? ZonePhase.Primed : ZonePhase.Arming;
 
@@ -199,7 +213,7 @@ namespace HandOfFateAccess.Combat {
 
 				ZoneCue cue = ZoneSonifier.ComposePoint(right, forward, inside, phase);
 				if (!cue.Audible) continue;
-				_live.Add(new LiveZone { Key = trap.Trap, Cue = cue });
+				_live.Add(new LiveZone { Key = trap.Applicant, Cue = cue });
 			}
 
 			// Diagnostic: how many areas the game has live versus how many hazards are near
@@ -251,23 +265,32 @@ namespace HandOfFateAccess.Combat {
 			_gone.Clear();
 		}
 
+		/// <summary>A trap just became active (its Start coroutine was created); rescan on
+		/// the next pump. Called from the Harmony postfix; records only, per the hook rule.</summary>
+		internal static void MarkTrapsChanged() {
+			s_trapsChanged = true;
+		}
+
 		/// <summary>
-		/// Find the level's traps and the components read live for each: the damage trigger
-		/// (its apply flag is the armed state) and its collider (the footprint). Per the
-		/// decompiled source the applicant sits on the trap's own object; InChildren also
-		/// covers it authored a level down. A trap this can't resolve is logged, not skipped
-		/// silently: it would be an invisible hazard.
+		/// Find the active traps and the components read live for each: every damage trigger
+		/// (its apply flag is the armed state) and that trigger's collider (the footprint).
+		/// One entry per trigger, because a trap can own several, each cycled by its own
+		/// phase. Per the decompiled source the applicants sit on the trap's own object;
+		/// InChildren also covers them authored a level down (inactive children included:
+		/// the per-frame activeInHierarchy check decides audibility). A trap this can't
+		/// resolve is logged, not skipped silently: it would be an invisible hazard. A trap
+		/// with no trigger at all is likely a manual-applicant scripted hit (non-positional,
+		/// nothing a place-voice could say); the warn line is the recon for whether such
+		/// content exists.
 		/// </summary>
 		private void ScanTraps() {
 			_traps.Clear();
 			Trap[] traps = UnityEngine.Object.FindObjectsOfType<Trap>();
 			for (int i = 0; i < traps.Length; i++) {
 				Trap trap = traps[i];
-				CombatApplicantTrigger applicant = trap.GetComponentInChildren<CombatApplicantTrigger>();
-				Collider collider = applicant != null ? applicant.GetComponent<Collider>() : null;
-				if (applicant == null || collider == null) {
-					Log.Warn("trap '" + trap.name + "' has no "
-						+ (applicant == null ? "damage trigger" : "trigger collider") + "; it will not be voiced");
+				CombatApplicantTrigger[] applicants = trap.GetComponentsInChildren<CombatApplicantTrigger>(true);
+				if (applicants.Length == 0) {
+					Log.Warn("trap '" + trap.name + "' has no damage trigger; it will not be voiced");
 					continue;
 				}
 
@@ -276,10 +299,17 @@ namespace HandOfFateAccess.Combat {
 				for (int p = 0; p < phases.Length; p++)
 					if (phases[p] is TrapPhaseWaitForTrigger) primed = true;
 
-				_traps.Add(new TrapEntry { Trap = trap, Applicant = applicant, Collider = collider, Primed = primed });
+				for (int a = 0; a < applicants.Length; a++) {
+					Collider collider = applicants[a].GetComponent<Collider>();
+					if (collider == null) {
+						Log.Warn("trap '" + trap.name + "' trigger '" + applicants[a].name + "' has no collider; it will not be voiced");
+						continue;
+					}
+					_traps.Add(new TrapEntry { Applicant = applicants[a], Collider = collider, Primed = primed });
+				}
 			}
 			if (traps.Length > 0)
-				Log.Info("traps: " + _traps.Count + " of " + traps.Length + " voiced this level");
+				Log.Info("traps: " + traps.Length + " active, " + _traps.Count + " trigger(s) voiced");
 		}
 
 		private void StopAll() {
