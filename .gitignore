@@ -36,3 +36,5 @@ __pycache__/
 Thumbs.db
 desktop.ini
 .DS_Store
+game-locales/
+translation-work/
