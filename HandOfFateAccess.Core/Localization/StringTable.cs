@@ -19,28 +19,33 @@ namespace HandOfFateAccess.Localization {
 	///   word order. The comment on each format string says what it stands for.
 	/// - Text the player reads off the game itself (card names, descriptions, costs)
 	///   is NOT here -- the game's own localization already covers it.
+	/// - Where a string names something the game also names in its own localization
+	///   (the resource nouns, contexts like the shop or the deck builder), use the
+	///   word the game's locale already uses for it, so the mod's speech and the
+	///   game's text stay one vocabulary.
 	/// </summary>
 	public sealed class StringTable {
 
 		// Screen titles. Spoken on their own the moment the player moves into a major
-		// game context (a menu, the map, combat, a shop), so each must read as a
-		// standalone label. Short title-style noun phrases.
-		public string ScreenLoading = "Loading";
-		public string ScreenIntro = "Intro";
-		public string ScreenAttract = "Attract";
-		public string ScreenMainMenu = "Main menu";
-		public string ScreenDeckBuilder = "Deck builder";
-		public string ScreenDungeonSelect = "Dungeon select";
-		public string ScreenMap = "Map";
-		public string ScreenCardTable = "Card table";
-		public string ScreenEncounter = "Encounter";
-		public string ScreenCombat = "Combat";
-		public string ScreenShop = "Shop";
-		public string ScreenDialogue = "Dialogue";
-		public string ScreenInventory = "Inventory";
-		public string ScreenPaused = "Paused";
-		public string ScreenResults = "Results";
-		public string ScreenCabinet = "Cabinet";
+		// game context, so each must read as a standalone label. Short title-style
+		// noun phrases. The trailing comment on each says what the screen actually
+		// is, since several of these names are game jargon.
+		public string ScreenLoading = "Loading"; // any load or transition moment: splash screens, entering or leaving a level
+		public string ScreenIntro = "Intro"; // the dealer's one-time opening cinematic on a fresh profile
+		public string ScreenAttract = "Attract"; // the idle scene of drifting cards behind the title; the game's attract mode
+		public string ScreenMainMenu = "Main menu"; // the title screen and its option list
+		public string ScreenDeckBuilder = "Deck builder"; // assembling the player's encounter and equipment decks before a run
+		public string ScreenDungeonSelect = "Dungeon select"; // choosing which dungeon (story challenge or endless run) to attempt
+		public string ScreenMap = "Map"; // the level's board of face-down encounter cards the player token moves across
+		public string ScreenCardTable = "Card table"; // the dealer's table during a run; the base context the overlays below sit on
+		public string ScreenEncounter = "Encounter"; // a drawn encounter card playing out: its narration and choices
+		public string ScreenCombat = "Combat"; // a real-time fight
+		public string ScreenShop = "Shop"; // a merchant's stock laid out to buy and sell
+		public string ScreenDialogue = "Dialogue"; // a modal confirm or error popup; spoken only when the popup's own prompt cannot be read
+		public string ScreenInventory = "Inventory"; // the equipment screen: the paperdoll and the cards carried
+		public string ScreenPaused = "Paused"; // the pause menu
+		public string ScreenResults = "Results"; // the end-of-run screens: rewards, then the score breakdown
+		public string ScreenCabinet = "Cabinet"; // the hub between runs: the dealer's cabinet of court cards, showing story progress, where the next challenge starts
 
 		// Card status. Appended after a card's name when that card or encounter has
 		// already been finished, e.g. "Bandit Camp, completed".
@@ -58,7 +63,10 @@ namespace HandOfFateAccess.Localization {
 
 		// The ability-use counter on an artifact or consumable equipment card ("3 charges"),
 		// the number a sighted player reads off the card's counter. The counter is a bare
-		// number with no label, so the noun is authored here. Singular/plural per count.
+		// number with no label, so the noun is authored here. Spoken after the number:
+		// CardCharge when the count is exactly 1, CardCharges for every other count --
+		// a language with richer plural rules gets only this two-way split, so pick the
+		// form that fits the most counts.
 		public string CardCharge = "charge";
 		public string CardCharges = "charges";
 
@@ -113,7 +121,7 @@ namespace HandOfFateAccess.Localization {
 		public string ResourceFood = "food";
 		public string ResourceGold = "gold";
 		public string ResourceIronOre = "iron ore";
-		public string ResourceTokens = "tokens";
+		public string ResourceTokens = "tokens"; // the reward tokens won from encounters, which unlock new cards
 
 		// Spoken when the player asks for the resource status (the status key) while no
 		// run is live, so no stat cards are on the table to read. Keeps the key from
@@ -129,7 +137,8 @@ namespace HandOfFateAccess.Localization {
 		// The end-of-run scoreboard draws each entry's points as a symbol ("x2" for a
 		// multiplier, "+50" for a bonus). A screen reader voices the "x" as the letter and may
 		// drop the "+", so the symbol is spoken as a word instead; the number comes from the
-		// game. A row's total has no symbol and reads as the bare number.
+		// game. The word is spoken before the number, in the symbol's position: "times 2",
+		// "plus 50". A row's total has no symbol and reads as the bare number.
 		public string ScorePlus = "plus";
 		public string ScoreTimes = "times";
 
@@ -200,11 +209,14 @@ namespace HandOfFateAccess.Localization {
 		public string BindingPressKey = "press a key";
 		public string BindingConflict = "conflict";
 
-		// A chance card's current left-to-right position while picking, spoken in place of its
-		// hidden "face down card" identity so the player can navigate to the slot they tracked
-		// by ear. {0} is the 1-based slot number. The shuffled face-down cards are otherwise
-		// indistinguishable, so position is the one thing worth saying. The game has no such
-		// label, so it is authored here.
+		// The chance gambit is the game's shuffle-then-pick minigame: outcome cards
+		// (success, failure...) are shown, flipped face down, shuffled, and the player
+		// picks one. This is a card's current left-to-right position while picking,
+		// spoken in place of its hidden "face down card" identity so the player can
+		// navigate to the slot they tracked by ear through the shuffle. {0} is the
+		// 1-based slot number. The shuffled face-down cards are otherwise
+		// indistinguishable, so position is the one thing worth saying. The game has
+		// no such label, so it is authored here.
 		public string GambitSlotFormat = "Slot {0}";
 
 		// The sound glossary: a speech-only list of the mod's combat sounds, opened from
@@ -216,9 +228,10 @@ namespace HandOfFateAccess.Localization {
 		public string GlossaryTitle = "Sound glossary";
 		public string GlossaryClosed = "Glossary closed";
 
-		// Glossary entries, one per combat sound: the sound's name first (the distinguishing
-		// word), then what hearing it means in a fight. Spoken as the player arrows through
-		// the list; activating an entry plays the sound itself.
+		// Glossary entries, one per combat sound: the sound's name first (the
+		// distinguishing word, so the player arrowing through the list can move on the
+		// moment they hear it), then what hearing that sound means in a fight. Activating
+		// an entry plays the sound itself right after the line.
 		public string GlossaryBlock = "Block, attack you can block, or reflect if ranged";
 		public string GlossaryDodge = "Dodge, attack you must dodge, also a hazard launching";
 		public string GlossaryProjectile = "Projectile, shot in flight";
@@ -227,8 +240,14 @@ namespace HandOfFateAccess.Localization {
 		public string GlossaryZoneArming = "Zone arming, hazard forming, damage not on yet";
 		public string GlossaryZoneActive = "Zone active, area that hurts to stand in";
 		public string GlossaryZoneInside = "Zone inside, you are in a hazard, move away from the sound";
+		// The wall-tone demo plays the four sides one after another in exactly this
+		// order -- right, left, top, bottom -- so the four direction words must keep
+		// that order for the spoken list to match what plays.
 		public string GlossaryWallTones = "Wall tones, walls right, left, top, bottom";
 		public string GlossaryWallCollision = "Wall collision, walked into a wall";
+		// "the locator key" is the mod's own enemy-locator binding (L on the keyboard,
+		// left stick click on a controller): pressing it in a fight plays this ping from
+		// the nearest living enemy's direction.
 		public string GlossaryEnemyPing = "Enemy ping, nearest enemy, answers the locator key";
 		public string GlossaryChest = "Chest beacon, walk to it to open the chest";
 		public string GlossaryExit = "Exit beacon, walk to it to finish the level, also ends a boss fight";
