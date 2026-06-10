@@ -57,6 +57,7 @@ namespace HandOfFateAccess.Combat {
 			LoadSample(soundsDir, BeaconComposer.ChestKey);
 			LoadSample(soundsDir, BeaconComposer.ExitKey);
 			_ready = true;
+			Log.Debug("object beacons ready");
 		}
 
 		private void LoadSample(string soundsDir, string key) {
