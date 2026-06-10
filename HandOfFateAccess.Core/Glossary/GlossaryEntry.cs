@@ -29,11 +29,15 @@ namespace HandOfFateAccess.Glossary {
 	/// four sides in sequence.
 	/// </summary>
 	public sealed class GlossaryEntry {
-		public readonly string Label;
+		// The label is read through a delegate, not baked at construction: the
+		// catalog's entries live for the whole session, and the spoken line must
+		// follow a language switch.
+		private readonly System.Func<string> _label;
+		public string Label => _label();
 		public readonly GlossaryStep[] Steps;
 
-		public GlossaryEntry(string label, GlossaryStep[] steps) {
-			Label = label;
+		public GlossaryEntry(System.Func<string> label, GlossaryStep[] steps) {
+			_label = label;
 			Steps = steps;
 		}
 	}

@@ -47,6 +47,7 @@ namespace HandOfFateAccess {
 		private const int StartupDelayFrames = 120;
 		private bool _initialized;
 		private bool _speechReady;
+		private LanguageWatcher _language;
 		private GameScreenWatcher _screenWatcher;
 		private ResourceWatcher _resourceWatcher;
 		private ProgressWatcher _progressWatcher;
@@ -90,6 +91,8 @@ namespace HandOfFateAccess {
 			_gambit.Pump();
 
 			if (_speechReady) {
+				// Language first, so everything composed this frame is already in it.
+				_language.Pump();
 				_screenWatcher.Pump();
 				_resourceWatcher.Pump();
 				_progressWatcher.Pump();
@@ -201,6 +204,13 @@ namespace HandOfFateAccess {
 				return;
 			}
 			_speechReady = true;
+
+			// The authored strings follow the game's text language. Resolve it once
+			// before the startup line so the first words spoken are already in it;
+			// the per-frame pump then follows the profile's late seed and any switch
+			// from the settings screen.
+			_language = new LanguageWatcher();
+			_language.Pump();
 
 			// Spoken version comes from the assembly (driven by Directory.Build.props),
 			// trimmed to major.minor.build so the trailing revision .0 is not read out.

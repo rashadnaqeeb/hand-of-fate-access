@@ -33,29 +33,31 @@ namespace HandOfFateAccess.Glossary {
 		// The collision bump's demo loudness, matching the plugin's CollisionCue.
 		private const float CollisionVolume = 0.7f;
 
+		// Labels are passed as delegates so the array, built once at class load,
+		// reads each line through Strings live and follows a language switch.
 		public static readonly GlossaryEntry[] Entries = {
-			OneShot(Strings.GlossaryBlock, AttackCueComposer.BlockKey, AttackCueComposer.MaxVolume),
-			OneShot(Strings.GlossaryDodge, AttackCueComposer.DodgeKey, AttackCueComposer.MaxVolume),
-			OneShot(Strings.GlossaryProjectile, ProjectileKey, ProjectileSonifier.MaxVolume),
-			OneShot(Strings.GlossaryProjectileReflected, ProjectileReflectedKey, ProjectileSonifier.MaxVolume),
-			OneShot(Strings.GlossaryZonePrimed, ZoneSynth.PrimedKey, ZoneSonifier.MaxVolume),
-			OneShot(Strings.GlossaryZoneArming, ZoneSynth.ArmingKey, ZoneSonifier.MaxVolume),
-			OneShot(Strings.GlossaryZoneActive, ZoneSynth.ActiveKey, ZoneSonifier.MaxVolume),
+			OneShot(() => Strings.GlossaryBlock, AttackCueComposer.BlockKey, AttackCueComposer.MaxVolume),
+			OneShot(() => Strings.GlossaryDodge, AttackCueComposer.DodgeKey, AttackCueComposer.MaxVolume),
+			OneShot(() => Strings.GlossaryProjectile, ProjectileKey, ProjectileSonifier.MaxVolume),
+			OneShot(() => Strings.GlossaryProjectileReflected, ProjectileReflectedKey, ProjectileSonifier.MaxVolume),
+			OneShot(() => Strings.GlossaryZonePrimed, ZoneSynth.PrimedKey, ZoneSonifier.MaxVolume),
+			OneShot(() => Strings.GlossaryZoneArming, ZoneSynth.ArmingKey, ZoneSonifier.MaxVolume),
+			OneShot(() => Strings.GlossaryZoneActive, ZoneSynth.ActiveKey, ZoneSonifier.MaxVolume),
 			// Inside is the one zone state that always plays at full volume in a fight.
-			OneShot(Strings.GlossaryZoneInside, ZoneSynth.InsideKey, 1f),
-			new GlossaryEntry(Strings.GlossaryWallTones, new[] {
+			OneShot(() => Strings.GlossaryZoneInside, ZoneSynth.InsideKey, 1f),
+			new GlossaryEntry(() => Strings.GlossaryWallTones, new[] {
 				WallStep(WallSide.Right),
 				WallStep(WallSide.Left),
 				WallStep(WallSide.Above),
 				WallStep(WallSide.Below),
 			}),
-			OneShot(Strings.GlossaryWallCollision, WallToneComposer.CollisionKey, CollisionVolume),
-			OneShot(Strings.GlossaryEnemyPing, EnemyPingSynth.Key, EnemyPingComposer.MaxVolume),
-			OneShot(Strings.GlossaryChest, BeaconComposer.ChestKey, BeaconComposer.MaxVolume),
-			OneShot(Strings.GlossaryExit, BeaconComposer.ExitKey, BeaconComposer.MaxVolume),
+			OneShot(() => Strings.GlossaryWallCollision, WallToneComposer.CollisionKey, CollisionVolume),
+			OneShot(() => Strings.GlossaryEnemyPing, EnemyPingSynth.Key, EnemyPingComposer.MaxVolume),
+			OneShot(() => Strings.GlossaryChest, BeaconComposer.ChestKey, BeaconComposer.MaxVolume),
+			OneShot(() => Strings.GlossaryExit, BeaconComposer.ExitKey, BeaconComposer.MaxVolume),
 		};
 
-		private static GlossaryEntry OneShot(string label, string clipKey, float volume) {
+		private static GlossaryEntry OneShot(System.Func<string> label, string clipKey, float volume) {
 			return new GlossaryEntry(label, new[] {
 				new GlossaryStep(clipKey, new SoundParams(0f, 1f, volume), false, 0f),
 			});

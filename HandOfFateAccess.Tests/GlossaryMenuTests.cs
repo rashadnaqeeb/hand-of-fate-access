@@ -4,7 +4,7 @@ using Xunit;
 namespace HandOfFateAccess.Tests {
 	public class GlossaryMenuTests {
 		private static GlossaryEntry Entry(string label) =>
-			new GlossaryEntry(label, new GlossaryStep[0]);
+			new GlossaryEntry(() => label, new GlossaryStep[0]);
 
 		private static GlossaryMenu Menu(params string[] labels) {
 			var entries = new GlossaryEntry[labels.Length];
