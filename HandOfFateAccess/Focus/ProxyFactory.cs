@@ -106,12 +106,18 @@ namespace HandOfFateAccess.Focus {
 			// jumble. Route the whole slot through MapSlotReader, which reads the top card
 			// plus any attached cards structurally. Checked before the Card branch so a map
 			// card resolves to its slot whether focus lands on the slot or the card. An
-			// empty slot yields null here and falls through to generic handling.
+			// empty slot yields null here and falls through to generic handling. The exits
+			// (which directions hold a neighbouring card) follow the cards, same as the
+			// free-roam cursor's readout, so the game cursor also teaches the board shape.
 			MapLayoutSlot mapSlot = go.GetComponentInParent<MapLayoutSlot>();
 			if (mapSlot != null) {
 				MapSlotInfo slotInfo = MapSlotReader.Read(mapSlot);
-				if (slotInfo != null)
-					return new MapSlotElement(slotInfo);
+				if (slotInfo != null) {
+					Vector2 grid = mapSlot.GridPosition;
+					MapExits exits = Maps.MapBoardReader.ReadExits(
+						Mathf.RoundToInt(grid.x), Mathf.RoundToInt(grid.y));
+					return new MapSlotElement(slotInfo, exits);
+				}
 			}
 
 			// An archetype (Fates) card's detail lives on the deck builder's CabinetCardInfo

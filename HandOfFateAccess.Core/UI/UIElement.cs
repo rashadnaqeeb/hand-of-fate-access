@@ -131,12 +131,18 @@ namespace HandOfFateAccess.UI {
 	/// replaces the generic label sweep that read every card on the slot as one
 	/// undifferentiated jumble, while still surfacing the attached cards a sighted player
 	/// sees peeking out, in order and clearly framed.
+	///
+	/// When exits are supplied (the game's own cursor walking the board), the directions
+	/// holding a neighbouring card follow the cards, so normal navigation teaches the
+	/// board's shape the same way the free-roam cursor does.
 	/// </summary>
 	public sealed class MapSlotElement : UIElement {
 		private readonly MapSlotInfo _info;
+		private readonly MapExits _exits;
 
-		public MapSlotElement(MapSlotInfo info) {
+		public MapSlotElement(MapSlotInfo info, MapExits exits = null) {
 			_info = info;
+			_exits = exits;
 		}
 
 		public override Message Describe() {
@@ -147,7 +153,26 @@ namespace HandOfFateAccess.UI {
 				if (line.Length > 0)
 					message.Add(Strings.MapSlotAttached + " " + line);
 			}
+			message.Add(ExitsText(_exits));
 			return message;
+		}
+
+		/// <summary>
+		/// The directions holding a neighbouring card, e.g. "exits up, right"; empty for
+		/// null or no neighbours. Shared with MapCellReadout so the game cursor and the
+		/// free-roam cursor speak the board's shape identically.
+		/// </summary>
+		public static string ExitsText(MapExits e) {
+			if (e == null)
+				return "";
+			var dirs = new System.Collections.Generic.List<string>();
+			if (e.Up) dirs.Add(Strings.DirUp);
+			if (e.Down) dirs.Add(Strings.DirDown);
+			if (e.Left) dirs.Add(Strings.DirLeft);
+			if (e.Right) dirs.Add(Strings.DirRight);
+			if (dirs.Count == 0)
+				return "";
+			return Strings.MapExits + " " + string.Join(", ", dirs.ToArray());
 		}
 
 		// A face-down card withholds its identity (the card back a sighted player sees);

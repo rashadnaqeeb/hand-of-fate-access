@@ -48,15 +48,22 @@ namespace HandOfFateAccess.Maps {
 			bool here = hasPlayer && px == x && py == y;
 			bool adjacent = hasPlayer && System.Math.Abs(px - x) + System.Math.Abs(py - y) == 1;
 
-			// The grid axes match the game's nav: up is one row toward the top (y-1).
-			var exits = new MapExits(
+			MapSlotInfo cards = MapSlotReader.Read(slot);
+			return new MapCellInfo(cards, slot.IsComplete, slot.IsUnlocked, here, adjacent,
+				ReadExits(x, y));
+		}
+
+		/// <summary>
+		/// Which directions from this grid cell hold a neighbouring card. The grid axes
+		/// match the game's nav: up is one row toward the top (y-1). Read by the free-roam
+		/// cursor and by the focus path, so both speak the same board shape.
+		/// </summary>
+		public static MapExits ReadExits(int x, int y) {
+			return new MapExits(
 				HasSlot(x, y - 1),
 				HasSlot(x, y + 1),
 				HasSlot(x - 1, y),
 				HasSlot(x + 1, y));
-
-			MapSlotInfo cards = MapSlotReader.Read(slot);
-			return new MapCellInfo(cards, slot.IsComplete, slot.IsUnlocked, here, adjacent, exits);
 		}
 
 		/// <summary>

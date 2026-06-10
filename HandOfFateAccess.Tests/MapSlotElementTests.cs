@@ -79,5 +79,29 @@ namespace HandOfFateAccess.Tests {
 			var empty = new CardInfo("", "", "", "");
 			Assert.Equal("Goblins", Describe(Slot(Up(card), Up(empty))));
 		}
+
+		[Fact]
+		public void Exits_follow_the_cards() {
+			var card = new CardInfo("Goblins", "", "", "");
+			var exits = new MapExits(up: true, down: false, left: false, right: true);
+			Assert.Equal("Goblins, exits up, right",
+				new MapSlotElement(Slot(Up(card)), exits).Describe().Resolve());
+		}
+
+		[Fact]
+		public void Exits_follow_a_face_down_card_and_its_spice() {
+			var spice = new CardInfo("Apple", "Restores 5 food.", "", "");
+			var exits = new MapExits(up: false, down: true, left: true, right: false);
+			Assert.Equal("face down card, with Apple, Restores 5 food., exits down, left",
+				new MapSlotElement(Slot(Down, Up(spice)), exits).Describe().Resolve());
+		}
+
+		[Fact]
+		public void Without_exits_nothing_is_added() {
+			var card = new CardInfo("Goblins", "", "", "");
+			Assert.Equal("Goblins",
+				new MapSlotElement(Slot(Up(card)), new MapExits(false, false, false, false))
+					.Describe().Resolve());
+		}
 	}
 }

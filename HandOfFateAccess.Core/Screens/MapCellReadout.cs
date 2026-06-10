@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using HandOfFateAccess.Localization;
 using HandOfFateAccess.UI;
 
@@ -22,7 +21,7 @@ namespace HandOfFateAccess.Screens {
 			if (c.Slot != null)
 				message.Add(new MapSlotElement(c.Slot).Describe().Resolve());
 			message.Add(StateWord(c));
-			message.Add(Exits(c.Exits));
+			message.Add(MapSlotElement.ExitsText(c.Exits));
 			return message.Resolve();
 		}
 
@@ -43,19 +42,5 @@ namespace HandOfFateAccess.Screens {
 			return Strings.MapCellOpen;
 		}
 
-		// The directions the cursor can step from here, e.g. "exits up, right". Empty for an
-		// isolated card (no neighbours), which the connected board should never produce.
-		private static string Exits(MapExits e) {
-			if (e == null)
-				return "";
-			var dirs = new List<string>();
-			if (e.Up) dirs.Add(Strings.DirUp);
-			if (e.Down) dirs.Add(Strings.DirDown);
-			if (e.Left) dirs.Add(Strings.DirLeft);
-			if (e.Right) dirs.Add(Strings.DirRight);
-			if (dirs.Count == 0)
-				return "";
-			return Strings.MapExits + " " + string.Join(", ", dirs.ToArray());
-		}
 	}
 }
