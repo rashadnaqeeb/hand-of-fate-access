@@ -25,6 +25,11 @@ obj/
 __pycache__/
 *.pyc
 
+# Audio working files at the repo root: reference samples being copied (often
+# license-restricted, e.g. the zapsplat locator beep) and offline synth previews.
+# Shipped sounds live in the plugin's sounds folder, which stays tracked.
+/*.wav
+
 # OS cruft
 Thumbs.db
 desktop.ini

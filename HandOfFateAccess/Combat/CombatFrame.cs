@@ -15,6 +15,16 @@ namespace HandOfFateAccess.Combat {
 		public Vector3 Right;
 		public Vector3 Forward;
 
+		/// <summary>A world position's offset from the player expressed on this frame's
+		/// ground axes: <paramref name="right"/> is camera-right, <paramref name="forward"/>
+		/// is screen-north. The bearing pair every combat sound is composed from, so the
+		/// coordinate convention lives in exactly one place.</summary>
+		public void Project(Vector3 worldPosition, out float right, out float forward) {
+			Vector3 rel = worldPosition - Origin;
+			right = Vector3.Dot(rel, Right);
+			forward = Vector3.Dot(rel, Forward);
+		}
+
 		/// <summary>The frame for this instant, or false when combat is not live (no
 		/// player or camera in the scene), which callers treat as "stop every voice".</summary>
 		public static bool TryGet(out CombatFrame frame) {

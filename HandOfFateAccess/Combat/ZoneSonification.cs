@@ -168,10 +168,9 @@ namespace HandOfFateAccess.Combat {
 				ZonePhase phase = !mine && elapsed < (float)AreaDelay.GetValue(area)
 					? ZonePhase.Arming : ZonePhase.Active;
 
-				Vector3 rel = area.transform.position - frame.Origin;
+				frame.Project(area.transform.position, out float right, out float forward);
 				ZoneCue cue = ZoneSonifier.Compose(
-					Vector3.Dot(rel, frame.Right), Vector3.Dot(rel, frame.Forward),
-					outer, (float)AreaInner.GetValue(area), phase);
+					right, forward, outer, (float)AreaInner.GetValue(area), phase);
 				if (!cue.Audible) continue;
 				_live.Add(new LiveZone { Key = area, Cue = cue });
 			}
@@ -201,17 +200,12 @@ namespace HandOfFateAccess.Combat {
 				// Nearest dangerous point on the trap's bounds; insideness is horizontal only
 				// (an overhead blade at the player's spot still counts). Inside, the bearing
 				// retargets the bounds center so fleeing the sound exits through the near edge.
-				Vector3 rel = trap.Collider.ClosestPointOnBounds(frame.Origin) - frame.Origin;
-				float right = Vector3.Dot(rel, frame.Right);
-				float forward = Vector3.Dot(rel, frame.Forward);
-				bool inside = right * right + forward * forward < 0.01f;
-				if (inside) {
-					rel = trap.Collider.bounds.center - frame.Origin;
-					right = Vector3.Dot(rel, frame.Right);
-					forward = Vector3.Dot(rel, frame.Forward);
-				}
+				frame.Project(trap.Collider.ClosestPointOnBounds(frame.Origin), out float trapRight, out float trapForward);
+				bool inside = trapRight * trapRight + trapForward * trapForward < 0.01f;
+				if (inside)
+					frame.Project(trap.Collider.bounds.center, out trapRight, out trapForward);
 
-				ZoneCue cue = ZoneSonifier.ComposePoint(right, forward, inside, phase);
+				ZoneCue cue = ZoneSonifier.ComposePoint(trapRight, trapForward, inside, phase);
 				if (!cue.Audible) continue;
 				_live.Add(new LiveZone { Key = trap.Applicant, Cue = cue });
 			}

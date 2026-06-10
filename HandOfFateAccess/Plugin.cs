@@ -55,6 +55,7 @@ namespace HandOfFateAccess {
 		private ProjectileSonification _projectiles;
 		private ZoneSonification _zones;
 		private AttackCues _attackCues;
+		private EnemyLocator _enemyLocator;
 		private GambitStatusSpeech _gambitStatus;
 		private GambitWatcher _gambit;
 		private MapCursor _mapCursor;
@@ -91,8 +92,13 @@ namespace HandOfFateAccess {
 				_progressWatcher.Pump();
 				PumpFocus();
 				PumpMapScope();
-				_input.Pump();
 			}
+
+			// Input is pumped with the audio tier, not the speech tier: the enemy locator
+			// is a pure audio feature and must answer its key with the screen reader down.
+			// It runs after PumpMapScope so the map cursor's gate reads this frame's map
+			// state, not last frame's, and a same-frame cursor snap lands before the move.
+			_input.Pump();
 		}
 
 		// Release the native SAPI voice (and its COM init) on teardown. Other subsystems are
@@ -145,6 +151,24 @@ namespace HandOfFateAccess {
 			if (AudioEngine.IsAvailable)
 				InstallCombatPatches();
 
+			// The on-demand enemy locator: L on the keyboard and left-stick click on the
+			// controller (both verified unbound by the game: L is absent from its default
+			// keyboard table and no game action reads LeftStickButton) ping the nearest
+			// living enemy. An audio-tier feature, so the input router is created here,
+			// before the speech path, and the binding works whether or not the screen
+			// reader came up; the speech path registers its own bindings on the same
+			// router below. The gate scopes the key to live fights; everywhere else the
+			// press is inert.
+			_enemyLocator = new EnemyLocator();
+			_enemyLocator.Initialize();
+			_input = new InputRouter();
+			_input.Register(new ButtonAction(
+				"enemy locator",
+				_enemyLocator.Trigger,
+				new[] { KeyCode.L },
+				new[] { InControl.InputControlType.LeftStickButton },
+				() => CombatEncounter.Instance != null));
+
 			// Log-only diagnostics: the damage tripwire (every player hit names its source) and
 			// the proxy reconnaissance (every non-projectile hazard spawn logs its type), both
 			// independent of the audio and speech paths so they keep auditing coverage even
@@ -185,7 +209,6 @@ namespace HandOfFateAccess {
 			// keyboard and right-stick click on the controller, both unbound by the game
 			// (verified against its keyboard and controller binding tables), so reading
 			// them never competes with a game action and needs no fall-through handling.
-			_input = new InputRouter();
 			_input.Register(new ButtonAction(
 				"status",
 				ResourceStatus.Speak,

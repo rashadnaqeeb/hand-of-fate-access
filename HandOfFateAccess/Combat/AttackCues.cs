@@ -147,10 +147,8 @@ namespace HandOfFateAccess.Combat {
 				} else {
 					_gate.NoteAttackCue(cue.SourceKey, Time.time);
 				}
-				Vector3 rel = cue.Position - frame.Origin;
-				SoundParams sp = AttackCueComposer.Compose(
-					Vector3.Dot(rel, frame.Right), Vector3.Dot(rel, frame.Forward));
-				AudioEngine.PlayOneShot(cue.Key, sp);
+				frame.Project(cue.Position, out float right, out float forward);
+				AudioEngine.PlayOneShot(cue.Key, AttackCueComposer.Compose(right, forward));
 				_lastCueTime = Time.time;
 			}
 		}

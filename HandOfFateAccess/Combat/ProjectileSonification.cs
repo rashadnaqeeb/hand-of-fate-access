@@ -161,9 +161,8 @@ namespace HandOfFateAccess.Combat {
 
 			for (int i = 0; i < _live.Count; i++) {
 				CombatProxy proj = _live[i];
-				Vector3 rel = proj.transform.position - frame.Origin;
-				SoundParams sp = ProjectileSonifier.Compose(
-					Vector3.Dot(rel, frame.Right), Vector3.Dot(rel, frame.Forward));
+				frame.Project(proj.transform.position, out float right, out float forward);
+				SoundParams sp = ProjectileSonifier.Compose(right, forward);
 
 				// Only true projectiles can be reflected; a mover always tumbles at threat speed.
 				bool reflected = proj is CombatProxyProjectile p && p.IsReflected;
