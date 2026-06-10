@@ -28,6 +28,7 @@ namespace HandOfFateAccess.Focus {
 	internal static class ProxyFactory {
 		private static readonly FieldInfo BlockerGroupField = AccessTools.Field(typeof(UISelection), "m_selectionBlockerGroup");
 		private static readonly FieldInfo ChoiceRevealGroupField = AccessTools.Field(typeof(CardChoiceContainer), "m_revealSelectableGroup");
+		private static readonly FieldInfo SetChoiceGroupField = AccessTools.Field(typeof(CardChoiceContainer), "m_setChoiceSelectableGroup");
 		private static readonly FieldInfo ChoiceTextField = AccessTools.Field(typeof(UIChoiceButton), "m_choiceText");
 		private static readonly FieldInfo ChoiceLetterField = AccessTools.Field(typeof(UIChoiceButton), "m_letterText");
 		// The card's "new" and "pinned" badges and its token gem are unlabelled sprites the
@@ -92,6 +93,16 @@ namespace HandOfFateAccess.Focus {
 			UISelectable selectable = go.GetComponent<UISelectable>();
 			if (selectable != null && (IsBlockerFocus(selectable) || IsChoiceRevealFocus(selectable)))
 				return null;
+
+			// The whole-set card choice (keep all the dealt cards, or redraw the set with
+			// cancel) locks selection to a single label-less placeholder while the set lies
+			// face-up on the table, so the cards are never focusable and the placeholder
+			// would read as its bare object name. Compose the whole decision instead: the
+			// container's prompt, every card in the set, then the confirm and cancel
+			// actions with their bound keys. Matched by selectable group, like the reveal
+			// placeholder.
+			if (selectable != null && IsSetChoiceFocus(selectable))
+				return SetChoiceElement(selectable);
 
 			// A card being zoomed for a decision (examine, equip, buy, keep...) is force-
 			// selected and locked as the sole selection, often re-selecting the card the
@@ -331,17 +342,47 @@ namespace HandOfFateAccess.Focus {
 
 		// While a card choice flips its unseen cards face-up (CardChoiceContainer.Reveal),
 		// the game force-selects a label-less placeholder whose only click action skips
-		// the flip animation, so it would read as its bare object name. The flipped cards
-		// become the focused choices the moment the reveal ends and are read by the
-		// normal focus path, so the placeholder carries nothing worth speaking. Matched
-		// by its selectable group on the live choice container, not by name or
-		// hierarchy. DeckManager.Instance is legitimately null outside a run (menus),
-		// where no card choice can be up.
+		// the flip animation, so it would read as its bare object name. The cards are
+		// read the moment the reveal ends either way (a pick-one choice focuses them, the
+		// whole-set choice folds them into its readout), so the placeholder carries
+		// nothing worth speaking. Matched by its selectable group on the live choice
+		// container, not by name or hierarchy. DeckManager.Instance is legitimately null
+		// outside a run (menus), where no card choice can be up.
 		private static bool IsChoiceRevealFocus(UISelectable selectable) {
 			if (selectable.Group == null) return false;
 			DeckManager deck = DeckManager.Instance;
 			if (deck == null) return false;
 			return selectable.Group == (UISelectableGroup)ChoiceRevealGroupField.GetValue(deck.CardChoiceContainer);
+		}
+
+		private static bool IsSetChoiceFocus(UISelectable selectable) {
+			if (selectable.Group == null) return false;
+			DeckManager deck = DeckManager.Instance;
+			if (deck == null) return false;
+			return selectable.Group == (UISelectableGroup)SetChoiceGroupField.GetValue(deck.CardChoiceContainer);
+		}
+
+		// The prompt is the container's context title (the same field the zoom prompt
+		// lives in); the action labels are the focused placeholder's own context texts,
+		// public on UISelectable, falling back to its group's where the game set them.
+		// The bound key names resolve the same way as the zoom hint, since neither
+		// surface has navigable buttons.
+		private static UIElement SetChoiceElement(UISelectable selectable) {
+			CardChoiceContainer container = DeckManager.Instance.CardChoiceContainer;
+			var cards = new List<CardInfo>();
+			foreach (Card card in container.Cards)
+				cards.Add(ExtractCard(card));
+			string confirm = UIUtils.GetString(selectable.SelectContextText);
+			string cancel = UIUtils.GetString(selectable.CancelContextText);
+			string confirmKey = null;
+			string cancelKey = null;
+			UIManager ui = UIManager.Instance;
+			MainNavBar bar = ui != null ? ui.PrimaryNavBar : null;
+			if (bar != null) {
+				confirmKey = ZoomReader.BoundKeyName(bar.ConfirmButton);
+				cancelKey = ZoomReader.BoundKeyName(bar.CancelButton);
+			}
+			return new ChoiceSetElement(ZoomReader.LocalizeTitle(container), cards, confirm, confirmKey, cancel, cancelKey);
 		}
 
 		private static string DescribeSelectable(UISelectable selectable) {

@@ -98,10 +98,11 @@ namespace HandOfFateAccess.Screens {
 		// inputs. The nav bar's confirm/cancel buttons each carry a UIInputSprite holding
 		// the input's name; on keyboard its public KMButtonString resolves the live
 		// (rebind-aware) key name. A failed lookup drops the key name (the hint then
-		// carries the bare label) and is logged once, not per frame.
+		// carries the bare label) and is logged once, not per frame. Shared with the
+		// whole-set card choice (ProxyFactory), which has the same buttonless confirm/cancel.
 		private static bool _keyNameWarned;
 
-		private static string BoundKeyName(NavBarButton button) {
+		internal static string BoundKeyName(NavBarButton button) {
 			if (button == null) return null;
 			UIInputSprite sprite = button.GetComponent<UIInputSprite>();
 			if (sprite == null) return null;
@@ -138,10 +139,12 @@ namespace HandOfFateAccess.Screens {
 			Log.Warn(message);
 		}
 
-		private static string LocalizeTitle(ZoomContainer zoom) {
-			string key = Text(TitleField, zoom);
+		// The fields are CardContainer's, so this also serves the whole-set card choice
+		// (ProxyFactory), whose prompt the game sets through the same context title.
+		internal static string LocalizeTitle(CardContainer container) {
+			string key = Text(TitleField, container);
 			if (string.IsNullOrEmpty(key)) return null;
-			var args = (string[])TitleParamsField.GetValue(zoom);
+			var args = (string[])TitleParamsField.GetValue(container);
 			return (args != null && args.Length > 0) ? UIUtils.GetString(key, (object[])args) : UIUtils.GetString(key);
 		}
 

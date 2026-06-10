@@ -344,6 +344,43 @@ namespace HandOfFateAccess.UI {
 	}
 
 	/// <summary>
+	/// Readout for a whole-set card choice: the game deals a set of cards and locks
+	/// selection to a single label-less accept placeholder (keep the whole set, or
+	/// redraw it with cancel), so the cards are never focusable and the placeholder
+	/// would speak its bare object name. The prompt leads, then every card in the set
+	/// read as a normal card, then the confirm and cancel actions with their bound keys
+	/// ("Keep: A, Redraw: B"), since the choice has no navigable buttons through which
+	/// to discover which input takes which action. All words come from the game.
+	/// </summary>
+	public sealed class ChoiceSetElement : UIElement {
+		private readonly string _title;
+		private readonly System.Collections.Generic.IList<CardInfo> _cards;
+		private readonly string _confirm;
+		private readonly string _confirmKey;
+		private readonly string _cancel;
+		private readonly string _cancelKey;
+
+		public ChoiceSetElement(string title, System.Collections.Generic.IList<CardInfo> cards,
+				string confirm, string confirmKey, string cancel, string cancelKey) {
+			_title = title;
+			_cards = cards ?? new CardInfo[0];
+			_confirm = confirm;
+			_confirmKey = confirmKey;
+			_cancel = cancel;
+			_cancelKey = cancelKey;
+		}
+
+		public override Message Describe() {
+			var message = new Message().Add(_title);
+			foreach (CardInfo card in _cards)
+				message.Add(new CardElement(card).Describe().Resolve());
+			return message
+				.Add(ZoomNarration.Action(_confirm, _confirmKey))
+				.Add(ZoomNarration.Action(_cancel, _cancelKey));
+		}
+	}
+
+	/// <summary>
 	/// Readout for an encounter choice button. The number comes first: the game's focus
 	/// skips disabled/unavailable choices (they are non-selectable), so a gap in the
 	/// spoken numbers (1 then 3) is the only cue to the player that a choice was passed

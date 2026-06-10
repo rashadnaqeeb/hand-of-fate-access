@@ -83,7 +83,9 @@ namespace HandOfFateAccess.Screens {
 		// the bound key's name follows so the player knows which physical input takes the
 		// action; the zoom has no navigable buttons through which to discover that. Both
 		// words come from the game, so no authored string is needed, only punctuation.
-		private static string Action(string label, string key) {
+		// Shared with ChoiceSetElement (the whole-set keep-or-redraw choice), which has
+		// the same buttonless confirm/cancel.
+		public static string Action(string label, string key) {
 			if (string.IsNullOrEmpty(label)) return null;
 			return string.IsNullOrEmpty(key) ? label : label + ": " + key;
 		}
