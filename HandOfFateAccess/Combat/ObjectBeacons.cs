@@ -7,21 +7,27 @@ using UnityEngine;
 
 namespace HandOfFateAccess.Combat {
 	/// <summary>
-	/// The chest and exit beacons: the two walk-in objects a level can hold (the game's
-	/// <c>TrapChest</c> and <c>TrapExit</c>, which despite the names are its only such
-	/// components - every exit, trap room or boss escape, is a <c>TrapExit</c>, the one
-	/// object <c>CombatEncounter</c> wires as the level's completion trigger). Each live,
-	/// unconsumed object pings with its own sample, positioned by Core's
-	/// <see cref="BeaconComposer"/>, repinging a beat of silence after the sound ends,
-	/// until the player walks in and its <c>IsComplete</c> flips.
+	/// The walk-in beacons: the objects a level ends or rewards through when the player
+	/// stands on them. Two come from the trap system (the game's <c>TrapChest</c> and
+	/// <c>TrapExit</c>; the latter is the completion trigger <c>CombatEncounter</c> wires
+	/// for trap rooms and authored escapes). The third is <c>AICourtTrigger</c>, the court
+	/// (face card) fights' own end circle: the spawner drops it at the boss's corpse, and
+	/// the fight does not end on the kill - the player must walk into it. Each live,
+	/// unconsumed object pings with its kind's sample (the court circle borrows the exit's:
+	/// to the player it IS the exit), positioned by Core's <see cref="BeaconComposer"/>,
+	/// repinging a beat of silence after the sound ends.
 	///
-	/// Discovery is a periodic <c>FindObjectsOfType</c> scan: the components have no
-	/// registry, no Start or OnEnable to patch, and they switch on mid-level (a chest's
-	/// enable-on-complete list can activate the exit, or more of the gauntlet), so only a
-	/// rescan sees them appear. The scan returns active objects only, which is the right
-	/// filter: an exit the level has not yet revealed does not exist for the player either.
-	/// The found components are live references re-read every frame (the acceptable cache);
-	/// IsComplete, activity, and position are never copied.
+	/// Discovery for the trap pair is a periodic <c>FindObjectsOfType</c> scan: the
+	/// components have no registry, no Start or OnEnable to patch, and they switch on
+	/// mid-level (a chest's enable-on-complete list can activate the exit, or more of the
+	/// gauntlet), so only a rescan sees them appear. The scan returns active objects only,
+	/// which is the right filter: an exit the level has not yet revealed does not exist for
+	/// the player either. The court trigger needs no scan (a public static singleton) and
+	/// pings only while its <c>IsActive</c> is true - the spawner arms it (and its collider)
+	/// only once it is the last active spawner with no living AI, so an earlier ping would
+	/// lure the player onto a circle that does nothing yet. All found components are live
+	/// references re-read every frame (the acceptable cache); IsComplete, IsActive,
+	/// activity, and position are never copied.
 	/// </summary>
 	internal sealed class ObjectBeacons {
 		private const float ScanInterval = 1f;
@@ -44,6 +50,7 @@ namespace HandOfFateAccess.Combat {
 		// does not cover.
 		private int _lastChests = -1;
 		private int _lastExits = -1;
+		private bool _courtWasActive;
 
 		/// <summary>Load the two beacon samples from <paramref name="pluginDir"/>/sounds.
 		/// A sample that fails to load leaves that beacon silent (logged), so a missing
@@ -97,6 +104,15 @@ namespace HandOfFateAccess.Combat {
 				_nextScan = now + ScanInterval;
 			}
 
+			// The court circle's arming edge, logged like the scan counts: recon for a boss
+			// fight that ends with no beacon heard.
+			AICourtTrigger court = AICourtTrigger.Instance;
+			bool courtActive = court != null && court.IsActive;
+			if (courtActive != _courtWasActive) {
+				Log.Info("beacons: court trigger " + (courtActive ? "active" : "inactive"));
+				_courtWasActive = courtActive;
+			}
+
 			// Each kind repings once its sound has ended plus the gap; a frame where nothing
 			// played (no object live, or the player standing on it) re-checks after the bare
 			// gap. With several objects of one kind the slowest ping sets the cadence, so the
@@ -116,7 +132,7 @@ namespace HandOfFateAccess.Combat {
 
 			if (now >= _nextExitPing) {
 				_nextExitPing = now + BeaconComposer.PingGap;
-				if (_clips.TryGetValue(BeaconComposer.ExitKey, out float exitClip))
+				if (_clips.TryGetValue(BeaconComposer.ExitKey, out float exitClip)) {
 					for (int i = 0; i < _exits.Length; i++) {
 						TrapExit exit = _exits[i];
 						if (exit == null || exit.IsComplete || !exit.gameObject.activeInHierarchy) continue;
@@ -125,6 +141,15 @@ namespace HandOfFateAccess.Combat {
 							if (next > _nextExitPing) _nextExitPing = next;
 						}
 					}
+					// The armed court circle rides the exit cadence: standing in it is how a
+					// boss fight ends, so to the player it is the exit. Walking in completes
+					// the encounter and the out-of-level reset silences it; a reanimating boss
+					// destroys the trigger, which the null check sees next ping.
+					if (courtActive && Ping(BeaconComposer.ExitKey, court.transform.position, frame, out float courtPitch)) {
+						float next = BeaconComposer.NextPingTime(now, exitClip, courtPitch);
+						if (next > _nextExitPing) _nextExitPing = next;
+					}
+				}
 			}
 		}
 
@@ -158,6 +183,7 @@ namespace HandOfFateAccess.Combat {
 			_exits = new TrapExit[0];
 			_lastChests = -1;
 			_lastExits = -1;
+			_courtWasActive = false;
 		}
 	}
 }

@@ -3,12 +3,13 @@ using HandOfFateAccess.Audio;
 
 namespace HandOfFateAccess.Combat {
 	/// <summary>
-	/// Decides what the player hears for a level object worth walking to: the chest and the
-	/// exit, the two walk-in objects a sighted player simply sees standing in the arena. Each
-	/// pings on a fixed cadence with a sample naming what it is, positioned by the shared
-	/// bearing grammar (pan = east/west, the down-biased pitch = north/south, volume =
-	/// distance), so the skill of reading a projectile or telegraph transfers directly and
-	/// "walk toward the sound" is the whole instruction.
+	/// Decides what the player hears for a level object worth walking to: the chest, the
+	/// exit, and the court fights' end circle (which borrows the exit's voice - standing in
+	/// it is how a boss fight ends), the walk-in objects a sighted player simply sees
+	/// standing in the arena. Each pings on a fixed cadence with a sample naming what it is,
+	/// positioned by the shared bearing grammar (pan = east/west, the down-biased pitch =
+	/// north/south, volume = distance), so the skill of reading a projectile or telegraph
+	/// transfers directly and "walk toward the sound" is the whole instruction.
 	///
 	/// Pings, not loops, deliberately: in the established language a continuous loop means
 	/// danger (zones, traps) and the wind means walls, so a friendly destination must not
