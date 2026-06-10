@@ -25,10 +25,12 @@ namespace HandOfFateAccess.Combat {
 			forward = Vector3.Dot(rel, Forward);
 		}
 
-		/// <summary>The frame for this instant, or false when combat is not live (no
-		/// player or camera in the scene), which callers treat as "stop every voice".</summary>
+		/// <summary>The frame for this instant, or false when combat is not live (outside
+		/// <see cref="CombatGate"/>'s window, or no player or camera in the scene), which
+		/// callers treat as "stop every voice".</summary>
 		public static bool TryGet(out CombatFrame frame) {
 			frame = default(CombatFrame);
+			if (!CombatGate.IsLive) return false;
 			PlayerController player = PlayerController.Instance;
 			PlayerCamera camera = PlayerCamera.Instance;
 			if (player == null || camera == null) return false;

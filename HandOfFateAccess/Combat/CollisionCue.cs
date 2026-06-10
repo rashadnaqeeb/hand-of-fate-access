@@ -47,6 +47,15 @@ namespace HandOfFateAccess.Combat {
 		public void Pump() {
 			if (!_loaded || !AudioEngine.IsAvailable) return;
 
+			// Outside a live fight the cue is idle: a blocked step pending from the fight's
+			// last frames is dropped, not held to fire its bump into the pause menu or the
+			// post-combat resolution.
+			if (!CombatGate.IsLive) {
+				PlayerMotion.ConsumeBlockedStep();
+				_armed = false;
+				return;
+			}
+
 			// Real movement re-arms the cue, so the next time the player jams into a wall it
 			// fires afresh; while pinned (never moving) it stays disarmed after the first hit.
 			if (PlayerMotion.IsMoving) _armed = true;

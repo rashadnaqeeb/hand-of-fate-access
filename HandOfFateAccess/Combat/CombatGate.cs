@@ -1,0 +1,20 @@
+namespace HandOfFateAccess.Combat {
+	/// <summary>
+	/// Whether a fight is live for the combat sounds: the encounter exists and the game
+	/// is in level play. The game enters <c>GameState_Level_Play</c> only when the
+	/// level-in transition finishes (completed or skipped), leaves it for
+	/// <c>GameState_Level_Out</c> in the same call stack as the encounter's complete or
+	/// fail event, and swaps it for <c>GameState_Level_Pause</c> while the pause menu is
+	/// up, so this one read starts the sounds at the handoff to the player, stops them
+	/// the instant the fight resolves, and silences them across pause.
+	///
+	/// This gates the combat features individually, never the audio engine: the sound
+	/// glossary plays its demos through the same engine while the game is paused, and
+	/// the gambit's audio runs at the card table, outside this gate entirely.
+	/// </summary>
+	internal static class CombatGate {
+		public static bool IsLive =>
+			CombatEncounter.Instance != null
+			&& Game.Instance.ActiveGameState is GameState_Level_Play;
+	}
+}

@@ -67,13 +67,13 @@ namespace HandOfFateAccess.Combat {
 		}
 
 		/// <summary>
-		/// Drive the tones for this frame. Outside combat (or before audio is up) the
+		/// Drive the tones for this frame. Outside a live fight (or before audio is up) the
 		/// voices are stopped; inside combat each side's volume eases toward its live target.
 		/// </summary>
 		public void Pump() {
 			if (!AudioEngine.IsAvailable) return;
 
-			if (CombatEncounter.Instance == null) {
+			if (!CombatGate.IsLive) {
 				StopSession();
 				return;
 			}

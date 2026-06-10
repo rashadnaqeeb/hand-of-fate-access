@@ -31,13 +31,13 @@ namespace HandOfFateAccess.Combat {
 		}
 
 		/// <summary>
-		/// Ping the nearest living enemy, from the locator key. Outside an active combat
-		/// encounter the press is inert (the input gate already scopes the binding, this
-		/// re-check keeps the class safe on its own).
+		/// Ping the nearest living enemy, from the locator key. Outside a live fight the
+		/// press is inert: the combat frame carries the lifecycle gate, so a press during
+		/// pause, the intro, or the post-combat resolution plays nothing.
 		/// </summary>
 		public void Trigger() {
 			if (!_ready) return;
-			if (CombatEncounter.Instance == null || CombatManager.Instance == null
+			if (CombatManager.Instance == null
 					|| !CombatFrame.TryGet(out CombatFrame frame)) return;
 
 			// The nearest living hostile. Hidden ones (a submerged Kraken) are skipped:

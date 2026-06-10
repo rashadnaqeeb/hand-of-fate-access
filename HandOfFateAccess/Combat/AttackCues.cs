@@ -124,14 +124,13 @@ namespace HandOfFateAccess.Combat {
 		}
 
 		/// <summary>
-		/// Play any queued cues for this frame. Outside an active combat encounter (or before
-		/// audio is up) the queue is dropped, so a cue recorded on a fight's last frame never
-		/// fires stale into the post-combat walk. The encounter gate matters: the combat frame
-		/// alone is live for all of level play, not just fights.
+		/// Play any queued cues for this frame. Outside a live fight (or before audio is up)
+		/// the queue is dropped, so a cue recorded on a fight's last frame never fires stale
+		/// into the pause menu or the post-combat resolution. The combat frame carries the
+		/// lifecycle gate.
 		/// </summary>
 		public void Pump() {
-			if (!AudioEngine.IsAvailable || CombatEncounter.Instance == null
-					|| !CombatFrame.TryGet(out CombatFrame frame)) {
+			if (!AudioEngine.IsAvailable || !CombatFrame.TryGet(out CombatFrame frame)) {
 				_pending.Clear();
 				_gate.Clear();
 				return;

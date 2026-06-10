@@ -175,7 +175,7 @@ namespace HandOfFateAccess {
 				_enemyLocator.Trigger,
 				new[] { KeyCode.L },
 				new[] { InControl.InputControlType.LeftStickButton },
-				() => CombatEncounter.Instance != null));
+				() => CombatGate.IsLive));
 
 			// Log-only diagnostics: the damage tripwire (every player hit names its source) and
 			// the proxy reconnaissance (every non-projectile hazard spawn logs its type), both
