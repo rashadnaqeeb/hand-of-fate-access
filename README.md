@@ -58,6 +58,6 @@ The final Dealer boss fight has no bespoke support yet. It is heavily scripted, 
 
 ## For developers
 
-The repo builds with the .NET SDK and requires a local install of the game (the plugin references its assemblies). `setup-bepinex.ps1` installs the vendored, correctly configured BepInEx into the game folder; `build.ps1` builds the plugin and deploys it plus its native dependencies into the game's plugins folder; `test.ps1` runs the offline test suite, which needs neither the game nor Unity.
+The repo builds with the .NET SDK and requires a local install of the game (the plugin references its assemblies). `setup-bepinex.ps1` installs the vendored, correctly configured BepInEx into the game folder; `build.ps1` builds the plugin and deploys it plus its native dependencies into the game's plugins folder; `test.ps1` runs the offline test suite, which needs neither the game nor Unity. `release.ps1` builds, runs the tests, and packages the player release zip (preconfigured BepInEx, mod DLLs, native runtimes, sounds) into `release\`.
 
 Logs: the game writes `Hand of Fate_Data\output_log.txt` in the game folder, and BepInEx writes `BepInEx\LogOutput.log`. Both reset on every launch. All mod lines are prefixed `[HoFAccess]`.

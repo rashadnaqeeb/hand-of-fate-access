@@ -8,6 +8,9 @@ obj/
 *.user
 *.suo
 
+# Release staging + zips (assembled by release.ps1)
+/release/
+
 # C/C++ build intermediates (e.g. vendored Tolk source tree)
 *.obj
 *.exp

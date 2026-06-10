@@ -16,7 +16,7 @@ HandOfFateAccess makes **Hand of Fate** (the original) playable by blind users. 
 
 ## Build, deploy, logs
 
-- `setup-bepinex.ps1` installs the vendored BepInEx into the game folder with the correct entrypoint (run once per game install / after a game update wipes it). `build.ps1` builds the plugin (and Core transitively) and deploys both `HandOfFateAccess.dll` and `HandOfFateAccess.Core.dll` plus the x86 Tolk native deps into `<game>\BepInEx\plugins\`. `test.ps1` runs the offline test suite.
+- `setup-bepinex.ps1` installs the vendored BepInEx into the game folder with the correct entrypoint (run once per game install / after a game update wipes it). `build.ps1` builds the plugin (and Core transitively) and deploys both `HandOfFateAccess.dll` and `HandOfFateAccess.Core.dll` plus the x86 Tolk native deps into `<game>\BepInEx\plugins\`. `test.ps1` runs the offline test suite. `release.ps1` builds, tests, and assembles the player release zip into `release\` (gitignored): the unzip-into-game-folder layout, staged fresh each run from the repo's canonical sources (vendored BepInEx with the MonoBehaviour-entrypoint config seed, Tolk dist, `HofSapi.dll`, sounds) plus the freshly built mod DLLs, with the staged entrypoint and required files verified before zipping.
 - Run `build.ps1` / `test.ps1` directly via PowerShell (allowed by this project's `.claude/settings.local.json`). When invoking PowerShell through the Bash tool, escape `$` as `\$` so bash doesn't expand it first.
 - Shared MSBuild properties (`Version`, `LangVersion`) live in `Directory.Build.props` at the repo root; bump the version there.
 - Speech backend is **Tolk** (x86). 
