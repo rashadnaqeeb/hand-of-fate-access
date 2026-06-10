@@ -49,10 +49,14 @@ namespace HandOfFateAccess.Combat {
 		/// even from across the arena, not ambient detail that can fade.</summary>
 		public const float MinVolume = 0.55f;
 
-		/// <summary>The sample key for an attack's cue: <see cref="BlockKey"/> when the attack
-		/// can be blocked or reflected, <see cref="DodgeKey"/> when it cannot and must be
-		/// dodged.</summary>
-		public static string ActionKey(bool blockable) => blockable ? BlockKey : DodgeKey;
+		/// <summary>The sample key for an attack's cue: <see cref="BlockKey"/> only when the
+		/// attack can be blocked or reflected AND the player currently holds the matching
+		/// ability (<paramref name="canBlock"/>: a counter for melee, a reflect for ranged);
+		/// otherwise <see cref="DodgeKey"/>. The cue is an action instruction, and a nominally
+		/// blockable attack is unblockable for a player without the ability, so it must say
+		/// dodge: a block cue the player cannot act on is a guaranteed hit.</summary>
+		public static string ActionKey(bool blockable, bool canBlock) =>
+			blockable && canBlock ? BlockKey : DodgeKey;
 
 		/// <summary>
 		/// The voice parameters for an attacker sitting <paramref name="right"/> world units to

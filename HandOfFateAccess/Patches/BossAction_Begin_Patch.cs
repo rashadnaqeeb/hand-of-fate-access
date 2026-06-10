@@ -23,7 +23,7 @@ namespace HandOfFateAccess.Patches {
 		private static void Postfix(Action __instance, bool __result) {
 			if (!__result) return;
 			try {
-				AttackCues.RecordAction(false, __instance.ActorTransform.position,
+				AttackCues.RecordAction(blockable: false, canBlock: false, __instance.ActorTransform.position,
 					AttackCues.SourceKeyFrom(__instance.ActorTransform));
 			} catch (System.Exception ex) {
 				Log.Error("boss attack cue failed: " + ex);

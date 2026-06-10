@@ -59,13 +59,14 @@ namespace HandOfFateAccess.Combat {
 		// bookkeeping; cleared whenever combat is not live.
 		private readonly MoverCueGate _gate = new MoverCueGate();
 
-		/// <summary>Record an attack's cue (block when <paramref name="blockable"/>, else dodge)
-		/// at the attacker's world position, keyed by <paramref name="sourceKey"/> (see
-		/// <see cref="SourceKeyFrom"/>) so the attacker's mover launches dedupe against it.
-		/// Called from the effect-start hooks.</summary>
-		public static void RecordAction(bool blockable, Vector3 position, int sourceKey) {
+		/// <summary>Record an attack's cue (block when <paramref name="blockable"/> and the
+		/// player currently holds the matching counter/reflect ability per
+		/// <paramref name="canBlock"/>, else dodge) at the attacker's world position, keyed by
+		/// <paramref name="sourceKey"/> (see <see cref="SourceKeyFrom"/>) so the attacker's
+		/// mover launches dedupe against it. Called from the effect-start hooks.</summary>
+		public static void RecordAction(bool blockable, bool canBlock, Vector3 position, int sourceKey) {
 			_pending.Enqueue(new Pending {
-				Key = AttackCueComposer.ActionKey(blockable),
+				Key = AttackCueComposer.ActionKey(blockable, canBlock),
 				Position = position,
 				SourceKey = sourceKey,
 			});

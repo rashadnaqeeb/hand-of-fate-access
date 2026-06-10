@@ -9,22 +9,31 @@ namespace HandOfFateAccess.Tests {
 		private static float SouthPitch => AttackCueComposer.PitchFor(-1f);
 		private static float MidPitch => AttackCueComposer.PitchFor(0f);
 
-		// --- Sample choice: the action cue is block when blockable, dodge when not. ---
+		// --- Sample choice: block only when the attack is blockable AND the player can act
+		// on it; everything else is dodge. ---
 
 		[Fact]
-		public void Blockable_TakesBlockSample() {
-			Assert.Equal(AttackCueComposer.BlockKey, AttackCueComposer.ActionKey(true));
+		public void Blockable_WithAbility_TakesBlockSample() {
+			Assert.Equal(AttackCueComposer.BlockKey, AttackCueComposer.ActionKey(true, canBlock: true));
+		}
+
+		[Fact]
+		public void Blockable_WithoutAbility_TakesDodgeSample() {
+			// The cue is an action instruction. Without the counter/reflect ability the block
+			// input does nothing, so a "blockable" attack is unblockable for this player and
+			// the only survivable instruction is dodge.
+			Assert.Equal(AttackCueComposer.DodgeKey, AttackCueComposer.ActionKey(true, canBlock: false));
 		}
 
 		[Fact]
 		public void Unblockable_TakesDodgeSample() {
-			Assert.Equal(AttackCueComposer.DodgeKey, AttackCueComposer.ActionKey(false));
+			Assert.Equal(AttackCueComposer.DodgeKey, AttackCueComposer.ActionKey(false, canBlock: true));
 		}
 
 		[Fact]
 		public void BlockAndDodge_AreDistinctSamples() {
 			// Block and dodge demand opposite reactions, so they must never resolve to one sound.
-			Assert.NotEqual(AttackCueComposer.ActionKey(true), AttackCueComposer.ActionKey(false));
+			Assert.NotEqual(AttackCueComposer.ActionKey(true, true), AttackCueComposer.ActionKey(false, true));
 		}
 
 		// --- Bearing: pan is east/west, pitch is down-biased and brightest due north. ---
