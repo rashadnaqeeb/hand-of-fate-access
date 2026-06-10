@@ -23,6 +23,14 @@ namespace HandOfFateAccess.Screens {
 		public bool Flipped;
 		/// <summary>The decision prompt (e.g. "Equip this?"), or null when the zoom sets none.</summary>
 		public string Title;
+		/// <summary>The shop's transaction sentence ("Buy X for N gold"), the game's own
+		/// words carrying the real (multiplied) price the card face does not print; null
+		/// outside a shop transaction zoom. The adapter withholds it while the card is
+		/// flipped, since the sentence names the card.</summary>
+		public string ShopPrompt;
+		/// <summary>The shop's insufficient-funds indicator wording when it shows, else
+		/// null. Explains a transaction zoom that offers no confirm action.</summary>
+		public string ShopInsufficient;
 		/// <summary>The zoomed card, read the same way as a focused card; null when flipped.</summary>
 		public CardInfo Card;
 		/// <summary>The equipped item a replace decision would swap out, or null.</summary>
@@ -64,7 +72,11 @@ namespace HandOfFateAccess.Screens {
 				ann.Hint = Hint(z);
 				return ann;
 			}
-			var message = new Message().Add(z.Title);
+			// The shop sentence leads with the action and the price ("Buy X for N gold"),
+			// so the player can act on it before the card detail re-reads; the
+			// insufficient warning follows it immediately, explaining a zoom that
+			// offers no confirm.
+			var message = new Message().Add(z.Title).Add(z.ShopPrompt).Add(z.ShopInsufficient);
 			if (z.Card != null)
 				message.Add(new CardElement(z.Card).Describe().Resolve());
 			if (z.OldItem != null)

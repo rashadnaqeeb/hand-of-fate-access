@@ -20,8 +20,17 @@ namespace HandOfFateAccess.UI {
 		/// <summary>Game-localized "stat: value", e.g. "Damage: 5", "Gold: 5". Empty when the card has no stat.</summary>
 		public string StatValueString { get; }
 
-		/// <summary>Buy/sell value line, empty outside shop/value contexts.</summary>
+		/// <summary>Buy/sell value line, empty outside shop/value contexts. For a shop
+		/// stock card this is the live transaction price off the shop's info panel, not
+		/// the base value printed on the card face (the two differ by the stock-type
+		/// cost multiplier).</summary>
 		public string ValueString { get; }
+
+		/// <summary>The shop's insufficient-funds indicator wording, spoken right after
+		/// the price; null when affordable or outside a shop. It is the only reason the
+		/// game ever withholds the buy action, shown only as a panel indicator the focus
+		/// path cannot reach.</summary>
+		public string Insufficient { get; }
 
 		/// <summary>True when this encounter card shows a token gem (a token can be won here).</summary>
 		public bool HasToken { get; }
@@ -70,7 +79,8 @@ namespace HandOfFateAccess.UI {
 			bool faceDown = false,
 			bool isNew = false,
 			bool pinned = false,
-			int charges = -1) {
+			int charges = -1,
+			string insufficient = null) {
 			Title = title;
 			Description = description;
 			StatValueString = statValueString;
@@ -82,6 +92,20 @@ namespace HandOfFateAccess.UI {
 			New = isNew;
 			Pinned = pinned;
 			Charges = charges;
+			Insufficient = insufficient;
+		}
+
+		/// <summary>
+		/// Copy with the value line replaced by the shop's live price (and the
+		/// insufficient indicator, when shown). The card face prints only the base
+		/// value; the gold a shop transaction actually moves is that value times a
+		/// stock-type multiplier, rendered by the game on its shop info panel, so in a
+		/// shop the panel's figure is the one spoken and the face value is dropped
+		/// rather than letting the two contradict.
+		/// </summary>
+		public CardInfo WithShopPrice(string cost, string insufficient) {
+			return new CardInfo(Title, Description, StatValueString, cost, HasToken,
+				Complete, Traits, FaceDown, New, Pinned, Charges, insufficient);
 		}
 	}
 }

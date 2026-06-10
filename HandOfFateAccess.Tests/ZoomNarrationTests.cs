@@ -95,5 +95,46 @@ namespace HandOfFateAccess.Tests {
 			Assert.Equal("", a.Main);
 			Assert.Equal("", a.Hint);
 		}
+
+		[Fact]
+		public void Shop_prompt_leads_the_decision_line() {
+			// The game's transaction sentence carries the real price, so it reads first
+			// and the player can act on it before the card detail re-reads.
+			var z = new ZoomInfo {
+				ShopPrompt = "Buy War Axe for 84 gold?",
+				Card = Card("War Axe", "Damage: 8", ""),
+				Confirm = "Buy", Cancel = "Back",
+			};
+			var a = ZoomNarration.Compose(z);
+			Assert.Equal("Buy War Axe for 84 gold?, War Axe, Damage: 8", a.Main);
+			Assert.Equal("Buy, Back", a.Hint);
+		}
+
+		[Fact]
+		public void Shop_insufficient_follows_the_prompt() {
+			// When the player cannot afford the item the game offers no confirm action;
+			// the warning right after the prompt says why.
+			var z = new ZoomInfo {
+				ShopPrompt = "Buy War Axe for 84 gold?",
+				ShopInsufficient = "Insufficient Funds",
+				Card = Card("War Axe", "Damage: 8", ""),
+				Cancel = "Back",
+			};
+			var a = ZoomNarration.Compose(z);
+			Assert.Equal("Buy War Axe for 84 gold?, Insufficient Funds, War Axe, Damage: 8", a.Main);
+			Assert.Equal("Back", a.Hint);
+		}
+
+		[Fact]
+		public void Flipped_zoom_never_reads_the_shop_prompt() {
+			// The sentence names the card; a face-down card's reveal decision must not
+			// leak it even if a stale prompt were supplied.
+			var z = new ZoomInfo {
+				Flipped = true,
+				ShopPrompt = "Buy War Axe for 84 gold?",
+				Confirm = "Reveal",
+			};
+			Assert.Equal(Strings.CardFaceDown, ZoomNarration.Compose(z).Main);
+		}
 	}
 }

@@ -61,6 +61,20 @@ namespace HandOfFateAccess.Screens {
 			}
 			if (info.Flipped) return info;
 
+			// A clicked shop card zooms for the buy/sell/remove decision while the shop's
+			// info panel shows the game's confirmation sentence carrying the real
+			// (multiplied) price the card face does not print. Speak it as the decision
+			// line, and swap the zoomed card's printed base value for the panel's cost so
+			// the two figures never contradict. Read after the flipped return: the
+			// sentence names the card, which a still face-down card's reveal decision
+			// must not leak (once revealed, the recomposed line then carries it).
+			bool shopTransaction = ShopReader.TryReadTransaction(
+				out string shopPrompt, out string shopInsufficient, out string shopCost);
+			if (shopTransaction) {
+				info.ShopPrompt = shopPrompt;
+				info.ShopInsufficient = shopInsufficient;
+			}
+
 			// An unseen card in the deck builder is shown as a mystery: only its title and a
 			// generic "new card" line, with stat/description/lore withheld until the player
 			// has encountered it. Mirror that so examining it does not spoil what a sighted
@@ -89,6 +103,10 @@ namespace HandOfFateAccess.Screens {
 				if (ShowsLore(card))
 					info.Lore = ComposeLore(card);
 			}
+			// The insufficient warning stays on the prompt line, so it is not repeated
+			// inside the card readout.
+			if (shopTransaction && info.Card != null)
+				info.Card = info.Card.WithShopPrice(shopCost, null);
 			info.OldItem = ReadOldItem();
 			return info;
 		}

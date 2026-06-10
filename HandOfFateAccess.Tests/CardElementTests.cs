@@ -169,5 +169,40 @@ namespace HandOfFateAccess.Tests {
 			var info = new CardInfo("Lich King", "Final boss.", "Damage: 99", "", faceDown: true);
 			Assert.Equal("face down card", Describe(info));
 		}
+
+		[Fact]
+		public void Insufficient_follows_the_value() {
+			// In a shop the value line is the live price; the insufficient-funds warning
+			// reads right after it so cost and affordability are one unit.
+			var info = new CardInfo("War Axe", "A heavy blade.", "Damage: 8", "$84",
+				insufficient: "Insufficient Funds");
+			Assert.Equal("War Axe, Damage: 8, A heavy blade., $84, Insufficient Funds", Describe(info));
+		}
+
+		[Fact]
+		public void Affordable_card_omits_the_warning() {
+			var info = new CardInfo("War Axe", "A heavy blade.", "Damage: 8", "$84");
+			Assert.Equal("War Axe, Damage: 8, A heavy blade., $84", Describe(info));
+		}
+
+		[Fact]
+		public void Face_down_shop_card_reads_price_but_not_identity() {
+			// An unseen shop stock card lies face-down, but the shop's panel still shows
+			// its price (and affordability), so those speak; the identity stays withheld.
+			var info = new CardInfo("Mystery Blade", "Sharp.", "Damage: 9", "", faceDown: true)
+				.WithShopPrice("$120", "Insufficient Funds");
+			Assert.Equal("face down card, $120, Insufficient Funds", Describe(info));
+		}
+
+		[Fact]
+		public void Shop_price_replaces_the_face_value() {
+			// The card face prints the base value; the shop charges value times a stock
+			// multiplier. Only the panel's figure speaks, so the numbers never contradict.
+			var info = new CardInfo("War Axe", "A heavy blade.", "Damage: 8", "$70",
+				traits: "Two-handed", charges: 2, isNew: true)
+				.WithShopPrice("$84", null);
+			Assert.Equal("War Axe, " + Strings.CardNew + ", Damage: 8, 2 " + Strings.CardCharges
+				+ ", A heavy blade., Two-handed, $84", Describe(info));
+		}
 	}
 }

@@ -66,9 +66,11 @@ namespace HandOfFateAccess.UI {
 
 		public override Message Describe() {
 			// A face-down card withholds its identity (the card back a sighted player
-			// sees), matching the map and zoom readers.
+			// sees), matching the map and zoom readers. Its shop price is not identity:
+			// the shop's info panel shows the cost of a face-down stock card too, so it
+			// (and the insufficient indicator) still reads; both are empty outside a shop.
 			if (_info.FaceDown)
-				return new Message().Add(Strings.CardFaceDown);
+				return new Message().Add(Strings.CardFaceDown).Add(_info.ValueString).Add(_info.Insufficient);
 			var message = new Message().Add(_info.Title);
 			if (_info.Complete)
 				message.Add(Strings.CardCompleted);
@@ -86,7 +88,10 @@ namespace HandOfFateAccess.UI {
 			message
 				.Add(_info.Description)
 				.Add(_info.Traits)
-				.Add(_info.ValueString);
+				.Add(_info.ValueString)
+				// Directly after the price, so cost and affordability read as one unit
+				// ("$84, insufficient funds").
+				.Add(_info.Insufficient);
 			// Only that a token can be won here, matching the gem on the card. The
 			// reward cards are never shown to the player, so they are not announced.
 			if (_info.HasToken)

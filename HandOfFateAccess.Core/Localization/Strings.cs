@@ -128,6 +128,13 @@ namespace HandOfFateAccess.Localization {
 		public static readonly string ScorePlus = "plus";
 		public static readonly string ScoreTimes = "times";
 
+		// The shop's insufficient-funds warning, spoken after a stock card's price when
+		// the player cannot afford it (the game then offers no buy action). The game
+		// shows this as an indicator on its shop info panel; its own localized label is
+		// preferred when one is found, and this is the fallback wording when the
+		// indicator carries only a sprite.
+		public static readonly string ShopInsufficient = "not enough gold";
+
 		// Card zoom (a single card presented for a decision: examine, equip, buy, keep,
 		// reveal). "replacing" joins the zoomed item to the equipped item a replace would
 		// swap out ("Iron Sword, damage 5, replacing Rusty Dagger, damage 3"); the item

@@ -141,8 +141,17 @@ namespace HandOfFateAccess.Focus {
 				return null;
 
 			Card card = go.GetComponentInParent<Card>();
-			if (card != null)
-				return new CardElement(ExtractCard(card));
+			if (card != null) {
+				CardInfo info = ExtractCard(card);
+				// A shop stock card's face prints the base value, not the gold the
+				// purchase or sale actually moves; swap in the live price from the
+				// shop's info panel, with its insufficient-funds indicator. Applies
+				// only to cards in the stock spread (the shop's menu cards and any
+				// other card focused while a shop is live keep their normal readout).
+				if (ShopReader.TryReadStockPrice(card, out string cost, out string insufficient))
+					info = info.WithShopPrice(cost, insufficient);
+				return new CardElement(info);
+			}
 
 			// A cabinet card is focused through its CardContainer's selectable, which shares
 			// the container's GameObject while the card sits as a child, so the Card branch
