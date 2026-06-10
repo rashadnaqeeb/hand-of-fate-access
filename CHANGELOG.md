@@ -5,3 +5,7 @@ Player-facing changes to Hand of Fate Access, newest first. An entry describes w
 New changes go under Unreleased as they are made; the release skill rolls that section into a version heading when a release is cut.
 
 ## Unreleased
+
+## 1.0.0 - 2026-06-11
+
+Initial release.
