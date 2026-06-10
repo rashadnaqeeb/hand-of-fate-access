@@ -54,6 +54,7 @@ namespace HandOfFateAccess {
 		private CollisionCue _collisionCue;
 		private ProjectileSonification _projectiles;
 		private ZoneSonification _zones;
+		private ObjectBeacons _beacons;
 		private AttackCues _attackCues;
 		private EnemyLocator _enemyLocator;
 		private GambitStatusSpeech _gambitStatus;
@@ -83,6 +84,7 @@ namespace HandOfFateAccess {
 			_collisionCue.Pump();
 			_projectiles.Pump();
 			_zones.Pump();
+			_beacons.Pump();
 			_attackCues.Pump();
 			_gambit.Pump();
 
@@ -140,6 +142,11 @@ namespace HandOfFateAccess {
 			// needs only the audio backend.
 			_zones = new ZoneSonification();
 			_zones.Initialize();
+
+			// Chest and exit beacons: walk-in objects found by a periodic scan (they have
+			// no registry and no patchable activation), pinged from the pump. Audio only.
+			_beacons = new ObjectBeacons();
+			_beacons.Initialize(pluginDir);
 
 			// Attack telegraph cues (the block-or-dodge call at each enemy attack). Like the
 			// wall tones they ride on the audio backend alone, so they come up here with the

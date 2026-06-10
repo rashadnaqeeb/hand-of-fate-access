@@ -29,6 +29,8 @@ __pycache__/
 # license-restricted, e.g. the zapsplat locator beep) and offline synth previews.
 # Shipped sounds live in the plugin's sounds folder, which stays tracked.
 /*.wav
+/*.mp3
+/*.ogg
 
 # OS cruft
 Thumbs.db
