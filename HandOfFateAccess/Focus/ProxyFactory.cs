@@ -27,6 +27,7 @@ namespace HandOfFateAccess.Focus {
 	/// </summary>
 	internal static class ProxyFactory {
 		private static readonly FieldInfo BlockerGroupField = AccessTools.Field(typeof(UISelection), "m_selectionBlockerGroup");
+		private static readonly FieldInfo ChoiceRevealGroupField = AccessTools.Field(typeof(CardChoiceContainer), "m_revealSelectableGroup");
 		private static readonly FieldInfo ChoiceTextField = AccessTools.Field(typeof(UIChoiceButton), "m_choiceText");
 		private static readonly FieldInfo ChoiceLetterField = AccessTools.Field(typeof(UIChoiceButton), "m_letterText");
 		// The card's "new" and "pinned" badges and its token gem are unlabelled sprites the
@@ -89,7 +90,7 @@ namespace HandOfFateAccess.Focus {
 
 		public static UIElement Create(GameObject go) {
 			UISelectable selectable = go.GetComponent<UISelectable>();
-			if (selectable != null && IsBlockerFocus(selectable))
+			if (selectable != null && (IsBlockerFocus(selectable) || IsChoiceRevealFocus(selectable)))
 				return null;
 
 			// A card being zoomed for a decision (examine, equip, buy, keep...) is force-
@@ -326,6 +327,21 @@ namespace HandOfFateAccess.Focus {
 			var blocker = (UISelectableGroup)BlockerGroupField.GetValue(selection);
 			if (blocker == null) return false;
 			return selection.IsBlocked || selectable.Group == blocker;
+		}
+
+		// While a card choice flips its unseen cards face-up (CardChoiceContainer.Reveal),
+		// the game force-selects a label-less placeholder whose only click action skips
+		// the flip animation, so it would read as its bare object name. The flipped cards
+		// become the focused choices the moment the reveal ends and are read by the
+		// normal focus path, so the placeholder carries nothing worth speaking. Matched
+		// by its selectable group on the live choice container, not by name or
+		// hierarchy. DeckManager.Instance is legitimately null outside a run (menus),
+		// where no card choice can be up.
+		private static bool IsChoiceRevealFocus(UISelectable selectable) {
+			if (selectable.Group == null) return false;
+			DeckManager deck = DeckManager.Instance;
+			if (deck == null) return false;
+			return selectable.Group == (UISelectableGroup)ChoiceRevealGroupField.GetValue(deck.CardChoiceContainer);
 		}
 
 		private static string DescribeSelectable(UISelectable selectable) {
