@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using HandOfFateAccess.Focus;
+using HandOfFateAccess.Maps;
 using HandOfFateAccess.Speech;
 using HandOfFateAccess.UI;
 using HandOfFateAccess.Util;
@@ -154,6 +155,7 @@ namespace HandOfFateAccess.Screens {
 			PumpSubtitleText();
 			PumpZoomText();
 			PumpRewardReveal();
+			PumpMapReveal();
 			PumpNavActions();
 		}
 
@@ -405,6 +407,33 @@ namespace HandOfFateAccess.Screens {
 				text = new CardElement(ProxyFactory.ExtractCard(card)).Describe().Resolve();
 			} catch (Exception ex) {
 				Log.Error("reward reveal readout failed: " + ex);
+				return;
+			}
+			Speak(text);
+		}
+
+		// Map cards flipped face-up by a reveal effect (Explorer's Helmet, an encounter's
+		// reveal reward...) are read here: the game locks selection to a bare confirm
+		// button while the camera flies to the flipping cards, so the focus path never
+		// reads what was revealed. The Show hook records the live slot list; TryConsume
+		// holds it back until every card's Revealed flag is set (they flip one at a time
+		// over several frames), then each slot is read off the model, now face-up. Routed
+		// through Speak so the reveal interrupts as the new context and the confirm
+		// prompt queues behind it.
+		private void PumpMapReveal() {
+			string text;
+			try {
+				if (!MapReveal.TryConsume(out var slots)) return;
+				var infos = new List<MapSlotInfo>();
+				foreach (MapLayoutSlot slot in slots) {
+					MapSlotInfo info = MapSlotReader.Read(slot);
+					if (info != null)
+						infos.Add(info);
+				}
+				text = MapRevealReadout.Compose(infos);
+			} catch (Exception ex) {
+				MapReveal.Clear();
+				Log.Error("map reveal readout failed: " + ex);
 				return;
 			}
 			Speak(text);

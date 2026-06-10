@@ -279,6 +279,15 @@ namespace HandOfFateAccess {
 				new[] { typeof(Card) },
 				prefix: null,
 				postfix: AccessTools.Method(typeof(CardSetModifierContainer_OnCardClicked_Patch), "Postfix"));
+			// Map cards flipped face-up by a reveal effect are announced from the pump: the
+			// game locks selection to a bare confirm while they flip, so focus never reads
+			// them. Show is an iterator, so the postfix fires at coroutine creation; it
+			// records the live slot list and the pump waits for the flips.
+			patcher.Patch(
+				typeof(RevealMapLayoutSlots), "Show",
+				new[] { typeof(System.Collections.Generic.List<MapLayoutSlot>) },
+				prefix: null,
+				postfix: AccessTools.Method(typeof(RevealMapLayoutSlots_Show_Patch), "Postfix"));
 			// Suppress the player's footsteps while blocked against a wall. OnFootstep takes
 			// the private nested Footstep enum, resolved here to disambiguate it from the
 			// two-argument material overload.

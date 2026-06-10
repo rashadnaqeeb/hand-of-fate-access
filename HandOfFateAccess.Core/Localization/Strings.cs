@@ -165,6 +165,12 @@ namespace HandOfFateAccess.Localization {
 		public static readonly string DirLeft = "left";
 		public static readonly string DirRight = "right";
 
+		// Leads each map card flipped face-up by a reveal effect (Explorer's Helmet, an
+		// encounter's reveal reward...): "revealed Goblins, ...". Repeated per card so the
+		// boundary between several revealed cards is unmistakable. The game shows the
+		// reveal only as a camera move and flip animation, with no text.
+		public static readonly string MapRevealed = "revealed";
+
 		// The chance gambit's spoken card statuses are NOT authored here: the game has its
 		// own localized outcome titles (CHANCE_TITLE_SUCCESS and friends), read live through
 		// Localization.Localize in GambitStatusSpeech so they speak in the player's language.
