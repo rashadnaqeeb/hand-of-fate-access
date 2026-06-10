@@ -356,17 +356,24 @@ namespace HandOfFateAccess {
 
 		// The focused control and its last spoken readout, kept so an in-place value
 		// change (a selector/toggle that updates its label without moving focus) is
-		// detected by re-reading it each frame.
+		// detected by re-reading it each frame. _watchedHasValue records whether the
+		// control separates a value readout, which decides its poll mode.
 		private GameObject _watched;
 		private string _watchedReadout;
+		private bool _watchedHasValue;
 
 		private void PumpFocus() {
+			// The rebind scan edge poll runs before anything else so a scan edge is
+			// never deferred behind a focus announcement frame.
+			PumpBindingScan();
+
 			if (FocusTracker.TryConsume(out var go, out var userInitiated)) {
-				string announcement = BuildReadout(go);
+				string announcement = BuildReadout(go, out string valueReadout);
 				// Watch only a control that actually said something, so a suppressed or
 				// empty focus is not re-polled (which would re-log every frame).
 				_watched = string.IsNullOrEmpty(announcement) ? null : go;
 				_watchedReadout = announcement;
+				_watchedHasValue = !string.IsNullOrEmpty(valueReadout);
 				if (string.IsNullOrEmpty(announcement)) return;
 
 				// A screen or overlay that announced itself this frame leads: the focus
@@ -393,19 +400,78 @@ namespace HandOfFateAccess {
 			if (_watched == null) return;
 			if (UICamera.selectedObject != _watched) return;
 
-			bool isStat = _watched.GetComponentInParent<StatCard>() != null;
+			// A control that separates a value is polled every frame like a stat card:
+			// its applied value can land frames after the input that caused it (a
+			// fullscreen or resolution switch completes when the engine gets to it; a
+			// rebound key's label updates in a game coroutine after the scan).
+			bool alwaysPoll = _watchedHasValue || _watched.GetComponentInParent<StatCard>() != null;
 			bool wasRecentInput = NavigationState.WasRecent;
-			if (!ValuePollPolicy.ShouldPoll(isStat, wasRecentInput)) return;
+			if (!ValuePollPolicy.ShouldPoll(alwaysPoll, wasRecentInput)) return;
 
-			string current = BuildReadout(_watched);
+			string current = BuildReadout(_watched, out string valueOnly);
+			// A failed or transiently empty re-read keeps the last good readout:
+			// advancing the stored readout would make the recovery frame look like a
+			// change and speak a stale value. The failure itself is already logged.
+			if (string.IsNullOrEmpty(current)) return;
 			if (current == _watchedReadout) return;
 			_watchedReadout = current;
-			if (string.IsNullOrEmpty(current)) return;
 
-			if (ValuePollPolicy.Delivery(isStat, wasRecentInput) == SpeechMode.Interrupt)
-				SpeechPipeline.SpeakInterrupt(current);
+			// A control that separates its value (a settings row) re-speaks only the
+			// value: the title did not change and was spoken when focus landed, and a
+			// held adjustment reads much faster as "80%, 90%" than as the full row.
+			string speech = string.IsNullOrEmpty(valueOnly) ? current : valueOnly;
+
+			if (ValuePollPolicy.Delivery(alwaysPoll, wasRecentInput) == SpeechMode.Interrupt)
+				SpeechPipeline.SpeakInterrupt(speech);
 			else
-				SpeechPipeline.SpeakQueued(current);
+				SpeechPipeline.SpeakQueued(speech);
+		}
+
+		// Rebind feedback on the controls screen, invisible to both the focus path and
+		// the label poll: clicking a binding row starts cInput's key scan (the game
+		// shows only a colour change), so the listening prompt is spoken on that edge.
+		// The key that ends the scan goes to cInput before UICamera can see it, so the
+		// end edge stamps NavigationState (it is user input); when the scan changed
+		// nothing (the same key re-pressed, or cancelled; this cInput build has no
+		// timeout), the unchanged value is re-spoken a few frames later so the player
+		// hears the scan is over instead of a dangling prompt.
+		private bool _wasScanning;
+		private int _scanConfirmFrame = -1;
+		private string _scanEndReadout;
+		// Frames between the scan-end edge and the unchanged-binding confirmation:
+		// enough for the row's label to update (a game coroutine that runs after this
+		// pump) and the value poll to speak a real change first.
+		private const int ScanConfirmDelayFrames = 3;
+
+		private void PumpBindingScan() {
+			bool scanning = cInput.scanning;
+			if (scanning != _wasScanning) {
+				_wasScanning = scanning;
+				// Read the binding row off the live selection, not the watch state, so
+				// an unrelated readout failure cannot also mute the prompt.
+				GameObject selected = UICamera.selectedObject;
+				bool bindingFocused = selected != null && selected.GetComponentInParent<ControlBindElement>() != null;
+				if (scanning) {
+					if (bindingFocused)
+						SpeechPipeline.SpeakInterrupt(Strings.BindingPressKey);
+				} else if (bindingFocused) {
+					NavigationState.Mark();
+					_scanConfirmFrame = Time.frameCount + ScanConfirmDelayFrames;
+					_scanEndReadout = _watchedReadout;
+				}
+			}
+
+			if (_scanConfirmFrame >= 0 && Time.frameCount >= _scanConfirmFrame) {
+				_scanConfirmFrame = -1;
+				// The value poll spoke already if the readout moved by now; an unchanged
+				// readout means the scan ended with the binding as it was.
+				if (_watched != null && UICamera.selectedObject == _watched && _watchedReadout == _scanEndReadout) {
+					string current = BuildReadout(_watched, out string valueOnly);
+					string speech = string.IsNullOrEmpty(valueOnly) ? current : valueOnly;
+					if (!string.IsNullOrEmpty(speech))
+						SpeechPipeline.SpeakInterrupt(speech);
+				}
+			}
 		}
 
 		// Publish whether the map is the active screen, so the cursor's input binding and the
@@ -434,6 +500,15 @@ namespace HandOfFateAccess {
 		// this boundary so a bad control logs instead of silently dropping the readout.
 		// Returns null for a suppressed (structural) or unreadable control.
 		private string BuildReadout(GameObject go) {
+			string ignored;
+			return BuildReadout(go, out ignored);
+		}
+
+		// valueReadout is the value part alone for a control that separates one (a
+		// settings row), used by the poll to speak just the changed value; null for
+		// everything else.
+		private string BuildReadout(GameObject go, out string valueReadout) {
+			valueReadout = null;
 			// Read the name inside the try: a destroyed Unity object throws on .name too,
 			// and that must not escape the catch unlogged.
 			string label = "focus";
@@ -451,6 +526,9 @@ namespace HandOfFateAccess {
 					Log.Debug("focus suppressed for structural selectable '" + label + "'");
 					return null;
 				}
+				Message value = element.DescribeValue();
+				if (value != null)
+					valueReadout = value.Resolve();
 				return element.Describe().Resolve();
 			} catch (Exception ex) {
 				Log.Error("focus readout failed for '" + label + "': " + ex);

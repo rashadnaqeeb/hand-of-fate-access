@@ -169,6 +169,21 @@ namespace HandOfFateAccess.Localization {
 		// own localized outcome titles (CHANCE_TITLE_SUCCESS and friends), read live through
 		// Localization.Localize in GambitStatusSpeech so they speak in the player's language.
 
+		// A settings slider's position (the volume sliders), spoken as a percentage
+		// ("70%"). The slider draws its value only as a fill sprite with no text, so
+		// the wording is authored here. {0} is the percentage number, 0 to 100.
+		public static string SliderPercent(int percent) {
+			return string.Format("{0}%", percent);
+		}
+
+		// Key-binding rows on the controls screen. "press a key" is spoken when a
+		// rebind starts listening for the new key, which the game shows only as a
+		// colour change on the button. "conflict" is appended after a binding's key
+		// when the game flags the row invalid (the same key bound to two actions),
+		// which it shows only as a red tint.
+		public static readonly string BindingPressKey = "press a key";
+		public static readonly string BindingConflict = "conflict";
+
 		// A chance card's current left-to-right position while picking, spoken in place of its
 		// hidden "face down card" identity so the player can navigate to the slot they tracked
 		// by ear. {0} is the 1-based slot number. The shuffled face-down cards are otherwise

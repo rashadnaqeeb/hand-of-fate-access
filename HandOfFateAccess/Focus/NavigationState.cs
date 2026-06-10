@@ -7,7 +7,9 @@ namespace HandOfFateAccess.Focus {
 	/// and DoClick, and any resulting selection change is recorded synchronously within
 	/// that call, on the same frame. So a focus recorded on the same frame an input was
 	/// dispatched is user-driven; one recorded on any other frame is the game landing
-	/// focus on its own.
+	/// focus on its own. The rebind scan's end edge also marks here (PumpBindingScan):
+	/// cInput consumes that keypress before UICamera can see it, so it would otherwise
+	/// be invisible despite being user input.
 	///
 	/// Frame-stamped rather than a held flag so an exception in the game's input handler
 	/// can never strand the state "on" - there is nothing to reset.

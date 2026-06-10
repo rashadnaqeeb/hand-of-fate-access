@@ -143,6 +143,7 @@ namespace HandOfFateAccess.Screens {
 			PumpOverlay(CombatEncounter.Instance != null, ref _combatActive, ScreenId.Combat);
 			PumpOverlay(Shop.Instance != null, ref _shopActive, ScreenId.Shop);
 			PumpOverlay(PauseMenuOpen(), ref _pauseActive, ScreenId.Paused);
+			PumpPauseState();
 			PumpDialogue();
 			PumpEncounterText();
 			PumpMonsterRoster();
@@ -448,6 +449,61 @@ namespace HandOfFateAccess.Screens {
 			MenuManager menus = MenuManager.Instance;
 			if (menus == null) return null;
 			return menus.CurrentMenu(MenuManager.StackPriority.Dialogue) as Dialogue;
+		}
+
+		// Pause sub-screens that carry display-only content the focus path never
+		// reaches, edge-detected on the pause state name. The reset panel parks focus
+		// on its yes/no buttons while its header and warning are bare labels; the
+		// panel renders exactly the two game strings read here by key (no component
+		// exposes the labels). The credits screen has no focusable content at all; its
+		// data lives on ScriptableObjects read once the panel is live (it enables a
+		// frame or two after the state flips, hence the pending retry).
+		private PauseMenuManager.State.StateName _lastPauseStateName = PauseMenuManager.State.StateName.None;
+		private bool _creditsPending;
+
+		private void PumpPauseState() {
+			PauseMenuManager.State.StateName name = CurrentPauseStateName();
+			if (name != _lastPauseStateName) {
+				_lastPauseStateName = name;
+				_creditsPending = name == PauseMenuManager.State.StateName.Credits;
+				if (name == PauseMenuManager.State.StateName.ResetProfile)
+					Speak(new Message()
+						.Add(UIUtils.GetString("MENU_SETTINGS_RESET_PROFILE"))
+						.Add(UIUtils.GetString("MENU_SETTINGS_RESET_PROFILE_PROMPT"))
+						.Resolve());
+			}
+
+			if (!_creditsPending) return;
+			// The rail selection that opened the screen is usually still pending this
+			// frame (the menu opens on selection, in the same input dispatch), and its
+			// announcement would interrupt away anything queued before it. Let it
+			// speak first; the credits then queue behind it.
+			if (FocusTracker.HasPending) return;
+			IList<CreditsSection> sections;
+			try {
+				sections = CreditsReader.Read();
+			} catch (Exception ex) {
+				Log.Error("credits readout failed: " + ex);
+				_creditsPending = false;
+				return;
+			}
+			if (sections == null) return; // panel not live yet; retry next frame
+			_creditsPending = false;
+			// One queued line per section, so leaving the screen (any interrupting
+			// announcement) cuts the rest off naturally.
+			foreach (CreditsSection section in sections) {
+				string line = CreditsNarration.ComposeSection(section);
+				if (!string.IsNullOrEmpty(line))
+					SpeechPipeline.SpeakQueued(line);
+			}
+		}
+
+		private static PauseMenuManager.State.StateName CurrentPauseStateName() {
+			MenuManager menus = MenuManager.Instance;
+			if (menus == null) return PauseMenuManager.State.StateName.None;
+			PauseMenuManager pause = menus.PauseMenuManager;
+			if (pause == null || pause.CurrentState == null) return PauseMenuManager.State.StateName.None;
+			return pause.CurrentState.Name;
 		}
 
 		// The pause menu is a MenuManager push, not a GameState change, so it is

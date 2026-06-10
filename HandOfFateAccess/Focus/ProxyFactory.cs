@@ -47,6 +47,30 @@ namespace HandOfFateAccess.Focus {
 		// with the reward cards in the same container.
 		private static readonly FieldInfo ModifierAddSelectableField = AccessTools.Field(typeof(CardSetModifierContainer), "m_addSelectable");
 		private static readonly FieldInfo ModifierTitleField = AccessTools.Field(typeof(CardSetModifierContainer), "m_titleText");
+		// Settings rows: each control class holds the value label it rewrites in place
+		// as a private serialized field, mapped here per type so the value can be
+		// separated from the row title for value-only re-announcements. One table so
+		// each row type is declared exactly once; a row carries exactly one of these.
+		// The volume slider is separate: its value is a UISlider fill, not a label.
+		private static readonly FieldInfo VolumeSliderField = AccessTools.Field(typeof(VolumeSlider), "m_slider");
+		private static readonly KeyValuePair<System.Type, FieldInfo>[] SettingValueFields = {
+			SettingField(typeof(SubtitleToggle), "m_label"),
+			SettingField(typeof(UIProfileKeyDataToggle), "m_valueLabel"),
+			SettingField(typeof(UIGraphicsSettingsSelector), "m_label"),
+			SettingField(typeof(UIGraphicsSettingsResolution), "m_resolutionLabel"),
+			SettingField(typeof(UIGraphicsSettingsQuality), "m_valueLabel"),
+			SettingField(typeof(UIGraphicsSettingsFullScreen), "m_valueLabel"),
+			SettingField(typeof(UIGraphicsSettingsImageEffectToggle), "m_valueLabel"),
+			SettingField(typeof(LanguageVOSelect), "m_languageLabel"),
+		};
+
+		private static KeyValuePair<System.Type, FieldInfo> SettingField(System.Type type, string field) {
+			return new KeyValuePair<System.Type, FieldInfo>(type, AccessTools.Field(type, field));
+		}
+		// A key-binding row's action and bound-key labels, both private; the focused
+		// key button's own label is only the key name.
+		private static readonly FieldInfo BindingActionField = AccessTools.Field(typeof(ControlBindElement), "m_actionLabel");
+		private static readonly FieldInfo BindingKeyField = AccessTools.Field(typeof(ControlBindElement), "m_primaryLabel");
 
 		// Generic NGUI placeholder names that carry no information. A label-less stop
 		// can only ever speak its raw object name; when that name is one of these (the
@@ -215,6 +239,34 @@ namespace HandOfFateAccess.Focus {
 					return new RewardAddElement(bannerLabel != null ? bannerLabel.text : null);
 				}
 			}
+
+			// A volume slider row draws its value as the slider's fill sprite with no
+			// text, so the generic sweep spoke only the row title and an adjustment spoke
+			// nothing at all. Read the slider's live 0..1 value; SliderElement words it
+			// as a percentage.
+			VolumeSlider volume = go.GetComponentInParent<VolumeSlider>();
+			if (volume != null) {
+				var slider = (UISlider)VolumeSliderField.GetValue(volume);
+				return new SliderElement(ExtractLabels(go), slider.value);
+			}
+
+			// A key-binding row focuses the key button, whose own label is only the key
+			// name, so the generic sweep dropped the action being bound. Read the row's
+			// action and key labels directly. An invalid binding (the same key bound to
+			// two actions) shows only as a red tint, so the flag rides along for
+			// BindingElement to word.
+			ControlBindElement binding = go.GetComponentInParent<ControlBindElement>();
+			if (binding != null)
+				return new BindingElement(LabelText(BindingActionField, binding), LabelText(BindingKeyField, binding), binding.Invalid);
+
+			// The remaining settings rows (on/off toggles and left/right selectors)
+			// rewrite a value label in place. The generic sweep already read title and
+			// value, but separating the value lets a left/right change re-announce just
+			// the new value instead of the whole row. The value label is excluded from
+			// the title sweep so it is not doubled.
+			UILabel settingValue = SettingValueLabel(go);
+			if (settingValue != null)
+				return new SettingElement(ExtractLabels(go, settingValue), settingValue.text);
 
 			// A UISelectableGroup is a structural container in NGUI's selection model,
 			// not content. An ordinary group routes focus down to a child selectable
@@ -385,8 +437,19 @@ namespace HandOfFateAccess.Focus {
 			return label != null ? label.text : null;
 		}
 
-		private static string[] ExtractLabels(GameObject go) {
-			string[] own = LabelTexts(go);
+		// The value label of a settings row, resolved through the type-to-field table;
+		// null for a focused object that is not on one.
+		private static UILabel SettingValueLabel(GameObject go) {
+			foreach (KeyValuePair<System.Type, FieldInfo> entry in SettingValueFields) {
+				Component owner = go.GetComponentInParent(entry.Key);
+				if (owner != null)
+					return (UILabel)entry.Value.GetValue(owner);
+			}
+			return null;
+		}
+
+		private static string[] ExtractLabels(GameObject go, UILabel exclude = null) {
+			string[] own = LabelTexts(go, exclude);
 			if (HasUsableText(own))
 				return own;
 
@@ -400,19 +463,20 @@ namespace HandOfFateAccess.Focus {
 			Transform t = go.transform;
 			while (t.parent != null && t.parent.GetComponentsInChildren<UISelectableItem>(true).Length <= 1) {
 				t = t.parent;
-				string[] up = LabelTexts(t.gameObject);
+				string[] up = LabelTexts(t.gameObject, exclude);
 				if (HasUsableText(up))
 					return up;
 			}
 			return own;
 		}
 
-		private static string[] LabelTexts(GameObject go) {
+		private static string[] LabelTexts(GameObject go, UILabel exclude) {
 			UILabel[] labels = go.GetComponentsInChildren<UILabel>();
-			var texts = new string[labels.Length];
-			for (int i = 0; i < labels.Length; i++)
-				texts[i] = labels[i].text;
-			return texts;
+			var texts = new List<string>(labels.Length);
+			foreach (UILabel label in labels)
+				if (label != exclude)
+					texts.Add(label.text);
+			return texts.ToArray();
 		}
 
 		private static bool HasUsableText(string[] texts) {

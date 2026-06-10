@@ -10,6 +10,18 @@ namespace HandOfFateAccess.UI {
 	/// </summary>
 	public abstract class UIElement {
 		public abstract Message Describe();
+
+		/// <summary>
+		/// The value part of the readout alone, for re-announcing an in-place value
+		/// change on a control that separates its identity from its value (a settings
+		/// row whose value moves on left/right while focus stays put). The title did
+		/// not change and was spoken when focus landed, so only the value is repeated.
+		/// Null when the element has no separable value; the full Describe() line is
+		/// re-spoken instead.
+		/// </summary>
+		public virtual Message DescribeValue() {
+			return null;
+		}
 	}
 
 	/// <summary>
@@ -215,6 +227,94 @@ namespace HandOfFateAccess.UI {
 
 		public override Message Describe() {
 			return new Message().Add(_banner).Add(Strings.AddToDeck);
+		}
+	}
+
+	/// <summary>
+	/// Readout for a settings slider row (the volume sliders). The slider draws its
+	/// value only as a fill sprite with no text, so the generic sweep spoke the row
+	/// title alone and an adjustment spoke nothing at all. The value is the slider's
+	/// live 0..1 fill, worded as a percentage after the title; a left/right change
+	/// re-announces just the percentage.
+	/// </summary>
+	public sealed class SliderElement : UIElement {
+		private readonly string[] _labels;
+		private readonly float _value01;
+
+		public SliderElement(string[] labels, float value01) {
+			_labels = labels ?? new string[0];
+			_value01 = value01;
+		}
+
+		public override Message Describe() {
+			return new Message().AddRange(_labels).Add(Percent());
+		}
+
+		public override Message DescribeValue() {
+			return new Message().Add(Percent());
+		}
+
+		private string Percent() {
+			return Strings.SliderPercent((int)System.Math.Round(_value01 * 100f));
+		}
+	}
+
+	/// <summary>
+	/// Readout for a settings row whose value is a label the game rewrites in place
+	/// (the on/off toggles and the resolution/quality/language selectors). The row's
+	/// title labels lead, then the value; a left/right change re-announces just the
+	/// new value instead of the whole row. The adapter excludes the value label from
+	/// the title sweep so the value is never doubled or mistaken for the title.
+	/// </summary>
+	public sealed class SettingElement : UIElement {
+		private readonly string[] _labels;
+		private readonly string _value;
+
+		public SettingElement(string[] labels, string value) {
+			_labels = labels ?? new string[0];
+			_value = value;
+		}
+
+		public override Message Describe() {
+			return new Message().AddRange(_labels).Add(_value);
+		}
+
+		public override Message DescribeValue() {
+			return new Message().Add(_value);
+		}
+	}
+
+	/// <summary>
+	/// Readout for a key-binding row on the controls screen. Focus sits on the key
+	/// button, whose own label is only the key name, so the generic sweep dropped the
+	/// action being bound; the action leads as the distinguishing word, then the key.
+	/// A row the game flags invalid (the same key bound to two actions, shown only as
+	/// a red tint) appends the conflict word, on both the full readout and the
+	/// value-only re-announce after a rebind.
+	/// </summary>
+	public sealed class BindingElement : UIElement {
+		private readonly string _action;
+		private readonly string _key;
+		private readonly bool _invalid;
+
+		public BindingElement(string action, string key, bool invalid) {
+			_action = action;
+			_key = key;
+			_invalid = invalid;
+		}
+
+		public override Message Describe() {
+			return AppendConflict(new Message().Add(_action).Add(_key));
+		}
+
+		public override Message DescribeValue() {
+			return AppendConflict(new Message().Add(_key));
+		}
+
+		private Message AppendConflict(Message message) {
+			if (_invalid)
+				message.Add(Strings.BindingConflict);
+			return message;
 		}
 	}
 
