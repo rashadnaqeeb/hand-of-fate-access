@@ -214,6 +214,14 @@ namespace HandOfFateAccess.Focus {
 			if (go.GetComponentInParent<Scoreboard>() != null)
 				return new GenericElement(Strings.ControlContinue, EmptyLabels);
 
+			// The dungeon select state on a level-0 profile has no choice to offer (the
+			// story/endless pair needs Player.Level > 0), so it shows the game's InputScreen
+			// instead: a single full-screen label-less selectable (scene name "Item") whose
+			// only action is to continue into the story dungeon. The name is too generic for
+			// the NameReadouts table, so resolve the owning InputScreen structurally.
+			if (go.GetComponentInParent<InputScreen>() != null)
+				return new GenericElement(Strings.ControlContinue, EmptyLabels);
+
 			// A reward token won at the end of a run is a 3D gem prop with a UISelectableItem
 			// but no label, so it falls to its raw object name ("Token_WhiteMinotaur5(Clone)").
 			// The game gives it no localized name; a sighted player recognises it by its gem
