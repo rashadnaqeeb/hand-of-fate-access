@@ -2,17 +2,20 @@ using System;
 
 namespace HandOfFateAccess.Audio {
 	/// <summary>
-	/// Renders the three zone-hazard loops: the voice of a place the player must not stand
-	/// (ground fire, blast areas, mines). A pulsed, buzzy TONE, deliberately the only tonal
-	/// pulse in the combat mix so it cannot be confused with the wall wind (smooth broadband
-	/// noise) or the projectile tumble (pulsed noise). The zone's state is carried by pulse
-	/// rate and brightness, never by a different instrument:
+	/// Renders the four zone-hazard loops: the voice of a place the player must not stand
+	/// (ground fire, blast areas, mines, traps). A pulsed, buzzy TONE, deliberately the only
+	/// tonal pulse in the combat mix so it cannot be confused with the wall wind (smooth
+	/// broadband noise) or the projectile tumble (pulsed noise). The zone's state is carried
+	/// by pulse rate and brightness, never by a different instrument:
+	///   primed - once-a-second hard pulse: a trap idling on its proximity trigger; damage is
+	///            off, but approaching fires it, so its quiet must not read as absence.
 	///   arming - slow soft throb: the zone exists but damage is off; leaving is free.
 	///   active - mid-rate buzz: standing in it hurts.
 	///   inside - fast hard rattle: you are in it, get out now, away from the sound.
 	/// The bearing pitch-shift (down to 0.57x at due south) also slows a loop's pulse, so the
-	/// three rates are spaced ~3x apart and their shifted ranges never overlap: a southern
-	/// active zone can never sound like a northern arming one.
+	/// rates are spaced so their shifted ranges never overlap: a southern active zone can
+	/// never sound like a northern arming one, and a southern arming throb (1.15 Hz) stays
+	/// above the primed pulse (1 Hz).
 	///
 	/// Seamless by construction: the loop is exactly one second and every component, the
 	/// integer-Hz tone partials and the integer-rate pulse envelope, completes a whole number
@@ -20,12 +23,14 @@ namespace HandOfFateAccess.Audio {
 	/// rendered once at startup and registered as looping clips.
 	/// </summary>
 	public static class ZoneSynth {
+		public const string PrimedKey = "zone_primed";
 		public const string ArmingKey = "zone_arming";
 		public const string ActiveKey = "zone_active";
 		public const string InsideKey = "zone_inside";
 
 		/// <summary>Pulses per second per state. Integer values keep the one-second loop
-		/// seamless; ~3x spacing keeps the states separable under the bearing pitch-shift.</summary>
+		/// seamless; the spacing keeps the states separable under the bearing pitch-shift.</summary>
+		public const int PrimedPulseHz = 1;
 		public const int ArmingPulseHz = 2;
 		public const int ActivePulseHz = 6;
 		public const int InsidePulseHz = 18;
@@ -35,6 +40,12 @@ namespace HandOfFateAccess.Audio {
 		// leaves headroom under the cue samples and the wind.
 		private const int ToneHz = 160;
 		private const float PeakGain = 0.7f;
+
+		// Primed reads as coiled menace: the slowest rate (nothing is moving) but a hard,
+		// bright pulse, the opposite pairing from arming's soft throb, so the two slow states
+		// cannot blur even when the pitch-shift brings their rates near each other.
+		public static float[] RenderPrimed(int sampleRate) =>
+			Render(sampleRate, PrimedPulseHz, new[] { 1f, 0.5f, 0.33f, 0.25f }, pulseShape: 8f);
 
 		public static float[] RenderArming(int sampleRate) =>
 			Render(sampleRate, ArmingPulseHz, new[] { 1f, 0.25f }, pulseShape: 2f);

@@ -129,8 +129,9 @@ namespace HandOfFateAccess {
 			_projectiles = new ProjectileSonification();
 			_projectiles.Initialize();
 
-			// Zone hazards (ground areas, mines): no hooks, the game's own AllAreas registry
-			// is polled from the pump, so this needs only the audio backend.
+			// Zone hazards (ground areas, mines, traps): no hooks, the game's AllAreas
+			// registry and the level's scanned traps are polled from the pump, so this
+			// needs only the audio backend.
 			_zones = new ZoneSonification();
 			_zones.Initialize();
 

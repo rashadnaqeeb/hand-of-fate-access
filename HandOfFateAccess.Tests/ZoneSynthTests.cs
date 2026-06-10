@@ -8,6 +8,7 @@ namespace HandOfFateAccess.Tests {
 		private const int SampleRate = 44100;
 
 		public static TheoryData<string, float[]> AllLoops() => new TheoryData<string, float[]> {
+			{ ZoneSynth.PrimedKey, ZoneSynth.RenderPrimed(SampleRate) },
 			{ ZoneSynth.ArmingKey, ZoneSynth.RenderArming(SampleRate) },
 			{ ZoneSynth.ActiveKey, ZoneSynth.RenderActive(SampleRate) },
 			{ ZoneSynth.InsideKey, ZoneSynth.RenderInside(SampleRate) },
@@ -41,15 +42,18 @@ namespace HandOfFateAccess.Tests {
 
 		[Fact]
 		public void States_AreDistinctSignals() {
+			float[] primed = ZoneSynth.RenderPrimed(SampleRate);
 			float[] arming = ZoneSynth.RenderArming(SampleRate);
 			float[] active = ZoneSynth.RenderActive(SampleRate);
 			float[] inside = ZoneSynth.RenderInside(SampleRate);
+			Assert.NotEqual(PulseCount(primed), PulseCount(arming));
 			Assert.NotEqual(PulseCount(arming), PulseCount(active));
 			Assert.NotEqual(PulseCount(active), PulseCount(inside));
 		}
 
 		[Fact]
 		public void PulseRates_MatchTheConstants() {
+			Assert.Equal(ZoneSynth.PrimedPulseHz, PulseCount(ZoneSynth.RenderPrimed(SampleRate)));
 			Assert.Equal(ZoneSynth.ArmingPulseHz, PulseCount(ZoneSynth.RenderArming(SampleRate)));
 			Assert.Equal(ZoneSynth.ActivePulseHz, PulseCount(ZoneSynth.RenderActive(SampleRate)));
 			Assert.Equal(ZoneSynth.InsidePulseHz, PulseCount(ZoneSynth.RenderInside(SampleRate)));
@@ -62,6 +66,7 @@ namespace HandOfFateAccess.Tests {
 			// than the fastest (northern) slower state, or a shifted active zone could read
 			// as an arming one.
 			float slowest = (float)Math.Pow(2.0, -ProjectileSonifier.DownOctaves);
+			Assert.True(ZoneSynth.ArmingPulseHz * slowest > ZoneSynth.PrimedPulseHz);
 			Assert.True(ZoneSynth.ActivePulseHz * slowest > ZoneSynth.ArmingPulseHz);
 			Assert.True(ZoneSynth.InsidePulseHz * slowest > ZoneSynth.ActivePulseHz);
 		}

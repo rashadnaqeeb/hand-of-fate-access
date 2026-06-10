@@ -78,5 +78,51 @@ namespace HandOfFateAccess.Tests {
 			Assert.True(north.Params.Pitch > south.Params.Pitch);
 			Assert.Equal(0f, north.Params.Pan, 3);
 		}
+
+		// ComposePoint is the trap path: the adapter hands over the offset to the nearest
+		// dangerous point on the trap's collider instead of authored radii.
+
+		[Fact]
+		public void Point_OutsideEast_SoundSitsTowardIt_AtTheGap() {
+			ZoneCue cue = ZoneSonifier.ComposePoint(right: 4f, forward: 0f, inside: false, ZonePhase.Active);
+			Assert.True(cue.Audible);
+			Assert.False(cue.Inside);
+			Assert.Equal(ZoneSynth.ActiveKey, cue.ClipKey);
+			Assert.True(cue.Params.Pan > 0.9f);
+			Assert.Equal(4f, cue.Distance, 3);
+		}
+
+		[Fact]
+		public void Point_SilencesAtFalloff() {
+			ZoneCue cue = ZoneSonifier.ComposePoint(ZoneSonifier.FalloffRange, 0f, inside: false, ZonePhase.Active);
+			Assert.False(cue.Audible);
+		}
+
+		[Fact]
+		public void Point_PrimedTrap_UsesThePrimedLoop() {
+			ZoneCue cue = ZoneSonifier.ComposePoint(4f, 0f, inside: false, ZonePhase.Primed);
+			Assert.Equal(ZoneSynth.PrimedKey, cue.ClipKey);
+		}
+
+		[Fact]
+		public void Point_SafeTrapBeat_UsesTheArmingLoop() {
+			// A cycling trap's safe beat is voiced as arming: it exists, damage is off,
+			// and leaving (or crossing) is free.
+			ZoneCue cue = ZoneSonifier.ComposePoint(4f, 0f, inside: false, ZonePhase.Arming);
+			Assert.Equal(ZoneSynth.ArmingKey, cue.ClipKey);
+		}
+
+		[Fact]
+		public void Point_Inside_RattlesAtFullVolume_RegardlessOfPhase() {
+			// Inside, the adapter passes the bearing toward the trap's center (east here);
+			// even on a safe beat the rattle overrides, because arming is retroactive: the
+			// trap going hot hits everyone already standing in it.
+			ZoneCue cue = ZoneSonifier.ComposePoint(2f, 0f, inside: true, ZonePhase.Arming);
+			Assert.True(cue.Inside);
+			Assert.Equal(ZoneSynth.InsideKey, cue.ClipKey);
+			Assert.Equal(1f, cue.Params.Volume, 3);
+			Assert.True(cue.Params.Pan > 0.9f);
+			Assert.Equal(0f, cue.Distance, 3);
+		}
 	}
 }

@@ -2,11 +2,13 @@ using System;
 using HandOfFateAccess.Audio;
 
 namespace HandOfFateAccess.Combat {
-	/// <summary>The damage phase of a zone hazard: arming (the built-in delay before its
-	/// damage switches on; leaving is free) or active (standing in it hurts).</summary>
+	/// <summary>The damage phase of a zone hazard: arming (damage is off for now; leaving is
+	/// free), active (standing in it hurts), or primed (a trap idling on its proximity
+	/// trigger: damage is off, but approaching fires it).</summary>
 	public enum ZonePhase {
 		Arming,
 		Active,
+		Primed,
 	}
 
 	/// <summary>What the player hears for one zone hazard this frame: which loop plays, where
@@ -27,9 +29,10 @@ namespace HandOfFateAccess.Combat {
 	/// auto-correct for every shape: away from a disc's edge is radially out, away from the
 	/// ring band around a safe hole is into the hole, and when the player is INSIDE, the
 	/// sound sits toward the zone's center so fleeing it is the exit. State carries urgency,
-	/// not class: an arming zone throbs softly, an active one buzzes, and inside is an
-	/// unmistakable rattle at full volume regardless of phase, because the verb is the same
-	/// either way - get out, and during arming getting out is free.
+	/// not class: a primed trap pulses slow and hard, an arming zone throbs softly, an active
+	/// one buzzes, and inside is an unmistakable rattle at full volume regardless of phase,
+	/// because the verb is the same either way - get out, and during arming getting out is
+	/// free.
 	///
 	/// Bearing uses the same grammar as the rest of the combat audio (pan = east/west, the
 	/// down-biased pitch = north/south, via <see cref="ProjectileSonifier.PitchFor"/>) so the
@@ -64,7 +67,6 @@ namespace HandOfFateAccess.Combat {
 			// Gap to the nearest dangerous point: zero inside, radial outside the edge,
 			// inward across the safe hole of a ring.
 			float gap = inside ? 0f : (dist > outerRadius ? dist - outerRadius : innerRadius - dist);
-			if (gap >= FalloffRange) return default(ZoneCue);
 
 			// Bearing of the danger. Outside (and inside, toward the exit) it points along
 			// the center offset; from within a ring's safe hole the nearest band is the
@@ -75,6 +77,23 @@ namespace HandOfFateAccess.Combat {
 				bx = -bx;
 				bf = -bf;
 			}
+
+			return BuildCue(bx, bf, gap, inside, phase);
+		}
+
+		/// <summary>
+		/// The cue for a hazard known only by its nearest dangerous point (a trap's collider
+		/// rather than authored radii): <paramref name="right"/>/<paramref name="forward"/>
+		/// are the offset to that point, or toward the hazard's center when the player is
+		/// <paramref name="inside"/> its footprint, so fleeing the sound is still the exit.
+		/// </summary>
+		public static ZoneCue ComposePoint(float right, float forward, bool inside, ZonePhase phase) {
+			float gap = inside ? 0f : (float)Math.Sqrt(right * right + forward * forward);
+			return BuildCue(right, forward, gap, inside, phase);
+		}
+
+		private static ZoneCue BuildCue(float bx, float bf, float gap, bool inside, ZonePhase phase) {
+			if (gap >= FalloffRange) return default(ZoneCue);
 
 			// L1-normalize so pan and pitch share one unit of deflection by angle, the shared
 			// grammar. On top of the zone's center (no bearing) the voice sits centered at
@@ -89,7 +108,8 @@ namespace HandOfFateAccess.Combat {
 
 			float volume = inside ? 1f : MaxVolume * (1f - gap / FalloffRange);
 			string clip = inside ? ZoneSynth.InsideKey
-				: phase == ZonePhase.Arming ? ZoneSynth.ArmingKey : ZoneSynth.ActiveKey;
+				: phase == ZonePhase.Arming ? ZoneSynth.ArmingKey
+				: phase == ZonePhase.Primed ? ZoneSynth.PrimedKey : ZoneSynth.ActiveKey;
 
 			return new ZoneCue {
 				Audible = true,
