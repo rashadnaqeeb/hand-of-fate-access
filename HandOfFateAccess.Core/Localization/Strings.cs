@@ -193,6 +193,36 @@ namespace HandOfFateAccess.Localization {
 			return string.Format("Slot {0}", number);
 		}
 
+		// The sound glossary: a speech-only list of the mod's combat sounds, opened with
+		// the glossary key while the game is paused, so the player can learn or re-check
+		// what each sound means outside a fight. The title is spoken on open, the closed
+		// line on deliberate close (closing the pause menu closes it silently).
+		public static readonly string GlossaryTitle = "Sound glossary";
+		public static readonly string GlossaryClosed = "Glossary closed";
+
+		// Spoken once per session, a beat after the pause menu first opens, to make the
+		// glossary discoverable (it has no on-screen button). {0} is the key name, e.g. "G".
+		public static string GlossaryHint(string key) {
+			return string.Format("Press {0} for sound glossary", key);
+		}
+
+		// Glossary entries, one per combat sound: the sound's name first (the distinguishing
+		// word), then what hearing it means in a fight. Spoken as the player arrows through
+		// the list; activating an entry plays the sound itself.
+		public static readonly string GlossaryBlock = "Block, attack you can block, or reflect if ranged";
+		public static readonly string GlossaryDodge = "Dodge, attack you must dodge, also a hazard launching";
+		public static readonly string GlossaryProjectile = "Projectile, shot in flight";
+		public static readonly string GlossaryProjectileReflected = "Reflected projectile, your shot flying back at an enemy";
+		public static readonly string GlossaryZonePrimed = "Zone primed, idle trap, approaching fires it";
+		public static readonly string GlossaryZoneArming = "Zone arming, hazard forming, damage not on yet";
+		public static readonly string GlossaryZoneActive = "Zone active, ground that hurts to stand in";
+		public static readonly string GlossaryZoneInside = "Zone inside, you are in a hazard, move away from the sound";
+		public static readonly string GlossaryWallTones = "Wall tones, walls right, left, top, bottom";
+		public static readonly string GlossaryWallCollision = "Wall collision, walked into a wall";
+		public static readonly string GlossaryEnemyPing = "Enemy ping, nearest enemy, answers the locator key";
+		public static readonly string GlossaryChest = "Chest beacon, walk to it to open the chest";
+		public static readonly string GlossaryExit = "Exit beacon, walk to it to finish the level, also ends a boss fight";
+
 		// Plugin lifecycle. Spoken once at startup to confirm the accessibility mod
 		// is running. {0} is the mod version (e.g. "0.1.0"). The product name is part
 		// of this string and IS meant to be translated: render "Hand of Fate Access"

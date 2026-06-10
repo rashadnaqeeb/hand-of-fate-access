@@ -21,13 +21,14 @@ namespace HandOfFateAccess.Combat {
 	/// re-measured live every frame.
 	/// </summary>
 	internal sealed class WallTones {
-		// Indexed by (int)WallSide: Right, Left, Above, Below. The keys double as the
-		// sounds-folder file stems (walltone_right.wav ...).
+		// Indexed by (int)WallSide: Right, Left, Above, Below. The keys (and the
+		// sounds-folder file stems they double as) live on the Core composer, which the
+		// sound glossary also reads.
 		private static readonly string[] Keys = {
-			"walltone_right",
-			"walltone_left",
-			"walltone_above",
-			"walltone_below",
+			WallToneComposer.RightKey,
+			WallToneComposer.LeftKey,
+			WallToneComposer.AboveKey,
+			WallToneComposer.BelowKey,
 		};
 
 		// Fully qualified: the game's Assembly-CSharp has its own global Voice type that

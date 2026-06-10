@@ -17,6 +17,17 @@ namespace HandOfFateAccess.Combat {
 	/// hard left/right for the side walls and centred fore and aft. Pitch stays neutral.
 	/// </summary>
 	public static class WallToneComposer {
+		/// <summary>Clip keys for the four side tones, doubling as the sounds-folder file
+		/// stems (walltone_right.wav ...). Indexable by side via <see cref="KeyFor"/>.</summary>
+		public const string RightKey = "walltone_right";
+		public const string LeftKey = "walltone_left";
+		public const string AboveKey = "walltone_above";
+		public const string BelowKey = "walltone_below";
+
+		/// <summary>Clip key (and file stem) for the wall collision bump, the one-shot
+		/// sibling of the continuous side tones.</summary>
+		public const string CollisionKey = "walltone_collision";
+
 		/// <summary>Distance, in world units, at and beyond which a wall is silent. The
 		/// volume falls linearly to zero here, so it is the audible edge. Kept short so
 		/// the tones speak to walls about to stop the player, not distant geometry.</summary>
@@ -42,6 +53,16 @@ namespace HandOfFateAccess.Combat {
 			// NaN fails every comparison, so the range test rejects it too.
 			if (!(distance >= 0f) || distance >= Range) return 0f;
 			return MaxVolume * (Range - distance) / Range;
+		}
+
+		/// <summary>The clip key for a side's tone.</summary>
+		public static string KeyFor(WallSide side) {
+			switch (side) {
+				case WallSide.Right: return RightKey;
+				case WallSide.Left: return LeftKey;
+				case WallSide.Above: return AboveKey;
+				default: return BelowKey;
+			}
 		}
 
 		/// <summary>The fixed stereo position for a side: hard right/left for the side

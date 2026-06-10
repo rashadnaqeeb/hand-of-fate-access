@@ -77,6 +77,21 @@ namespace HandOfFateAccess.Audio {
 			set { _tempo = value ? ReflectedTempoScale : 1f; }
 		}
 
+		/// <summary>
+		/// Render <paramref name="seconds"/> of the tumble offline into a buffer, for a
+		/// registered demo clip (the sound glossary). Live projectiles synthesize in real
+		/// time per voice instead; this exists so the sound can also be heard outside a
+		/// fight, at neutral pitch, exactly as a due-north projectile would sound.
+		/// </summary>
+		public static float[] Render(int sampleRate, float seconds, bool reflected, uint seed) {
+			if (sampleRate <= 0) sampleRate = 44100;
+			var synth = new ProjectileSynth(sampleRate, seed);
+			synth.Reflected = reflected;
+			var samples = new float[(int)(seconds * sampleRate)];
+			synth.Process(samples, 0, samples.Length);
+			return samples;
+		}
+
 		/// <summary>Fill <paramref name="count"/> mono samples into <paramref name="output"/>
 		/// from <paramref name="offset"/>, advancing the rhythm and noise state.</summary>
 		public void Process(float[] output, int offset, int count) {

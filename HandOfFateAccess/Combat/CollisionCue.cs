@@ -23,7 +23,7 @@ namespace HandOfFateAccess.Combat {
 	/// the direction.
 	/// </summary>
 	internal sealed class CollisionCue {
-		private const string Key = "walltone_collision";
+		private const string Key = WallToneComposer.CollisionKey;
 		// Slightly above the wall tones' ceiling so the transient reads as an event over the
 		// continuous bed rather than blending into it.
 		private const float Volume = 0.7f;

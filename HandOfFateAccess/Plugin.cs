@@ -6,6 +6,7 @@ using HandOfFateAccess.Audio;
 using HandOfFateAccess.Combat;
 using HandOfFateAccess.Focus;
 using HandOfFateAccess.Gambit;
+using HandOfFateAccess.Glossary;
 using HandOfFateAccess.Input;
 using HandOfFateAccess.Localization;
 using HandOfFateAccess.Maps;
@@ -230,6 +231,13 @@ namespace HandOfFateAccess {
 				"map cursor",
 				_mapCursor.Move,
 				() => MapInput.OnMap));
+
+			// Sound glossary: G while the pause menu is up opens a spoken list of the
+			// mod's combat sounds (G is absent from the game's default keyboard table).
+			// It polls the pause state itself rather than taking an isActive gate: it
+			// must keep running after the pause closes to shut its overlay down.
+			_input.Register(new SoundGlossary(
+				() => _screenWatcher.Stack.Top == ScreenId.Paused));
 
 			// A control auto-selected before our patches were live (the main menu's
 			// initial button at launch) fired its selection where we couldn't hear
