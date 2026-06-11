@@ -3,12 +3,16 @@ using System;
 namespace HandOfFateAccess.Gambit {
 	/// <summary>
 	/// Synthesizes each card's fixed identity tone for the gambit. Every slot is a distinct,
-	/// memorable instrument that travels with its card: one octave higher per slot, its own
-	/// harmonic recipe, and its own pulse. Slot 0 is an organ, 1 a violin, 2 a guitar, 3 a bell.
-	/// The two low/slow voices carry on full harmonic bodies (a bare sine at 130 Hz was too thin
-	/// to localize and track); the two high voices are plucked/struck, so each pulse is a fresh
-	/// attack and reads as an instrument rather than a tremolo'd drone. The player learns "this
-	/// sound is this card" in the Establish walk, then follows that sound through the shuffle.
+	/// memorable instrument that travels with its card: rising in register per slot, its own
+	/// harmonic recipe, and its own motion. Slot 0 is an organ, 1 a violin, 2 a guitar, 3 a bell.
+	/// Each voice owns one motion type so no slot is a midpoint of its neighbors: the organ
+	/// throbs in loudness, the violin warbles in pitch (deep vibrato, no tremolo), the guitar
+	/// and bell pluck, so each pulse is a fresh attack. The violin also sits a tritone off the
+	/// other slots' shared C chroma (F#4, not C4): octave-spaced same-chroma tones are the most
+	/// confusable interval, and the middle slot has no articulation contrast to fall back on.
+	/// The low voices carry on full harmonic bodies (a bare sine at 130 Hz was too thin to
+	/// localize and track). The player learns "this sound is this card" in the Establish walk,
+	/// then follows that sound through the shuffle.
 	///
 	/// Two voicings share the timbre. The Establish tone (<see cref="Generate"/>) is a short
 	/// one-shot with fades, played per slot as it is taught and again as a probe while picking.
@@ -32,11 +36,11 @@ namespace HandOfFateAccess.Gambit {
 
 		// Per-slot identity. Indices past the table reuse the brightest (bell) recipe, plucked, at a
 		// capped octave and a still-rising pulse; chance gambits past four cards are rare.
-		private static readonly float[] Frequencies = { 130.81f, 261.63f, 523.25f, 1046.50f };
-		private static readonly float[] PulseRates = { 2.5f, 4.0f, 6.0f, 10.0f };
+		private static readonly float[] Frequencies = { 130.81f, 369.99f, 523.25f, 1046.50f };
+		private static readonly float[] PulseRates = { 2.5f, 0f, 6.0f, 10.0f };
 		private static readonly Artic[] Articulations = { Artic.Sustain, Artic.Sustain, Artic.Pluck, Artic.Pluck };
-		private static readonly float[] TremoloDepths = { 0.5f, 0.35f, 0f, 0f };   // sustain voices only
-		private static readonly float[] VibratoDepths = { 0f, 0.007f, 0f, 0f };    // violin gets a vibrato handle
+		private static readonly float[] TremoloDepths = { 0.5f, 0f, 0f, 0f };   // organ only; the violin moves in pitch, not loudness
+		private static readonly float[] VibratoDepths = { 0f, 0.05f, 0f, 0f };  // the violin's identity: nearly a semitone of warble
 		private static readonly float[][] HarmonicSets = {
 			new[] { 1.0f, 0.6f, 0.8f, 0.4f, 0.5f, 0.25f, 0.3f, 0.15f },    // organ: full drawbar stack so a low note carries
 			new[] { 1.0f, 0.5f, 0.33f, 0.25f, 0.2f, 0.16f, 0.14f, 0.12f }, // violin: bowed sawtooth, vibrato added in Render
