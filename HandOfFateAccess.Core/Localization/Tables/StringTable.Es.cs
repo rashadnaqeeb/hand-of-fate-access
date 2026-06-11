@@ -76,6 +76,7 @@ namespace HandOfFateAccess.Localization {
 				GlossaryEnemyPing = "Ping de enemigo, enemigo más cercano, responde a la tecla localizadora",
 				GlossaryChest = "Baliza de cofre, camina hacia ella para abrir el cofre",
 				GlossaryExit = "Baliza de salida, camina hacia ella para terminar el nivel, también termina el combate de jefe",
+				GlossaryRecharge = "Recarga, una habilidad de arma o artefacto está lista de nuevo, arma a la izquierda, artefacto a la derecha",
 				PluginLoadedFormat = "Hand of Fate Acceso versión {0} cargado"
 			};
 		}

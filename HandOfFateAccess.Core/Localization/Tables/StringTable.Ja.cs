@@ -76,6 +76,7 @@ namespace HandOfFateAccess.Localization {
 				GlossaryEnemyPing = "敵ピング、最寄りの敵、ロケーターキーに応答",
 				GlossaryChest = "宝箱ビーコン、そこまで歩くと宝箱が開く",
 				GlossaryExit = "出口ビーコン、そこまで歩くとレベル終了、ボス戦も終わる",
+				GlossaryRecharge = "リチャージ、武器またはアーティファクトのアビリティが再び使用可能、武器は左、アーティファクトは右",
 				PluginLoadedFormat = "ハンドオブフェイト・アクセス バージョン{0} 読み込み完了"
 			};
 		}

@@ -30,6 +30,10 @@ namespace HandOfFateAccess.Glossary {
 		/// <summary>Seconds each looping step plays before it is stopped.</summary>
 		public const float LoopHoldSeconds = 1f;
 
+		// Gap before the recharge demo's second chime: the clip's ~1.26 s plus a beat
+		// of silence, so the two sides read as two plays rather than one wide sound.
+		private const float RechargeHoldSeconds = 1.6f;
+
 		// The collision bump's demo loudness, matching the plugin's CollisionCue.
 		private const float CollisionVolume = 0.7f;
 
@@ -55,6 +59,13 @@ namespace HandOfFateAccess.Glossary {
 			OneShot(() => Strings.GlossaryEnemyPing, EnemyPingSynth.Key, EnemyPingComposer.MaxVolume),
 			OneShot(() => Strings.GlossaryChest, BeaconComposer.ChestKey, BeaconComposer.MaxVolume),
 			OneShot(() => Strings.GlossaryExit, BeaconComposer.ExitKey, BeaconComposer.MaxVolume),
+			// Like the wall tones, the recharge cue's pan IS its meaning, so the demo
+			// plays both sides in the order the label names them: weapon left, then
+			// artifact right.
+			new GlossaryEntry(() => Strings.GlossaryRecharge, new[] {
+				new GlossaryStep(RechargeCueComposer.Key, RechargeCueComposer.Weapon, false, RechargeHoldSeconds),
+				new GlossaryStep(RechargeCueComposer.Key, RechargeCueComposer.Artifact, false, 0f),
+			}),
 		};
 
 		private static GlossaryEntry OneShot(System.Func<string> label, string clipKey, float volume) {

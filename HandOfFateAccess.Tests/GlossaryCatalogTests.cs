@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using HandOfFateAccess.Audio;
+using HandOfFateAccess.Combat;
 using HandOfFateAccess.Glossary;
 using Xunit;
 
@@ -44,11 +45,11 @@ namespace HandOfFateAccess.Tests {
 
 		[Fact]
 		public void WallTonesEntry_PlaysAllFourSidesAtTheirPans() {
-			// The one multi-step entry: four side tones in sequence, the side walls
+			// The looping multi-step entry: four side tones in sequence, the side walls
 			// hard-panned to their ears, fore and aft centered, like the live feature.
 			GlossaryEntry walls = null;
 			foreach (var entry in GlossaryCatalog.Entries)
-				if (entry.Steps.Length > 1)
+				if (entry.Steps.Length > 1 && entry.Steps[0].Loop)
 					walls = entry;
 			Assert.NotNull(walls);
 			Assert.Equal(4, walls.Steps.Length);
@@ -58,6 +59,23 @@ namespace HandOfFateAccess.Tests {
 			Assert.Equal(0f, walls.Steps[3].Params.Pan);
 			foreach (var step in walls.Steps)
 				Assert.True(step.Loop);
+		}
+
+		[Fact]
+		public void RechargeEntry_PlaysWeaponLeftThenArtifactRight() {
+			// The pan is the slot identity, so the demo must play both sides, in the
+			// order the spoken label names them: weapon hard left, artifact hard right.
+			GlossaryEntry recharge = null;
+			foreach (var entry in GlossaryCatalog.Entries)
+				foreach (var step in entry.Steps)
+					if (step.ClipKey == RechargeCueComposer.Key)
+						recharge = entry;
+			Assert.NotNull(recharge);
+			Assert.Equal(2, recharge.Steps.Length);
+			Assert.Equal(-1f, recharge.Steps[0].Params.Pan);
+			Assert.Equal(1f, recharge.Steps[1].Params.Pan);
+			foreach (var step in recharge.Steps)
+				Assert.False(step.Loop);
 		}
 
 		[Fact]

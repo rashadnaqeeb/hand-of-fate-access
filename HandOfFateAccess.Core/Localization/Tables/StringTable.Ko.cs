@@ -76,6 +76,7 @@ namespace HandOfFateAccess.Localization {
 				GlossaryEnemyPing = "적 핑, 가장 가까운 적, 위치 탐지 키에 응답",
 				GlossaryChest = "상자 신호음, 걸어가면 상자 열림",
 				GlossaryExit = "출구 신호음, 걸어가면 레벨 완료, 보스전도 종료",
+				GlossaryRecharge = "재충전, 무기 또는 아티팩트 능력이 다시 준비됨, 무기는 왼쪽, 아티팩트는 오른쪽",
 				PluginLoadedFormat = "Hand of Fate 액세스 버전 {0} 로드됨"
 			};
 		}

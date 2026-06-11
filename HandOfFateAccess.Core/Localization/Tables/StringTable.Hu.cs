@@ -76,6 +76,7 @@ namespace HandOfFateAccess.Localization {
 				GlossaryEnemyPing = "Ellenségjelzés, a legközelebbi ellenség, a keresőgombra válaszol",
 				GlossaryChest = "Ládajelző, sétálj oda a láda kinyitásához",
 				GlossaryExit = "Kijáratjelző, sétálj oda a szint befejezéséhez, a főellenség elleni harcot is lezárja",
+				GlossaryRecharge = "Újratöltés, egy fegyver- vagy ereklyeképesség újra használható, fegyver balra, ereklye jobbra",
 				PluginLoadedFormat = "Hand of Fate Hozzáférés {0} verzió betöltve",
 			};
 		}

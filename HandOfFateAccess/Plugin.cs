@@ -58,6 +58,7 @@ namespace HandOfFateAccess {
 		private ZoneSonification _zones;
 		private ObjectBeacons _beacons;
 		private AttackCues _attackCues;
+		private RechargeCues _rechargeCues;
 		private EnemyLocator _enemyLocator;
 		private GambitStatusSpeech _gambitStatus;
 		private GambitWatcher _gambit;
@@ -88,6 +89,7 @@ namespace HandOfFateAccess {
 			_zones.Pump();
 			_beacons.Pump();
 			_attackCues.Pump();
+			_rechargeCues.Pump();
 			_gambit.Pump();
 
 			if (_speechReady) {
@@ -161,6 +163,12 @@ namespace HandOfFateAccess {
 			_attackCues.Initialize(pluginDir);
 			if (AudioEngine.IsAvailable)
 				InstallCombatPatches();
+
+			// The ability-recharge chime (weapon left, artifact right when an ability's
+			// cooldown, charges, and costs all clear). Pure polling over public game
+			// state, so it needs no hooks, only the audio backend.
+			_rechargeCues = new RechargeCues();
+			_rechargeCues.Initialize(pluginDir);
 
 			// The on-demand enemy locator: L on the keyboard and left-stick click on the
 			// controller (both verified unbound by the game: L is absent from its default

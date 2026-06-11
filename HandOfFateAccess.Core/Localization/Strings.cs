@@ -152,6 +152,7 @@ namespace HandOfFateAccess.Localization {
 		public static string GlossaryEnemyPing => _active.GlossaryEnemyPing;
 		public static string GlossaryChest => _active.GlossaryChest;
 		public static string GlossaryExit => _active.GlossaryExit;
+		public static string GlossaryRecharge => _active.GlossaryRecharge;
 
 		public static string SliderPercent(int percent) {
 			return string.Format(_active.SliderPercentFormat, percent);

@@ -76,6 +76,7 @@ namespace HandOfFateAccess.Localization {
 				GlossaryEnemyPing = "敌人定位音，最近的敌人，响应定位键",
 				GlossaryChest = "宝箱信标，走过去打开宝箱",
 				GlossaryExit = "出口信标，走过去完成关卡，也可结束首领战",
+				GlossaryRecharge = "充能，武器或神器技能再次就绪，武器在左，神器在右",
 				PluginLoadedFormat = "命运之手无障碍，版本 {0} 已加载",
 			};
 		}

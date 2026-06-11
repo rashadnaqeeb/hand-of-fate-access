@@ -251,6 +251,11 @@ namespace HandOfFateAccess.Localization {
 		public string GlossaryEnemyPing = "Enemy ping, nearest enemy, answers the locator key";
 		public string GlossaryChest = "Chest beacon, walk to it to open the chest";
 		public string GlossaryExit = "Exit beacon, walk to it to finish the level, also ends a boss fight";
+		// The demo plays the chime twice, weapon side then artifact side, so the
+		// translation must keep naming the weapon's side first. "Weapon" and
+		// "artefact" are the game's own equipment slot terms (it spells artefact the
+		// British way in English); reuse its localized words for them.
+		public string GlossaryRecharge = "Recharge, a weapon or artefact ability is ready again, weapon left, artefact right";
 
 		// Plugin lifecycle. Spoken once at startup to confirm the accessibility mod
 		// is running. {0} is the mod version (e.g. "0.1.0"). The product name is part
