@@ -28,6 +28,10 @@ namespace HandOfFateAccess.Screens {
 		private bool _subscribed;
 		private bool _waitingLogged;
 		private bool _screenJustChanged;
+		// The Game instance the delegates are attached to. The reset-progress scene wipe
+		// destroys it and card_table reload creates a fresh one with empty delegates, so
+		// the pump compares by reference and resubscribes when the instance changes.
+		private Game _game;
 
 		// Overlay presence last observed, so the pump acts only on the live<->null edge.
 		private bool _encounterActive;
@@ -124,6 +128,7 @@ namespace HandOfFateAccess.Screens {
 
 			Game.Instance.OnGameStateEntered += OnGameStateEntered;
 			Game.Instance.OnGameStateExited += OnGameStateExited;
+			_game = Game.Instance;
 			_subscribed = true;
 			Log.Info("screen watcher installed");
 
@@ -136,6 +141,17 @@ namespace HandOfFateAccess.Screens {
 		/// encounter/combat/shop sub-contexts and announce overlay changes.
 		/// </summary>
 		public void Pump() {
+			// A reset wiped the Game instance out from under the subscription (its
+			// OnDestroy nulls the static, the reloaded scene's Awake reassigns it), so
+			// the delegates this watcher attached are gone with the old instance.
+			// ReferenceEquals, never Unity's destroyed-equals-null ==, so the dead
+			// window between wipe and reload also unsubscribes and Install retries.
+			if (_subscribed && !ReferenceEquals(Game.Instance, _game)) {
+				_subscribed = false;
+				_game = null;
+				_waitingLogged = false;
+				Log.Info("screen watcher lost Game instance (scene reset); resubscribing");
+			}
 			if (!_subscribed) {
 				Install();
 				return;

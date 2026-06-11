@@ -117,6 +117,10 @@ namespace HandOfFateAccess {
 
 		private void Initialize() {
 			Log.Info("update reached; initializing speech");
+			// The BepInEx manager object hosts this component (and with it every pump);
+			// protect it from the game's reset-progress scene sweep so the mod survives
+			// a profile reset instead of dying with the scene.
+			ScenePersistence.Protect(gameObject);
 			Assembly assembly = Assembly.GetExecutingAssembly();
 			string pluginDir = Path.GetDirectoryName(assembly.Location);
 			NativeLoader.Preload(pluginDir, "Tolk.dll");

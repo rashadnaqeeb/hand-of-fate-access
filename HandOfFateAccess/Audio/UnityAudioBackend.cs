@@ -41,7 +41,7 @@ namespace HandOfFateAccess.Audio {
 
 			try {
 				_root = new GameObject("HoFAccessAudio");
-				UnityEngine.Object.DontDestroyOnLoad(_root);
+				ScenePersistence.Protect(_root);
 				_sources = new AudioSource[VoiceCount];
 				for (int i = 0; i < VoiceCount; i++) {
 					AudioSource src = _root.AddComponent<AudioSource>();

@@ -21,7 +21,7 @@ namespace HandOfFateAccess.Combat {
 			_free = new Stack<ProjectileVoice>(count);
 
 			var root = new GameObject("HoFAccess_ProjectileVoices");
-			Object.DontDestroyOnLoad(root);
+			ScenePersistence.Protect(root);
 
 			// One silent looping clip keeps every voice's AudioSource "playing" so its filter
 			// callback fires; the callback overwrites the silence with synthesized audio.
@@ -30,6 +30,7 @@ namespace HandOfFateAccess.Combat {
 
 			for (int i = 0; i < count; i++) {
 				var go = new GameObject("ProjectileVoice" + i);
+				ScenePersistence.Protect(go);
 				go.transform.parent = root.transform;
 				var voice = go.AddComponent<ProjectileVoice>();
 				voice.Init(i + 1, silence);   // distinct seed per voice so their noise does not correlate

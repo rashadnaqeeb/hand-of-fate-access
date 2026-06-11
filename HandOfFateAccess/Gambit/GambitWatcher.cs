@@ -111,7 +111,7 @@ namespace HandOfFateAccess.Gambit {
 			}
 
 			var root = new GameObject("HoFAccess_GambitVoices");
-			UnityEngine.Object.DontDestroyOnLoad(root);
+			ScenePersistence.Protect(root);
 			// A silent looping clip keeps each voice's filter callback firing; the callback
 			// overwrites it with the panned buffer.
 			AudioClip silence = AudioClip.Create("hofaccess_gambit_silence", 2048, 1, _outRate, false);
@@ -127,6 +127,7 @@ namespace HandOfFateAccess.Gambit {
 
 		private static GambitVoice CreateVoice(GameObject root, string name, AudioClip silence) {
 			var go = new GameObject(name);
+			ScenePersistence.Protect(go);
 			go.transform.parent = root.transform;
 			var voice = go.AddComponent<GambitVoice>();
 			voice.Init(silence);
