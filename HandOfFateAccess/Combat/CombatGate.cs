@@ -16,5 +16,18 @@ namespace HandOfFateAccess.Combat {
 		public static bool IsLive =>
 			CombatEncounter.Instance != null
 			&& Game.Instance.ActiveGameState is GameState_Level_Play;
+
+		/// <summary>A trap room: the game wired a <c>TrapExit</c> as this level's completion
+		/// condition (decided once at the encounter's start, stable for the level). The
+		/// dense-gauntlet levels where several sounds trade legibility for restraint:
+		/// treasure answers the locator key instead of pinging, and only the single nearest
+		/// hazard holds a zone voice. Not <c>Trap.LevelHasTraps</c>, which is also true in
+		/// arena fights that merely contain a trap.</summary>
+		public static bool IsTrapRoom {
+			get {
+				CombatEncounter encounter = CombatEncounter.Instance;
+				return encounter != null && encounter.HasTrapExit;
+			}
+		}
 	}
 }

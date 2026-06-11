@@ -237,9 +237,9 @@ namespace HandOfFateAccess.Localization {
 		public string GlossaryProjectile = "Projectile, shot in flight";
 		public string GlossaryProjectileReflected = "Reflected projectile, your shot flying back at an enemy";
 		public string GlossaryZonePrimed = "Zone primed, idle trap, approaching fires it";
-		public string GlossaryZoneArming = "Zone arming, hazard forming, damage not on yet";
+		public string GlossaryZoneArming = "Zone arming, hazard there but damage off, at full volume you are standing on it";
 		public string GlossaryZoneActive = "Zone active, area that hurts to stand in";
-		public string GlossaryZoneInside = "Zone inside, you are in a hazard, move away from the sound";
+		public string GlossaryZoneInside = "Zone inside, you are in a live hazard, move away from the sound";
 		// The wall-tone demo plays the four sides one after another in exactly this
 		// order -- right, left, top, bottom -- so the four direction words must keep
 		// that order for the spoken list to match what plays.

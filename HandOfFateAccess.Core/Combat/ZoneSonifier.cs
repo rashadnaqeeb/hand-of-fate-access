@@ -29,30 +29,47 @@ namespace HandOfFateAccess.Combat {
 	/// auto-correct for every shape: away from a disc's edge is radially out, away from the
 	/// ring band around a safe hole is into the hole, and when the player is INSIDE, the
 	/// sound sits toward the zone's center so fleeing it is the exit. State carries urgency,
-	/// not class: a primed trap pulses slow and hard, an arming zone throbs softly, an active
-	/// one buzzes, and inside is an unmistakable rattle at full volume regardless of phase,
-	/// because the verb is the same either way - get out, and during arming getting out is
-	/// free.
+	/// not class: a primed trap pulses slow and hard, an arming zone throbs softly, an
+	/// active one buzzes. Inside is always full volume, but the unmistakable rattle plays
+	/// only while the hazard is LIVE; underfoot on a safe beat the hazard keeps its own
+	/// loop, so a trap that must be walked across (a spike floor spanning the corridor)
+	/// stays timeable from inside: cross on the throb, and the flip to the rattle IS the
+	/// arming edge. (The first build rattled for every inside phase, and a player crossing
+	/// a floor trap heard only "you are on it" with no way to hear the cycle.)
 	///
 	/// Bearing uses the same grammar as the rest of the combat audio (pan = east/west, the
 	/// down-biased pitch = north/south, via <see cref="ProjectileSonifier.PitchFor"/>) so the
-	/// player reads one spatial language. Volume is the proximity warning: full against the
-	/// zone's edge, fading to silence at <see cref="FalloffRange"/> - unlike a projectile, a
-	/// distant zone is not a live threat and silence IS the all-clear, which is also what
-	/// keeps a hazard-littered arena from droning.
+	/// player reads one spatial language. Volume is the proximity warning on the shared
+	/// <see cref="RangingCurve"/>: full with the edge within melee reach, fading to silence
+	/// at <see cref="FalloffRange"/> - unlike a projectile, a distant zone is not a live
+	/// threat and silence IS the all-clear, which together with the voice cap keeps a
+	/// hazard-littered arena from droning.
 	///
 	/// Cones (angle-limited areas) are deliberately voiced as full discs: over-warning is the
 	/// safe direction for a player who cannot see the arc's facing.
 	/// </summary>
 	public static class ZoneSonifier {
 		/// <summary>Gap to the zone's nearest dangerous point, in world units, beyond which
-		/// it is not voiced at all. Shorter than the projectile falloff: a zone only matters
-		/// when it constrains where you can step.</summary>
-		public const float FalloffRange = 10f;
+		/// it is not voiced at all: the shared ranging curve's far end, where the volume
+		/// reaches zero, so a zone fades smoothly out of existence and loudness means the
+		/// same distance as every other ranged sound.</summary>
+		public const float FalloffRange = RangingCurve.FloorRange;
 
 		/// <summary>Loudness with the player right against the zone's edge; inside overrides
 		/// to full volume.</summary>
 		public const float MaxVolume = 0.9f;
+
+		/// <summary>A voiced hazard keeps its voice until a contender is this fraction
+		/// nearer. Without the margin, the few voices flick identity between
+		/// similar-distance hazards with every step, and no loop can be attributed to a
+		/// place. An inside hazard (distance zero) still seizes a voice instantly.</summary>
+		public const float HoldMargin = 0.2f;
+
+		/// <summary>Sort rank for handing the limited voices to the nearest hazards: plain
+		/// distance, discounted by <see cref="HoldMargin"/> for a hazard that already holds
+		/// a voice, so a handoff needs a real margin instead of a tie-break.</summary>
+		public static float SelectionRank(float distance, bool held) =>
+			held ? distance * (1f - HoldMargin) : distance;
 
 		/// <summary>
 		/// The cue for a zone whose center sits <paramref name="right"/> world units to the
@@ -138,10 +155,15 @@ namespace HandOfFateAccess.Combat {
 				deflection = bf / budget;
 			}
 
-			float volume = inside ? 1f : MaxVolume * (1f - gap / FalloffRange);
-			string clip = inside ? ZoneSynth.InsideKey
-				: phase == ZonePhase.Arming ? ZoneSynth.ArmingKey
-				: phase == ZonePhase.Primed ? ZoneSynth.PrimedKey : ZoneSynth.ActiveKey;
+			// The shared ranging curve: full within melee reach of the edge, fading to
+			// silence at the curve's far end.
+			float volume = inside ? 1f : MaxVolume * RangingCurve.Closeness(gap);
+			// Inside is full volume always, but only a LIVE hazard rattles: a safe-beat or
+			// still-arming hazard underfoot keeps its own loop, so the cycle stays audible
+			// mid-crossing and the flip to the rattle is the moment it goes hot.
+			string clip = phase == ZonePhase.Arming ? ZoneSynth.ArmingKey
+				: phase == ZonePhase.Primed ? ZoneSynth.PrimedKey
+				: inside ? ZoneSynth.InsideKey : ZoneSynth.ActiveKey;
 
 			return new ZoneCue {
 				Audible = true,

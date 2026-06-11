@@ -22,13 +22,13 @@ namespace HandOfFateAccess.Combat {
 		public const float MinVolume = 0.1f;
 
 		/// <summary>Ground distance, in world units, at and inside which the ping plays at
-		/// <see cref="MaxVolume"/>: the game's default melee attack range
-		/// (PlayerCombat.m_defaultAttackRange), so full volume means "in swing reach".</summary>
-		public const float MeleeRange = 3f;
+		/// <see cref="MaxVolume"/>: the shared ranging curve's melee-reach anchor, which
+		/// this locator's curve originated.</summary>
+		public const float MeleeRange = RangingCurve.FullRange;
 
 		/// <summary>Ground distance, in world units, at and beyond which the ping holds
 		/// <see cref="MinVolume"/>.</summary>
-		public const float FloorRange = 20f;
+		public const float FloorRange = RangingCurve.FloorRange;
 
 		/// <summary>
 		/// The ping parameters for an enemy sitting <paramref name="right"/> world units to
@@ -44,14 +44,10 @@ namespace HandOfFateAccess.Combat {
 
 		/// <summary>Volume for a ground distance: <see cref="MaxVolume"/> at and inside
 		/// <see cref="MeleeRange"/>, falling linearly to <see cref="MinVolume"/> at
-		/// <see cref="FloorRange"/> and holding that floor beyond. A non-finite distance
-		/// also yields the floor.</summary>
-		public static float VolumeFor(float distance) {
-			if (distance <= MeleeRange) return MaxVolume;
-			// NaN fails this comparison too, so a degenerate distance drops to the floor
-			// rather than blasting at full volume.
-			if (!(distance < FloorRange)) return MinVolume;
-			return MaxVolume + (MinVolume - MaxVolume) * ((distance - MeleeRange) / (FloorRange - MeleeRange));
-		}
+		/// <see cref="FloorRange"/> and holding that floor beyond (non-finite reads as
+		/// far). The shared <see cref="RangingCurve"/>, mapped onto the ping's loudness
+		/// identity.</summary>
+		public static float VolumeFor(float distance) =>
+			MinVolume + (MaxVolume - MinVolume) * RangingCurve.Closeness(distance);
 	}
 }

@@ -18,12 +18,28 @@ namespace HandOfFateAccess.Tests {
 
 		[Fact]
 		public void Volume_FallsWithGap_AndSilencesAtFalloff() {
-			ZoneCue near = ZoneSonifier.Compose(3f, 0f, 2f, 0f, ZonePhase.Active);
-			ZoneCue far = ZoneSonifier.Compose(8f, 0f, 2f, 0f, ZonePhase.Active);
+			ZoneCue near = ZoneSonifier.Compose(6f, 0f, 2f, 0f, ZonePhase.Active);
+			ZoneCue far = ZoneSonifier.Compose(12f, 0f, 2f, 0f, ZonePhase.Active);
 			Assert.True(near.Params.Volume > far.Params.Volume);
 
 			ZoneCue gone = ZoneSonifier.Compose(2f + ZoneSonifier.FalloffRange, 0f, 2f, 0f, ZonePhase.Active);
 			Assert.False(gone.Audible);
+		}
+
+		[Fact]
+		public void Volume_RangesOnTheSharedCurve() {
+			// The edge within melee reach plays at the zone's full loudness, like the
+			// locator's full-at-swing-reach anchor...
+			ZoneCue inReach = ZoneSonifier.Compose(4f, 0f, 2f, 0f, ZonePhase.Active);
+			Assert.Equal(ZoneSonifier.MaxVolume, inReach.Params.Volume, 3);
+
+			// ...and the fade reaches true silence exactly where the curve floors: a far
+			// hazard is not a live threat, so unlike a beacon there is no floor.
+			ZoneCue atFloor = ZoneSonifier.Compose(2f + RangingCurve.FloorRange, 0f, 2f, 0f, ZonePhase.Active);
+			Assert.False(atFloor.Audible);
+			ZoneCue justInside = ZoneSonifier.Compose(2f + RangingCurve.FloorRange - 0.5f, 0f, 2f, 0f, ZonePhase.Active);
+			Assert.True(justInside.Audible);
+			Assert.True(justInside.Params.Volume < 0.1f);
 		}
 
 		[Fact]
@@ -39,11 +55,14 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void InsideWhileArming_StillRattles() {
-			// Standing in an arming zone: the verb is the same (get out, and it is free), so
-			// the inside rattle overrides the soft arming throb.
+		public void InsideWhileArming_KeepsTheThrob_AtFullVolume() {
+			// Standing in an arming zone keeps the arming throb, just at full volume: the
+			// rattle is reserved for a LIVE hazard, so the cycle stays audible mid-crossing
+			// and the flip to the rattle is the arming edge itself.
 			ZoneCue cue = ZoneSonifier.Compose(0.5f, 0f, 3f, 0f, ZonePhase.Arming);
-			Assert.Equal(ZoneSynth.InsideKey, cue.ClipKey);
+			Assert.True(cue.Inside);
+			Assert.Equal(ZoneSynth.ArmingKey, cue.ClipKey);
+			Assert.Equal(1f, cue.Params.Volume, 3);
 		}
 
 		[Fact]
@@ -113,16 +132,32 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void Point_Inside_RattlesAtFullVolume_RegardlessOfPhase() {
+		public void Point_InsideLiveTrap_RattlesAtFullVolume() {
 			// Inside, the adapter passes the bearing toward the trap's center (east here);
-			// even on a safe beat the rattle overrides, because arming is retroactive: the
-			// trap going hot hits everyone already standing in it.
-			ZoneCue cue = ZoneSonifier.ComposePoint(2f, 0f, inside: true, ZonePhase.Arming);
+			// with the trap live the rattle plays at full volume.
+			ZoneCue cue = ZoneSonifier.ComposePoint(2f, 0f, inside: true, ZonePhase.Active);
 			Assert.True(cue.Inside);
 			Assert.Equal(ZoneSynth.InsideKey, cue.ClipKey);
 			Assert.Equal(1f, cue.Params.Volume, 3);
 			Assert.True(cue.Params.Pan > 0.9f);
 			Assert.Equal(0f, cue.Distance, 3);
+		}
+
+		[Fact]
+		public void Point_InsideOnTheSafeBeat_KeepsThePhaseLoop_AtFullVolume() {
+			// Crossing a spike floor on its safe beat: the throb (or primed pulse) keeps
+			// playing underfoot at full volume, so the crossing is timeable from inside and
+			// the flip to the rattle is the moment the trap goes hot. (The first build
+			// rattled here, and a floor trap spanning the corridor was uncrossable by ear.)
+			ZoneCue arming = ZoneSonifier.ComposePoint(2f, 0f, inside: true, ZonePhase.Arming);
+			Assert.True(arming.Inside);
+			Assert.Equal(ZoneSynth.ArmingKey, arming.ClipKey);
+			Assert.Equal(1f, arming.Params.Volume, 3);
+			Assert.Equal(0f, arming.Distance, 3);
+
+			ZoneCue primed = ZoneSonifier.ComposePoint(2f, 0f, inside: true, ZonePhase.Primed);
+			Assert.Equal(ZoneSynth.PrimedKey, primed.ClipKey);
+			Assert.Equal(1f, primed.Params.Volume, 3);
 		}
 
 		// ComposeSegment is the beam path: a damaging line between two endpoints with the
@@ -174,15 +209,46 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void Segment_GrowingBeam_UsesTheArmingLoop_ButStillRattlesInside() {
+		public void Segment_GrowingBeam_UsesTheArmingLoop_InsideAndOut() {
 			// A beam still growing in voices as arming (leaving its line is free until the
-			// grow completes), but standing on the line rattles: the delayed activation is
-			// retroactive, hitting anyone there when it fills.
+			// grow completes); on the line the same throb plays at full volume, and the
+			// flip to the rattle is the grow completing over your head.
 			ZoneCue outside = ZoneSonifier.ComposeSegment(4f, -5f, 4f, 5f, 0.5f, ZonePhase.Arming);
 			Assert.Equal(ZoneSynth.ArmingKey, outside.ClipKey);
 
 			ZoneCue inside = ZoneSonifier.ComposeSegment(0.2f, -5f, 0.2f, 5f, 0.5f, ZonePhase.Arming);
-			Assert.Equal(ZoneSynth.InsideKey, inside.ClipKey);
+			Assert.Equal(ZoneSynth.ArmingKey, inside.ClipKey);
+			Assert.True(inside.Inside);
+			Assert.Equal(1f, inside.Params.Volume, 3);
+		}
+
+		// --- Voice selection: the limited voices go to the nearest hazards, with a hold
+		// margin so a voiced hazard does not lose its loop to a stranger a half-step closer. ---
+
+		[Fact]
+		public void SelectionRank_UnheldIsPlainDistance() {
+			Assert.Equal(5f, ZoneSonifier.SelectionRank(5f, held: false), 3);
+		}
+
+		[Fact]
+		public void SelectionRank_HeldVoice_OutranksASlightlyNearerStranger() {
+			float held = ZoneSonifier.SelectionRank(5f, held: true);
+			float stranger = ZoneSonifier.SelectionRank(4.5f, held: false);
+			Assert.True(held < stranger);
+		}
+
+		[Fact]
+		public void SelectionRank_ClearlyNearerStranger_TakesTheVoice() {
+			float held = ZoneSonifier.SelectionRank(5f, held: true);
+			float stranger = ZoneSonifier.SelectionRank(5f * (1f - ZoneSonifier.HoldMargin) - 0.5f, held: false);
+			Assert.True(stranger < held);
+		}
+
+		[Fact]
+		public void SelectionRank_InsideHazard_SeizesAVoiceInstantly() {
+			// Distance zero outranks any held voice: an overlapping danger must speak now.
+			Assert.True(ZoneSonifier.SelectionRank(0f, held: false)
+				< ZoneSonifier.SelectionRank(0.5f, held: true));
 		}
 
 		[Fact]

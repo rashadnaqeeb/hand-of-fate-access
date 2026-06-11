@@ -85,8 +85,13 @@ namespace HandOfFateAccess.Combat {
 	internal sealed class ZoneSonification {
 		// Voices for the nearest zones only: arenas can accumulate hazards, and three
 		// simultaneous loops is the most a player can usefully track on top of the wind,
-		// projectiles, and cues. Silence past the falloff is itself information.
+		// projectiles, and cues. Silence past the falloff is itself information. Trap rooms
+		// cut this to ONE: a gauntlet keeps nine-plus hazards inside the falloff at once
+		// (seen in the recon log), and three loops trading places read as noise, while the
+		// room is authored to be crossed one obstacle at a time. An overlapping danger
+		// still seizes the voice instantly: inside is distance zero.
 		private const int MaxZoneVoices = 3;
+		private const int TrapRoomZoneVoices = 1;
 		private const int RenderSampleRate = 44100;
 
 		private struct ZoneVoice {
@@ -100,6 +105,9 @@ namespace HandOfFateAccess.Combat {
 			// or a trap's damage trigger.
 			public Component Key;
 			public ZoneCue Cue;
+			// The voice-selection rank: distance, discounted while this hazard already
+			// holds a voice so the handoff needs a real margin (no identity flicker).
+			public float Rank;
 		}
 
 		// One scanned damage trigger: the components re-read every frame. Holding these live
@@ -298,7 +306,7 @@ namespace HandOfFateAccess.Combat {
 				ZoneCue cue = ZoneSonifier.Compose(
 					right, forward, outer, (float)AreaInner.GetValue(area), phase);
 				if (!cue.Audible) continue;
-				_live.Add(new LiveZone { Key = area, Cue = cue });
+				AddLive(area, cue);
 			}
 
 			// Beams: the segment is the transform's position to its authored local endpoint,
@@ -337,7 +345,7 @@ namespace HandOfFateAccess.Combat {
 				frame.Project(end, out float rightB, out float forwardB);
 				ZoneCue beamCue = ZoneSonifier.ComposeSegment(rightA, forwardA, rightB, forwardB, radius, beamPhase);
 				if (!beamCue.Audible) continue;
-				_live.Add(new LiveZone { Key = beam, Cue = beamCue });
+				AddLive(beam, beamCue);
 			}
 
 			// Segment chains: one voice per chain at its nearest live segment, the same
@@ -387,7 +395,7 @@ namespace HandOfFateAccess.Combat {
 
 				ZoneCue chainCue = ZoneSonifier.ComposePoint(chainRight, chainForward, inside, ZonePhase.Active);
 				if (!chainCue.Audible) continue;
-				_live.Add(new LiveZone { Key = chain, Cue = chainCue });
+				AddLive(chain, chainCue);
 			}
 
 			for (int i = 0; i < _traps.Count; i++) {
@@ -415,7 +423,7 @@ namespace HandOfFateAccess.Combat {
 				if (!cue.Audible) continue;
 				// Keyed by the collider: several entries can share one applicant, and each
 				// collider is its own place with its own voice.
-				_live.Add(new LiveZone { Key = trap.Collider, Cue = cue });
+				AddLive(trap.Collider, cue);
 			}
 
 			// Emitter origins: the safe-beat marker for a trap that hurts via spawned
@@ -444,7 +452,7 @@ namespace HandOfFateAccess.Combat {
 				ZoneCue emitterCue = ZoneSonifier.ComposePoint(emitterRight, emitterForward, false,
 					emitter.Primed ? ZonePhase.Primed : ZonePhase.Arming);
 				if (!emitterCue.Audible) continue;
-				_live.Add(new LiveZone { Key = emitter.Origin, Cue = emitterCue });
+				AddLive(emitter.Origin, emitterCue);
 			}
 
 			// Diagnostic: how many areas the game has live versus how many hazards are near
@@ -459,11 +467,14 @@ namespace HandOfFateAccess.Combat {
 				_lastAudible = _live.Count;
 			}
 
-			// Keep only the nearest MaxZoneVoices; an inside zone has distance zero, so it
-			// always survives the cut.
-			if (_live.Count > MaxZoneVoices) {
-				_live.Sort((a, b) => a.Cue.Distance.CompareTo(b.Cue.Distance));
-				_live.RemoveRange(MaxZoneVoices, _live.Count - MaxZoneVoices);
+			// Keep only the nearest voices, by held-discounted rank so a voiced hazard does
+			// not lose its loop to a stranger a half-step closer; an inside zone has
+			// distance zero, so it always survives the cut. Trap rooms keep ONE voice:
+			// the gauntlet is crossed one obstacle at a time.
+			int cap = CombatGate.IsTrapRoom ? TrapRoomZoneVoices : MaxZoneVoices;
+			if (_live.Count > cap) {
+				_live.Sort((a, b) => a.Rank.CompareTo(b.Rank));
+				_live.RemoveRange(cap, _live.Count - cap);
 			}
 
 			_keep.Clear();
@@ -498,6 +509,17 @@ namespace HandOfFateAccess.Combat {
 				_voices.Remove(_gone[i]);
 			}
 			_gone.Clear();
+		}
+
+		// Stage a hazard for this frame's voice selection. The rank discount applies while
+		// the hazard held a voice LAST frame (_voices is last frame's assignment at this
+		// point in the pump), which is exactly the stickiness the handoff margin wants.
+		private void AddLive(Component key, ZoneCue cue) {
+			_live.Add(new LiveZone {
+				Key = key,
+				Cue = cue,
+				Rank = ZoneSonifier.SelectionRank(cue.Distance, _voices.ContainsKey(key)),
+			});
 		}
 
 		/// <summary>A trap just became active (its Start coroutine was created); rescan on

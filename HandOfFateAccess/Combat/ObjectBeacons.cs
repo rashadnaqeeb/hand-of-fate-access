@@ -17,23 +17,25 @@ namespace HandOfFateAccess.Combat {
 	/// circle: the spawner drops it at the boss's corpse, and the fight does not end on the
 	/// kill - the player must walk into it. Each live, unconsumed object pings with its
 	/// kind's sample (the court circle borrows the exit's: to the player it IS the exit),
-	/// positioned by Core's <see cref="BeaconComposer"/>, repinging a beat of silence after
-	/// the sound ends.
+	/// positioned by Core's <see cref="BeaconComposer"/>. Cadence is per object and encodes
+	/// distance (the gap after each ping tightens as the player closes in - the composer's
+	/// parking-sensor grammar), so several objects drift apart naturally and an approach is
+	/// audible as an accelerating rhythm; only the exit's very first ping is staggered, so
+	/// a level that opens with both kinds does not stack them.
 	///
-	/// Except treasure in a trap room (a level the game wires a <c>TrapExit</c> for, read
-	/// off the public <c>CombatEncounter.HasTrapExit</c>): those rooms seed a dozen gold
-	/// piles, and all of them pinging on the cadence is a wall of noise (heard in play as
-	/// "something following me around"). There chests and loot do not ping on their own;
-	/// the locator key answers with ONE chest ping at the nearest uncollected treasure,
-	/// the enemy locator's press-per-answer grammar, and silence means nothing left to
-	/// collect. The exit keeps its cadence - it is the room's goal and there is only one.
+	/// Except treasure in a trap room (<see cref="CombatGate.IsTrapRoom"/>): those rooms
+	/// seed a dozen gold piles, and all of them pinging on the cadence is a wall of noise
+	/// (heard in play as "something following me around"). There chests and loot do not
+	/// ping on their own; the locator key answers with ONE chest ping at the nearest
+	/// uncollected treasure, the enemy locator's press-per-answer grammar, and silence
+	/// means nothing left to collect. The exit keeps its cadence - it is the room's goal
+	/// and there is only one.
 	///
 	/// A chest or exit pings from its walk-in trigger collider, not the component's
-	/// transform: in the trap rooms the component sits on a controller object away from the
-	/// door (heard in play as an exit tone that circled the player), and the trigger volume
-	/// is the spot the game itself completes on. The collider reference is resolved at scan
-	/// time and its live bounds read at ping time; a component with no findable trigger
-	/// falls back to its transform, with the resolution logged either way as recon.
+	/// transform: the trigger volume is the spot the game itself completes on. The collider
+	/// reference is resolved at scan time and its live bounds read at ping time; a
+	/// component with no findable trigger falls back to its transform, with the resolution
+	/// logged either way as recon.
 	///
 	/// Discovery is a periodic <c>FindObjectsOfType</c> scan: the components have no
 	/// registry, no Start or OnEnable to patch, and they appear mid-level (a chest's
@@ -54,7 +56,7 @@ namespace HandOfFateAccess.Combat {
 		// Each loaded sample's authored duration in seconds, keyed by sample key. Doubles as
 		// the loaded set: a missing file degrades that one beacon (logged at load) instead of
 		// asking the backend for an unregistered key every ping. The duration schedules the
-		// next ping a fixed gap after this one's sound ends.
+		// next ping a distance-scaled gap after this one's sound ends.
 		private readonly Dictionary<string, float> _clips = new Dictionary<string, float>();
 
 		// A scanned chest or exit with its resolved walk-in trigger (null when none was
@@ -67,10 +69,13 @@ namespace HandOfFateAccess.Combat {
 		private readonly List<BeaconEntry<TrapChest>> _chests = new List<BeaconEntry<TrapChest>>();
 		private readonly List<BeaconEntry<TrapExit>> _exits = new List<BeaconEntry<TrapExit>>();
 		private Loot[] _loot = new Loot[0];
+		// Each live object's own next-ping time, scheduled from its distance when it last
+		// pinged. Keys are the live components; entries for destroyed objects are pruned at
+		// scan (and the whole map at level exit).
+		private readonly Dictionary<Component, float> _nextPing = new Dictionary<Component, float>();
+		private readonly List<Component> _deadPings = new List<Component>();
 		private bool _inLevel;
 		private float _nextScan;
-		private float _nextChestPing;
-		private float _nextExitPing;
 		// Last logged counts so the discovery line fires only on change. Doubles as recon:
 		// a level with a visible exit but a zero count here means an exit type the scan
 		// does not cover.
@@ -107,9 +112,10 @@ namespace HandOfFateAccess.Combat {
 		}
 
 		/// <summary>
-		/// Drive the beacons for this frame: rescan on the timer, ping each kind on its
-		/// cadence. Outside level play (no combat manager, or no player/camera) the state
-		/// resets so the next level starts with a fresh scan and cadence.
+		/// Drive the beacons for this frame: rescan on the timer, ping each live object on
+		/// its own distance-scaled cadence. Outside level play (no combat manager, or no
+		/// player/camera) the state resets so the next level starts with a fresh scan and
+		/// cadence.
 		/// </summary>
 		public void Pump() {
 			if (!_ready) return;
@@ -125,8 +131,6 @@ namespace HandOfFateAccess.Combat {
 			if (!_inLevel) {
 				_inLevel = true;
 				_nextScan = now;
-				_nextChestPing = now;
-				_nextExitPing = now + BeaconComposer.ExitStagger;
 			}
 
 			if (now >= _nextScan) {
@@ -143,56 +147,58 @@ namespace HandOfFateAccess.Combat {
 				_courtWasActive = courtActive;
 			}
 
-			// Each kind repings once its sound has ended plus the gap; a frame where nothing
-			// played (no object live, or the player standing on it) re-checks after the bare
-			// gap. With several objects of one kind the slowest ping sets the cadence, so the
-			// gap is silence after ALL of them.
-			if (now >= _nextChestPing) {
-				_nextChestPing = now + BeaconComposer.PingGap;
-				if (!TreasureOnDemand() && _clips.TryGetValue(BeaconComposer.ChestKey, out float chestClip)) {
-					for (int i = 0; i < _chests.Count; i++) {
-						TrapChest chest = _chests[i].Object;
-						if (chest == null || chest.IsComplete || !chest.gameObject.activeInHierarchy) continue;
-						if (Ping(BeaconComposer.ChestKey, BeaconPosition(chest, _chests[i].Trigger), frame, out float pitch)) {
-							float next = BeaconComposer.NextPingTime(now, chestClip, pitch);
-							if (next > _nextChestPing) _nextChestPing = next;
-						}
-					}
-					// Loose pickups ride the chest cadence with the chest sample: same walk-in
-					// collection, same message. A collected pile is destroyed (or pool-freed,
-					// which the activity check sees), so liveness is just these two checks.
-					for (int i = 0; i < _loot.Length; i++) {
-						Loot loot = _loot[i];
-						if (loot == null || !loot.gameObject.activeInHierarchy) continue;
-						if (Ping(BeaconComposer.ChestKey, loot.transform.position, frame, out float pitch)) {
-							float next = BeaconComposer.NextPingTime(now, chestClip, pitch);
-							if (next > _nextChestPing) _nextChestPing = next;
-						}
-					}
+			if (!CombatGate.IsTrapRoom && _clips.TryGetValue(BeaconComposer.ChestKey, out float chestClip)) {
+				for (int i = 0; i < _chests.Count; i++) {
+					TrapChest chest = _chests[i].Object;
+					if (chest == null || chest.IsComplete || !chest.gameObject.activeInHierarchy) continue;
+					PingOnCadence(BeaconComposer.ChestKey, chestClip, chest,
+						BeaconPosition(chest, _chests[i].Trigger), 0f, frame, now);
+				}
+				// Loose pickups carry the chest sample: same walk-in collection, same
+				// message. A collected pile is destroyed (or pool-freed, which the activity
+				// check sees), so liveness is just these two checks.
+				for (int i = 0; i < _loot.Length; i++) {
+					Loot loot = _loot[i];
+					if (loot == null || !loot.gameObject.activeInHierarchy) continue;
+					PingOnCadence(BeaconComposer.ChestKey, chestClip, loot,
+						loot.transform.position, 0f, frame, now);
 				}
 			}
 
-			if (now >= _nextExitPing) {
-				_nextExitPing = now + BeaconComposer.PingGap;
-				if (_clips.TryGetValue(BeaconComposer.ExitKey, out float exitClip)) {
-					for (int i = 0; i < _exits.Count; i++) {
-						TrapExit exit = _exits[i].Object;
-						if (exit == null || exit.IsComplete || !exit.gameObject.activeInHierarchy) continue;
-						if (Ping(BeaconComposer.ExitKey, BeaconPosition(exit, _exits[i].Trigger), frame, out float pitch)) {
-							float next = BeaconComposer.NextPingTime(now, exitClip, pitch);
-							if (next > _nextExitPing) _nextExitPing = next;
-						}
-					}
-					// The armed court circle rides the exit cadence: standing in it is how a
-					// boss fight ends, so to the player it is the exit. Walking in completes
-					// the encounter and the out-of-level reset silences it; a reanimating boss
-					// destroys the trigger, which the null check sees next ping.
-					if (courtActive && Ping(BeaconComposer.ExitKey, court.transform.position, frame, out float courtPitch)) {
-						float next = BeaconComposer.NextPingTime(now, exitClip, courtPitch);
-						if (next > _nextExitPing) _nextExitPing = next;
-					}
+			if (_clips.TryGetValue(BeaconComposer.ExitKey, out float exitClip)) {
+				for (int i = 0; i < _exits.Count; i++) {
+					TrapExit exit = _exits[i].Object;
+					if (exit == null || exit.IsComplete || !exit.gameObject.activeInHierarchy) continue;
+					PingOnCadence(BeaconComposer.ExitKey, exitClip, exit,
+						BeaconPosition(exit, _exits[i].Trigger), BeaconComposer.ExitStagger, frame, now);
 				}
+				// The armed court circle carries the exit sample: standing in it is how a
+				// boss fight ends, so to the player it is the exit. Walking in completes
+				// the encounter and the out-of-level reset silences it; a reanimating boss
+				// destroys the trigger, which the null check sees next ping.
+				if (courtActive)
+					PingOnCadence(BeaconComposer.ExitKey, exitClip, court,
+						court.transform.position, 0f, frame, now);
 			}
+		}
+
+		// One object's cadence step: ping when its own clock comes due, then schedule the
+		// next from this ping's distance and pitch (far = sparse, near = eager; a
+		// pitched-down ping runs longer, so the gap still starts when the sound ends). An
+		// object seen for the first time pings after firstDelay; a suppressed ping (the
+		// player standing on it) re-checks after the bare re-check gap.
+		private void PingOnCadence(string sampleKey, float clipDuration, Component key,
+				Vector3 position, float firstDelay, CombatFrame frame, float now) {
+			float next;
+			if (!_nextPing.TryGetValue(key, out next)) {
+				next = now + firstDelay;
+				_nextPing[key] = next;
+			}
+			if (now < next) return;
+			if (Ping(sampleKey, position, frame, out float pitch, out float distance))
+				_nextPing[key] = BeaconComposer.NextPingTime(now, clipDuration, pitch, distance);
+			else
+				_nextPing[key] = now + BeaconComposer.PingGap;
 		}
 
 		/// <summary>
@@ -204,7 +210,7 @@ namespace HandOfFateAccess.Combat {
 		/// </summary>
 		public void TriggerLocate() {
 			if (!_ready || !_clips.ContainsKey(BeaconComposer.ChestKey)) return;
-			if (!TreasureOnDemand()) return;
+			if (!CombatGate.IsTrapRoom) return;
 			if (CombatManager.Instance == null || DealerQte.IsActive
 					|| !CombatFrame.TryGet(out CombatFrame frame)) return;
 
@@ -236,22 +242,16 @@ namespace HandOfFateAccess.Combat {
 				Log.Debug("treasure locator: nothing left to collect");
 				return;
 			}
-			Ping(BeaconComposer.ChestKey, nearest, frame, out _);
-		}
-
-		// A trap room: the game wired a TrapExit as the level's completion condition.
-		// Decided once at the encounter's start game-side, so it is stable for the level;
-		// re-read live here per the no-caching rule.
-		private static bool TreasureOnDemand() {
-			CombatEncounter encounter = CombatEncounter.Instance;
-			return encounter != null && encounter.HasTrapExit;
+			Ping(BeaconComposer.ChestKey, nearest, frame, out _, out _);
 		}
 
 		// Plays the ping and reports the pitch it played at (a playback-rate multiplier, so
-		// the caller can tell when this sound will end); false when the ping was suppressed.
-		private static bool Ping(string key, Vector3 position, CombatFrame frame, out float pitch) {
+		// the caller can tell when this sound will end) plus the ground distance the next
+		// gap is scheduled from; false when the ping was suppressed.
+		private static bool Ping(string key, Vector3 position, CombatFrame frame,
+				out float pitch, out float distance) {
 			frame.Project(position, out float right, out float forward);
-			if (!BeaconComposer.TryCompose(right, forward, out SoundParams parameters)) {
+			if (!BeaconComposer.TryCompose(right, forward, out SoundParams parameters, out distance)) {
 				pitch = 1f;
 				return false;
 			}
@@ -311,6 +311,12 @@ namespace HandOfFateAccess.Combat {
 			for (int i = 0; i < exits.Length; i++)
 				_exits.Add(new BeaconEntry<TrapExit> { Object = exits[i], Trigger = FindWalkInTrigger(exits[i]) });
 
+			// Drop the cadence clocks of destroyed objects (collected loot, mostly).
+			foreach (KeyValuePair<Component, float> kv in _nextPing)
+				if (kv.Key == null) _deadPings.Add(kv.Key);
+			for (int i = 0; i < _deadPings.Count; i++) _nextPing.Remove(_deadPings[i]);
+			_deadPings.Clear();
+
 			// Loot churns with every drop and pickup, so it only refreshes the count line;
 			// the per-object resolution lines re-log only when the chest/exit set changes.
 			bool setChanged = chests.Length != _lastChests || exits.Length != _lastExits;
@@ -346,6 +352,7 @@ namespace HandOfFateAccess.Combat {
 			_chests.Clear();
 			_exits.Clear();
 			_loot = new Loot[0];
+			_nextPing.Clear();
 			_lastChests = -1;
 			_lastExits = -1;
 			_lastLoot = -1;
