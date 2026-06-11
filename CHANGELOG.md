@@ -6,6 +6,8 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+- Chained melee combos (Ratman Jack's flurry, the minotaurs) now play a block-or-dodge cue for every follow-up swing. Previously only the first swing of the combo was cued and the remaining swings landed unannounced.
+
 ## 1.0.0 - 2026-06-11
 
 Initial release.

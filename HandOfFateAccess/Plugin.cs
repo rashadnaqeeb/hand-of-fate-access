@@ -352,6 +352,15 @@ namespace HandOfFateAccess {
 				prefix: AccessTools.Method(typeof(ActionHermitBomb_OnThrow_Patch), "Prefix"),
 				postfix: null);
 
+			// The minotaur-pattern combo (Ratman Jack, the minotaurs) calls the effect-start
+			// chokepoint only once, in Begin, then chains swings with no per-swing parry event,
+			// so each follow-up swing is re-cued from the chain method itself.
+			patcher.Patch(
+				typeof(ActionMeleeMinotaur), "StartNextAttack",
+				new[] { typeof(string), typeof(string) },
+				prefix: AccessTools.Method(typeof(ActionMeleeMinotaur_StartNextAttack_Patch), "Prefix"),
+				postfix: null);
+
 			// The mover hazards: lobs and lightning heads fly like projectiles but never enter
 			// CombatManager's projectile list, so each class's own OnEngage override (both
 			// verified to declare one; the base would catch every proxy type) feeds the flight

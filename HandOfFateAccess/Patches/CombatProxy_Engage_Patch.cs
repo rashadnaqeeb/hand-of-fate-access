@@ -10,7 +10,9 @@ namespace HandOfFateAccess.Patches {
 	/// lightning, lobs, trails, scatter/select/interval). Only CombatProxyProjectile registers
 	/// in a game-side list; everything else announces itself solely through the base class's
 	/// non-virtual Engage, so a postfix here sees every spawn regardless of which enemy or
-	/// asset wired it. Each engagement logs its concrete type, team, and position; the logs
+	/// asset wired it. Each engagement logs its concrete type, team, spawning container (the
+	/// top of the effect's container chain, the same attribution the damage tripwire prints,
+	/// so a hit and its hazard match up), and position; the logs
 	/// from real fights decide which proxy types get voiced, and with what sound, before any
 	/// audio is built for them. Projectiles are excluded: the tumble already voices and counts
 	/// them. Postfix so the proxy's Effect is already assigned when read.
@@ -34,9 +36,17 @@ namespace HandOfFateAccess.Patches {
 				if (__instance is CombatProxyProjectile) return;
 				Targetable source = __instance.Effect != null ? __instance.Effect.Source : null;
 				string team = source != null ? source.Team.ToString() : "unknown team";
+				// The container chain names what spawned the proxy (an attack action, a trap
+				// applicant, an innate AIAttributes aura) in the same "from X (Y)" shape as the
+				// damage tripwire, so a hit and the hazard that dealt it match up in the log.
+				ICombatEffectContainer top =
+					__instance.Effect == null ? null : CombatUtils.GetTopContainer(__instance.Effect);
+				string origin = top == null ? "unknown container" : top.GetType().Name;
+				string attacker = source != null ? source.gameObject.name : "unknown attacker";
 				Vector3 p = __instance.transform.position;
 				Log.Info("proxy engaged: " + __instance.GetType().Name + ", " + team +
-					", at (" + p.x.ToString("F0") + ", " + p.z.ToString("F0") + ")" + Params(__instance));
+					", from " + origin + " (" + attacker + "), at (" +
+					p.x.ToString("F0") + ", " + p.z.ToString("F0") + ")" + Params(__instance));
 			} catch (Exception ex) {
 				Log.Error("proxy engage log failed: " + ex);
 			}
