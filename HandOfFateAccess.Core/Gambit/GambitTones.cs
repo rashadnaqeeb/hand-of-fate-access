@@ -40,7 +40,7 @@ namespace HandOfFateAccess.Gambit {
 		private static readonly float[] PulseRates = { 2.5f, 0f, 6.0f, 10.0f };
 		private static readonly Artic[] Articulations = { Artic.Sustain, Artic.Sustain, Artic.Pluck, Artic.Pluck };
 		private static readonly float[] TremoloDepths = { 0.5f, 0f, 0f, 0f };   // organ only; the violin moves in pitch, not loudness
-		private static readonly float[] VibratoDepths = { 0f, 0.05f, 0f, 0f };  // the violin's identity: nearly a semitone of warble
+		private static readonly float[] VibratoDepths = { 0f, 0.03f, 0f, 0f };  // the violin's identity: a clear warble, kept shallow enough to localize while panned
 		private static readonly float[][] HarmonicSets = {
 			new[] { 1.0f, 0.6f, 0.8f, 0.4f, 0.5f, 0.25f, 0.3f, 0.15f },    // organ: full drawbar stack so a low note carries
 			new[] { 1.0f, 0.5f, 0.33f, 0.25f, 0.2f, 0.16f, 0.14f, 0.12f }, // violin: bowed sawtooth, vibrato added in Render
