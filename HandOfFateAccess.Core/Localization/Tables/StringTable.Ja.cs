@@ -74,7 +74,7 @@ namespace HandOfFateAccess.Localization {
 				GlossaryWallTones = "壁トーン、壁が右、左、上、下",
 				GlossaryWallCollision = "壁衝突、壁にぶつかった",
 				GlossaryEnemyPing = "敵ピング、最寄りの敵、ロケーターキーに応答",
-				GlossaryChest = "宝箱ビーコン、そこまで歩くと宝箱が開く",
+				GlossaryChest = "宝箱ビーコン、宝箱または落ちている金貨や食料、歩いて近づくと回収",
 				GlossaryExit = "出口ビーコン、そこまで歩くとレベル終了、ボス戦も終わる",
 				GlossaryRecharge = "リチャージ、武器またはアーティファクトのアビリティが再び使用可能、武器は左、アーティファクトは右",
 				PluginLoadedFormat = "ハンドオブフェイト・アクセス バージョン{0} 読み込み完了"

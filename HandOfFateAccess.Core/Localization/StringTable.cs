@@ -249,7 +249,7 @@ namespace HandOfFateAccess.Localization {
 		// left stick click on a controller): pressing it in a fight plays this ping from
 		// the nearest living enemy's direction.
 		public string GlossaryEnemyPing = "Enemy ping, nearest enemy, answers the locator key";
-		public string GlossaryChest = "Chest beacon, walk to it to open the chest";
+		public string GlossaryChest = "Chest beacon, a chest or a gold or food pickup, walk to it to collect";
 		public string GlossaryExit = "Exit beacon, walk to it to finish the level, also ends a boss fight";
 		// The demo plays the chime twice, weapon side then artifact side, so the
 		// translation must keep naming the weapon's side first. "Weapon" and

@@ -74,7 +74,7 @@ namespace HandOfFateAccess.Localization {
 				GlossaryWallTones = "Tons de parede, paredes à direita, à esquerda, acima, abaixo",
 				GlossaryWallCollision = "Colisão com parede, você andou contra uma parede",
 				GlossaryEnemyPing = "Ping de inimigo, inimigo mais próximo, responde à tecla localizadora",
-				GlossaryChest = "Sinal de baú, caminhe até ele para abrir o baú",
+				GlossaryChest = "Sinal de baú, um baú ou ouro ou comida no chão, caminhe até ele para coletar",
 				GlossaryExit = "Sinal de saída, caminhe até ele para terminar a estância, também encerra uma luta de chefe",
 				GlossaryRecharge = "Recarga, uma habilidade de arma ou artefato está pronta de novo, arma à esquerda, artefato à direita",
 				PluginLoadedFormat = "Hand of Fate Acesso versão {0} carregado",

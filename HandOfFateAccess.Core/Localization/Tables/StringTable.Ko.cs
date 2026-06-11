@@ -74,7 +74,7 @@ namespace HandOfFateAccess.Localization {
 				GlossaryWallTones = "벽 톤, 벽 오른쪽, 왼쪽, 위, 아래",
 				GlossaryWallCollision = "벽 충돌, 벽에 부딪힘",
 				GlossaryEnemyPing = "적 핑, 가장 가까운 적, 위치 탐지 키에 응답",
-				GlossaryChest = "상자 신호음, 걸어가면 상자 열림",
+				GlossaryChest = "상자 신호음, 상자 또는 떨어진 금화나 음식, 걸어가면 획득",
 				GlossaryExit = "출구 신호음, 걸어가면 레벨 완료, 보스전도 종료",
 				GlossaryRecharge = "재충전, 무기 또는 아티팩트 능력이 다시 준비됨, 무기는 왼쪽, 아티팩트는 오른쪽",
 				PluginLoadedFormat = "Hand of Fate 액세스 버전 {0} 로드됨"

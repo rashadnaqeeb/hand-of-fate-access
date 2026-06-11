@@ -10,24 +10,34 @@ namespace HandOfFateAccess.Combat {
 	/// The walk-in beacons: the objects a level ends or rewards through when the player
 	/// stands on them. Two come from the trap system (the game's <c>TrapChest</c> and
 	/// <c>TrapExit</c>; the latter is the completion trigger <c>CombatEncounter</c> wires
-	/// for trap rooms and authored escapes). The third is <c>AICourtTrigger</c>, the court
-	/// (face card) fights' own end circle: the spawner drops it at the boss's corpse, and
-	/// the fight does not end on the kill - the player must walk into it. Each live,
-	/// unconsumed object pings with its kind's sample (the court circle borrows the exit's:
-	/// to the player it IS the exit), positioned by Core's <see cref="BeaconComposer"/>,
-	/// repinging a beat of silence after the sound ends.
+	/// for trap rooms and authored escapes). <c>Loot</c> is the loose pickups (gold piles
+	/// pre-placed in trap rooms, gold and food dropped in fights), which collect by the same
+	/// walk-in rule and so borrow the chest's voice: to the player both mean "treasure,
+	/// stand here". The last is <c>AICourtTrigger</c>, the court (face card) fights' own end
+	/// circle: the spawner drops it at the boss's corpse, and the fight does not end on the
+	/// kill - the player must walk into it. Each live, unconsumed object pings with its
+	/// kind's sample (the court circle borrows the exit's: to the player it IS the exit),
+	/// positioned by Core's <see cref="BeaconComposer"/>, repinging a beat of silence after
+	/// the sound ends.
 	///
-	/// Discovery for the trap pair is a periodic <c>FindObjectsOfType</c> scan: the
-	/// components have no registry, no Start or OnEnable to patch, and they switch on
-	/// mid-level (a chest's enable-on-complete list can activate the exit, or more of the
-	/// gauntlet), so only a rescan sees them appear. The scan returns active objects only,
-	/// which is the right filter: an exit the level has not yet revealed does not exist for
-	/// the player either. The court trigger needs no scan (a public static singleton) and
-	/// pings only while its <c>IsActive</c> is true - the spawner arms it (and its collider)
-	/// only once it is the last active spawner with no living AI, so an earlier ping would
-	/// lure the player onto a circle that does nothing yet. All found components are live
-	/// references re-read every frame (the acceptable cache); IsComplete, IsActive,
-	/// activity, and position are never copied.
+	/// A chest or exit pings from its walk-in trigger collider, not the component's
+	/// transform: in the trap rooms the component sits on a controller object away from the
+	/// door (heard in play as an exit tone that circled the player), and the trigger volume
+	/// is the spot the game itself completes on. The collider reference is resolved at scan
+	/// time and its live bounds read at ping time; a component with no findable trigger
+	/// falls back to its transform, with the resolution logged either way as recon.
+	///
+	/// Discovery is a periodic <c>FindObjectsOfType</c> scan: the components have no
+	/// registry, no Start or OnEnable to patch, and they appear mid-level (a chest's
+	/// enable-on-complete list can activate the exit or more of the gauntlet; kills drop
+	/// loot), so only a rescan sees them. The scan returns active objects only, which is the
+	/// right filter: an exit the level has not yet revealed does not exist for the player
+	/// either. The court trigger needs no scan (a public static singleton) and pings only
+	/// while its <c>IsActive</c> is true - the spawner arms it (and its collider) only once
+	/// it is the last active spawner with no living AI, so an earlier ping would lure the
+	/// player onto a circle that does nothing yet. All found components are live references
+	/// re-read every frame (the acceptable cache); IsComplete, IsActive, activity, and
+	/// position are never copied.
 	/// </summary>
 	internal sealed class ObjectBeacons {
 		private const float ScanInterval = 1f;
@@ -39,8 +49,16 @@ namespace HandOfFateAccess.Combat {
 		// next ping a fixed gap after this one's sound ends.
 		private readonly Dictionary<string, float> _clips = new Dictionary<string, float>();
 
-		private TrapChest[] _chests = new TrapChest[0];
-		private TrapExit[] _exits = new TrapExit[0];
+		// A scanned chest or exit with its resolved walk-in trigger (null when none was
+		// found, in which case the component's transform stands in).
+		private struct BeaconEntry<T> where T : Component {
+			public T Object;
+			public Collider Trigger;
+		}
+
+		private readonly List<BeaconEntry<TrapChest>> _chests = new List<BeaconEntry<TrapChest>>();
+		private readonly List<BeaconEntry<TrapExit>> _exits = new List<BeaconEntry<TrapExit>>();
+		private Loot[] _loot = new Loot[0];
 		private bool _inLevel;
 		private float _nextScan;
 		private float _nextChestPing;
@@ -50,6 +68,7 @@ namespace HandOfFateAccess.Combat {
 		// does not cover.
 		private int _lastChests = -1;
 		private int _lastExits = -1;
+		private int _lastLoot = -1;
 		private bool _courtWasActive;
 
 		/// <summary>Load the two beacon samples from <paramref name="pluginDir"/>/sounds.
@@ -122,24 +141,36 @@ namespace HandOfFateAccess.Combat {
 			// gap is silence after ALL of them.
 			if (now >= _nextChestPing) {
 				_nextChestPing = now + BeaconComposer.PingGap;
-				if (_clips.TryGetValue(BeaconComposer.ChestKey, out float chestClip))
-					for (int i = 0; i < _chests.Length; i++) {
-						TrapChest chest = _chests[i];
+				if (_clips.TryGetValue(BeaconComposer.ChestKey, out float chestClip)) {
+					for (int i = 0; i < _chests.Count; i++) {
+						TrapChest chest = _chests[i].Object;
 						if (chest == null || chest.IsComplete || !chest.gameObject.activeInHierarchy) continue;
-						if (Ping(BeaconComposer.ChestKey, chest.transform.position, frame, out float pitch)) {
+						if (Ping(BeaconComposer.ChestKey, BeaconPosition(chest, _chests[i].Trigger), frame, out float pitch)) {
 							float next = BeaconComposer.NextPingTime(now, chestClip, pitch);
 							if (next > _nextChestPing) _nextChestPing = next;
 						}
 					}
+					// Loose pickups ride the chest cadence with the chest sample: same walk-in
+					// collection, same message. A collected pile is destroyed (or pool-freed,
+					// which the activity check sees), so liveness is just these two checks.
+					for (int i = 0; i < _loot.Length; i++) {
+						Loot loot = _loot[i];
+						if (loot == null || !loot.gameObject.activeInHierarchy) continue;
+						if (Ping(BeaconComposer.ChestKey, loot.transform.position, frame, out float pitch)) {
+							float next = BeaconComposer.NextPingTime(now, chestClip, pitch);
+							if (next > _nextChestPing) _nextChestPing = next;
+						}
+					}
+				}
 			}
 
 			if (now >= _nextExitPing) {
 				_nextExitPing = now + BeaconComposer.PingGap;
 				if (_clips.TryGetValue(BeaconComposer.ExitKey, out float exitClip)) {
-					for (int i = 0; i < _exits.Length; i++) {
-						TrapExit exit = _exits[i];
+					for (int i = 0; i < _exits.Count; i++) {
+						TrapExit exit = _exits[i].Object;
 						if (exit == null || exit.IsComplete || !exit.gameObject.activeInHierarchy) continue;
-						if (Ping(BeaconComposer.ExitKey, exit.transform.position, frame, out float pitch)) {
+						if (Ping(BeaconComposer.ExitKey, BeaconPosition(exit, _exits[i].Trigger), frame, out float pitch)) {
 							float next = BeaconComposer.NextPingTime(now, exitClip, pitch);
 							if (next > _nextExitPing) _nextExitPing = next;
 						}
@@ -169,23 +200,95 @@ namespace HandOfFateAccess.Combat {
 			return true;
 		}
 
-		private void Scan() {
-			_chests = UnityEngine.Object.FindObjectsOfType<TrapChest>();
-			_exits = UnityEngine.Object.FindObjectsOfType<TrapExit>();
-			if (_chests.Length != _lastChests || _exits.Length != _lastExits) {
-				Log.Info("beacons: " + _chests.Length + " chest(s), " + _exits.Length + " exit(s)");
-				_lastChests = _chests.Length;
-				_lastExits = _exits.Length;
+		// Where the beacon sounds from: the walk-in trigger's live bounds center. A disabled
+		// trigger has no valid bounds, so its transform stands in; no trigger at all falls
+		// back to the component's own transform (logged at scan).
+		private static Vector3 BeaconPosition(Component owner, Collider trigger) {
+			if (trigger == null) return owner.transform.position;
+			if (trigger.enabled && trigger.gameObject.activeInHierarchy) return trigger.bounds.center;
+			return trigger.transform.position;
+		}
+
+		// The trigger collider whose OnTriggerEnter the component completes on: one on its
+		// own object in the classic layout, otherwise the first trigger in its children that
+		// no nested trap-system component owns (a trap-room controller object can have the
+		// whole gauntlet, traps and all, beneath it).
+		private static Collider FindWalkInTrigger(Component owner) {
+			Collider[] own = owner.GetComponents<Collider>();
+			for (int i = 0; i < own.Length; i++)
+				if (own[i].isTrigger) return own[i];
+
+			Collider[] children = owner.GetComponentsInChildren<Collider>(true);
+			for (int i = 0; i < children.Length; i++) {
+				Collider collider = children[i];
+				if (!collider.isTrigger || collider.gameObject == owner.gameObject) continue;
+				if (!OwnedByNestedComponent(collider.transform, owner)) return collider;
 			}
+
+			return own.Length > 0 ? own[0] : null;
+		}
+
+		// True when another trap-system component sits between the collider and the owner:
+		// that collider is the nested component's volume, not the owner's walk-in trigger.
+		private static bool OwnedByNestedComponent(Transform collider, Component owner) {
+			for (Transform node = collider; node != null && node != owner.transform; node = node.parent) {
+				if (node.GetComponent<Trap>() != null || node.GetComponent<CombatApplicant>() != null
+						|| node.GetComponent<TrapChest>() != null || node.GetComponent<TrapExit>() != null
+						|| node.GetComponent<Loot>() != null) return true;
+			}
+			return false;
+		}
+
+		private void Scan() {
+			TrapChest[] chests = UnityEngine.Object.FindObjectsOfType<TrapChest>();
+			TrapExit[] exits = UnityEngine.Object.FindObjectsOfType<TrapExit>();
+			_loot = UnityEngine.Object.FindObjectsOfType<Loot>();
+
+			_chests.Clear();
+			for (int i = 0; i < chests.Length; i++)
+				_chests.Add(new BeaconEntry<TrapChest> { Object = chests[i], Trigger = FindWalkInTrigger(chests[i]) });
+			_exits.Clear();
+			for (int i = 0; i < exits.Length; i++)
+				_exits.Add(new BeaconEntry<TrapExit> { Object = exits[i], Trigger = FindWalkInTrigger(exits[i]) });
+
+			// Loot churns with every drop and pickup, so it only refreshes the count line;
+			// the per-object resolution lines re-log only when the chest/exit set changes.
+			bool setChanged = chests.Length != _lastChests || exits.Length != _lastExits;
+			if (setChanged || _loot.Length != _lastLoot) {
+				Log.Info("beacons: " + chests.Length + " chest(s), " + exits.Length + " exit(s), "
+					+ _loot.Length + " loot");
+				if (setChanged) {
+					// Where each chest and exit will sound from, as recon for a beacon heard
+					// in the wrong place: the component transform versus the resolved trigger.
+					for (int i = 0; i < _chests.Count; i++) LogResolution("chest", _chests[i].Object, _chests[i].Trigger);
+					for (int i = 0; i < _exits.Count; i++) LogResolution("exit", _exits[i].Object, _exits[i].Trigger);
+				}
+				_lastChests = chests.Length;
+				_lastExits = exits.Length;
+				_lastLoot = _loot.Length;
+			}
+		}
+
+		private static void LogResolution(string kind, Component owner, Collider trigger) {
+			Vector3 at = BeaconPosition(owner, trigger);
+			Vector3 component = owner.transform.position;
+			Log.Info("beacon " + kind + " '" + owner.name + "': "
+				+ (trigger == null
+					? "no walk-in trigger found, pinging at its transform"
+					: "pinging at trigger '" + trigger.name + "'")
+				+ " (" + at.x.ToString("F1") + ", " + at.z.ToString("F1") + "); component at ("
+				+ component.x.ToString("F1") + ", " + component.z.ToString("F1") + ")");
 		}
 
 		private void Reset() {
 			if (!_inLevel) return;
 			_inLevel = false;
-			_chests = new TrapChest[0];
-			_exits = new TrapExit[0];
+			_chests.Clear();
+			_exits.Clear();
+			_loot = new Loot[0];
 			_lastChests = -1;
 			_lastExits = -1;
+			_lastLoot = -1;
 			_courtWasActive = false;
 		}
 	}
