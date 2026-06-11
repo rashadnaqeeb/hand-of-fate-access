@@ -8,6 +8,9 @@ namespace HandOfFateAccess.Patches {
 	/// blast, the Kraken's four moves, the Ratman King's mirror dash) apply damage directly
 	/// instead of calling the CombatUtils effect-start chokepoint, so the parry-open hook
 	/// never sees them; every one is unblockable by design, so the answer is always to move.
+	/// The Hermit's dash is the same gap by accident rather than design: its OnParryWindowOpen
+	/// is dead code (nothing calls it; its animation switch has no "parry" case), so the
+	/// chokepoint never fires. Begin is the dash launch, the moment to start moving.
 	///
 	/// One postfix shared by each class's own Begin override (each verified to declare it;
 	/// patching an inherited Begin would hit the shared base and cue every action in the

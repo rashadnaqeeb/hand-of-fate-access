@@ -329,8 +329,10 @@ namespace HandOfFateAccess {
 			// chokepoint, each cued as a dodge from its own Begin override (every listed class
 			// declares one; patching an inherited Begin would hit the shared base and cue every
 			// action in the game). The Hermit's bomb hooks its throw event instead, because its
-			// Begin runs a multi-second hold first. The mage beams are intentionally absent:
-			// they will be voiced live from the proxy seam, not cued as a one-shot.
+			// Begin runs a multi-second hold first; his dash is listed here because its
+			// OnParryWindowOpen is dead code (no caller, no parry animation event), so the
+			// chokepoint never sees it. The mage beams are intentionally absent: they will be
+			// voiced live from the proxy seam, not cued as a one-shot.
 			var bossBeginPostfix = AccessTools.Method(typeof(BossAction_Begin_Patch), "Postfix");
 			var bossActions = new[] {
 				typeof(ActionFeastOgre),
@@ -343,6 +345,7 @@ namespace HandOfFateAccess {
 				typeof(ActionKrakenTsunami),
 				typeof(ActionKrakenSummon),
 				typeof(ActionDashRatmanKing),
+				typeof(ActionHermitDash),
 			};
 			foreach (System.Type bossAction in bossActions)
 				patcher.Patch(bossAction, "Begin", new System.Type[0], prefix: null, postfix: bossBeginPostfix);
