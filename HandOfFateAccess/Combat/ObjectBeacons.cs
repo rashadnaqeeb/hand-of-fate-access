@@ -86,7 +86,10 @@ namespace HandOfFateAccess.Combat {
 		/// </summary>
 		public void Pump() {
 			if (!_ready) return;
-			if (CombatManager.Instance == null || !CombatFrame.TryGet(out CombatFrame frame)) {
+			// The Dealer's missile quick-time counts as outside: the player is teleported and
+			// the camera overridden, so a bearing projected there would mislead.
+			if (CombatManager.Instance == null || DealerQte.IsActive
+					|| !CombatFrame.TryGet(out CombatFrame frame)) {
 				Reset();
 				return;
 			}

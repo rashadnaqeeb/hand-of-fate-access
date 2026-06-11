@@ -54,7 +54,7 @@ The mod speaks in whatever language the game is set to. All twelve of the game's
 
 ## Known limitations
 
-The final Dealer boss fight has no bespoke support yet. It is heavily scripted, and the author has deliberately left it unspoiled until reaching it in their own playthrough. Everything else in the game is expected to work; if you find something that does not, please report it.
+The final Dealer boss fight is cued like the other bosses (attack telegraphs, the missile duel's counter and dodge prompts, hazard voices, the enemy ping pointing at what is currently attackable), but none of it has been heard in a real fight yet: the author has deliberately left the fight unspoiled until reaching it in their own playthrough. Treat it as untested. Everything else in the game is expected to work; if you find something that does not, please report it.
 
 ## For developers
 

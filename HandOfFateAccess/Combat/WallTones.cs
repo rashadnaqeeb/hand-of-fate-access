@@ -73,7 +73,10 @@ namespace HandOfFateAccess.Combat {
 		public void Pump() {
 			if (!AudioEngine.IsAvailable) return;
 
-			if (!CombatGate.IsLive) {
+			// The Dealer's missile quick-time counts as outside: the player is teleported
+			// onto an authored platform there, so the probe would measure geometry that
+			// says nothing about where the player can walk.
+			if (!CombatGate.IsLive || DealerQte.IsActive) {
 				StopSession();
 				return;
 			}

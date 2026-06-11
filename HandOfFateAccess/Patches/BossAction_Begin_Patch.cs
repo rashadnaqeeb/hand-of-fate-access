@@ -5,9 +5,10 @@ namespace HandOfFateAccess.Patches {
 	/// <summary>
 	/// Fires the dodge cue when one of the bespoke boss attacks begins. The court-card bosses
 	/// (Ogre's feast, both Reaper attacks, the Lich's sacrifice, the Orc Shaman's delayed
-	/// blast, the Kraken's four moves, the Ratman King's mirror dash) apply damage directly
-	/// instead of calling the CombatUtils effect-start chokepoint, so the parry-open hook
-	/// never sees them; every one is unblockable by design, so the answer is always to move.
+	/// blast, the Kraken's four moves, the Ratman King's mirror dash) and the Dealer's hand
+	/// swipe, lightning, and pulse apply damage directly instead of calling the CombatUtils
+	/// effect-start chokepoint, so the parry-open hook never sees them; every one is
+	/// unblockable by design, so the answer is always to move.
 	/// The Hermit's dash is the same gap by accident rather than design: its OnParryWindowOpen
 	/// is dead code (nothing calls it; its animation switch has no "parry" case), so the
 	/// chokepoint never fires. Begin is the dash launch, the moment to start moving.

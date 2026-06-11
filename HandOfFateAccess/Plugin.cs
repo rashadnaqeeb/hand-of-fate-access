@@ -332,7 +332,12 @@ namespace HandOfFateAccess {
 			// Begin runs a multi-second hold first; his dash is listed here because its
 			// OnParryWindowOpen is dead code (no caller, no parry animation event), so the
 			// chokepoint never sees it. The mage beams are intentionally absent: they will be
-			// voiced live from the proxy seam, not cued as a one-shot.
+			// voiced live from the proxy seam, not cued as a one-shot. The Dealer's hand swipe,
+			// lightning, and pulse are the same shape (direct-damage Begin overrides, all
+			// unblockable, the whole windup animation as the reaction window); his missile is
+			// absent because its counter/dodge prompts are cued from the quick-time patches
+			// below, and the lightning's rotating beams voice live through the beam seam once
+			// they engage.
 			var bossBeginPostfix = AccessTools.Method(typeof(BossAction_Begin_Patch), "Postfix");
 			var bossActions = new[] {
 				typeof(ActionFeastOgre),
@@ -346,9 +351,34 @@ namespace HandOfFateAccess {
 				typeof(ActionKrakenSummon),
 				typeof(ActionDashRatmanKing),
 				typeof(ActionHermitDash),
+				typeof(ActionDealerHand),
+				typeof(ActionDealerLightning),
+				typeof(ActionDealerPulse),
 			};
 			foreach (System.Type bossAction in bossActions)
 				patcher.Patch(bossAction, "Begin", new System.Type[0], prefix: null, postfix: bossBeginPostfix);
+
+			// The Dealer's missile quick-time event. The game reveals its Counter prompt for
+			// the reflect window and its Dodge prompt for the dodge window from the two
+			// indicator methods, so their postfixes ARE the prompts, spoken in the existing
+			// cue vocabulary (clang = press counter, crack = press dodge). Begin records the
+			// running reaction so DealerQte holds the environmental voices quiet while the
+			// event teleports the player off the arena and overrides the camera.
+			patcher.Patch(
+				typeof(ActionDealerMissileReaction), "Begin",
+				new System.Type[0],
+				prefix: null,
+				postfix: AccessTools.Method(typeof(ActionDealerMissileReaction_Begin_Patch), "Postfix"));
+			patcher.Patch(
+				typeof(ActionDealerMissileReaction), "ShowReflectIndicator",
+				new System.Type[0],
+				prefix: null,
+				postfix: AccessTools.Method(typeof(ActionDealerMissileReaction_ShowReflectIndicator_Patch), "Postfix"));
+			patcher.Patch(
+				typeof(ActionDealerMissileReaction), "ShowDodgeIndicator",
+				new System.Type[0],
+				prefix: null,
+				postfix: AccessTools.Method(typeof(ActionDealerMissileReaction_ShowDodgeIndicator_Patch), "Postfix"));
 			patcher.Patch(
 				typeof(ActionHermitBomb), "OnThrow",
 				new System.Type[0],

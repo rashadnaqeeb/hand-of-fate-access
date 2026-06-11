@@ -49,8 +49,9 @@ namespace HandOfFateAccess.Combat {
 
 			// Outside a live fight the cue is idle: a blocked step pending from the fight's
 			// last frames is dropped, not held to fire its bump into the pause menu or the
-			// post-combat resolution.
-			if (!CombatGate.IsLive) {
+			// post-combat resolution. The Dealer's missile quick-time counts as outside
+			// (the player is teleported, not walking).
+			if (!CombatGate.IsLive || DealerQte.IsActive) {
 				PlayerMotion.ConsumeBlockedStep();
 				_armed = false;
 				return;

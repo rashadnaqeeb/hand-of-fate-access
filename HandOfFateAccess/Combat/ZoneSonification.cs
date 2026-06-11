@@ -200,6 +200,16 @@ namespace HandOfFateAccess.Combat {
 				return;
 			}
 
+			// The Dealer's missile quick-time mutes the voices without ending the session:
+			// the player is teleported and the camera overridden, so a bearing projected
+			// there would mislead, but the fight is still live, so the trap scan and the
+			// recon log counters stay (a full StopAll here would force a trap rescan after
+			// every missile sequence). Everything re-voices when the event hands back.
+			if (DealerQte.IsActive) {
+				StopVoices();
+				return;
+			}
+
 			List<CombatProxyArea> areas = CombatProxyArea.AllAreas;
 			_live.Clear();
 			for (int i = 0; i < areas.Count; i++) {
@@ -478,6 +488,16 @@ namespace HandOfFateAccess.Combat {
 				Log.Info("traps: " + traps.Length + " active, " + _traps.Count + " trigger(s) voiced");
 		}
 
+		/// <summary>Release every playing voice, keeping all session state (the trap scan,
+		/// the beam/chain records, the log counters): the mute half of StopAll, used alone
+		/// while the fight is live but bearings are not trustworthy.</summary>
+		private void StopVoices() {
+			if (_voices.Count == 0) return;
+			foreach (KeyValuePair<Component, ZoneVoice> kv in _voices)
+				AudioEngine.Stop(kv.Value.Voice);
+			_voices.Clear();
+		}
+
 		private void StopAll() {
 			_lastAreas = -1;
 			_lastBeams = -1;
@@ -489,10 +509,7 @@ namespace HandOfFateAccess.Combat {
 			// per hazard, so a transient frame without a player or camera mid-fight must not
 			// orphan records nothing can re-create (traps rescan and areas re-poll; these
 			// cannot). Entries for ended hazards prune in the pump's next live frame.
-			if (_voices.Count == 0) return;
-			foreach (KeyValuePair<Component, ZoneVoice> kv in _voices)
-				AudioEngine.Stop(kv.Value.Voice);
-			_voices.Clear();
+			StopVoices();
 		}
 	}
 }
