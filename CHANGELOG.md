@@ -6,6 +6,8 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+## 1.1.0 - 2026-06-11
+
 * Trap spear launchers now play a telegraph cue when a spear fires down a lane that covers where you stand: the block cue if the spear can be reflected and you hold a reflect-capable counter, otherwise the dodge cue. Spears aimed elsewhere stay quiet, a multi-spear volley cracks once, and the flight voice still tracks every spear in the air.
 * A trap on its safe beat now continues to sound safe when you stand on it.
 * In trap rooms only the single nearest hazard sounds at a time. Combat is unchanged.
