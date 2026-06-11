@@ -36,6 +36,44 @@ namespace HandOfFateAccess.Tests {
 			Assert.NotEqual(AttackCueComposer.ActionKey(true, true), AttackCueComposer.ActionKey(false, true));
 		}
 
+		// --- The trap-shot lane test: a spear fires forever down its lane, so only a shot
+		// whose path covers where the player stands deserves a cue. ---
+
+		[Fact]
+		public void ShotAimedAtThePlayer_Threatens() {
+			// Spawned 10 east, flying due west: straight at the origin.
+			Assert.True(AttackCueComposer.ShotThreatens(10f, 0f, -1f, 0f));
+		}
+
+		[Fact]
+		public void ShotGrazingTheLaneEdge_Threatens() {
+			// A lane passing just inside the half-width still covers the player's body.
+			Assert.True(AttackCueComposer.ShotThreatens(10f, AttackCueComposer.LaneHalfWidth * 0.7f, -1f, 0f));
+		}
+
+		[Fact]
+		public void ShotDownANeighboringLane_DoesNot() {
+			// Parallel lane two half-widths away: it can never hit, so it never cues.
+			Assert.False(AttackCueComposer.ShotThreatens(10f, AttackCueComposer.LaneHalfWidth * 2f, -1f, 0f));
+		}
+
+		[Fact]
+		public void ShotFlyingAway_DoesNot() {
+			// Same lane, opposite direction: the closest approach is behind the spawn.
+			Assert.False(AttackCueComposer.ShotThreatens(10f, 0f, 1f, 0f));
+		}
+
+		[Fact]
+		public void DiagonalShot_NormalizesItsDirection() {
+			// Spawned northeast flying southwest, direction passed unnormalized: dead on.
+			Assert.True(AttackCueComposer.ShotThreatens(5f, 5f, -3f, -3f));
+		}
+
+		[Fact]
+		public void DegenerateDirection_NeverThreatens() {
+			Assert.False(AttackCueComposer.ShotThreatens(10f, 0f, 0f, 0f));
+		}
+
 		// --- Bearing: pan is east/west, pitch is down-biased and brightest due north. ---
 
 		[Fact]

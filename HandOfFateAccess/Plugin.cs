@@ -430,6 +430,16 @@ namespace HandOfFateAccess {
 				prefix: null,
 				postfix: moverEngagePostfix);
 
+			// Trap-fired projectiles (the spear walls) come from scripted applicants that
+			// open no parry window, so their one telegraph fires as the projectile engages,
+			// lane-filtered in the hook to shots that can actually hit the player. The class's
+			// own OnEngage override; the mover classes are separate CombatProxy subclasses.
+			patcher.Patch(
+				typeof(CombatProxyProjectile), "OnEngage",
+				new System.Type[0],
+				prefix: null,
+				postfix: AccessTools.Method(typeof(CombatProxyProjectile_OnEngage_Patch), "Postfix"));
+
 			// Beams (damaging lines: the mage triangle, radial bursts, the rotating boss
 			// beams) are not CombatProxy subclasses and keep no registry; the one chokepoint
 			// every beam passes through is its own Engage, so its postfix is the zone voice's

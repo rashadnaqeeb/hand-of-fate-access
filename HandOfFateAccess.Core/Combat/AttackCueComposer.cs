@@ -58,6 +58,39 @@ namespace HandOfFateAccess.Combat {
 		public static string ActionKey(bool blockable, bool canBlock) =>
 			blockable && canBlock ? BlockKey : DodgeKey;
 
+		/// <summary>Half-width, in world units, of the corridor a straight shot threatens:
+		/// the player's body plus a projectile's width, erring wide (over-warning is the
+		/// safe direction).</summary>
+		public const float LaneHalfWidth = 1.5f;
+
+		/// <summary>
+		/// Whether a straight shot spawned at (<paramref name="right"/>,
+		/// <paramref name="forward"/>) (its offset from the player) travelling along the
+		/// ground direction (<paramref name="dirRight"/>, <paramref name="dirForward"/>,
+		/// any length) threatens the player: its path passes within
+		/// <see cref="LaneHalfWidth"/> of them and it is travelling toward them, not away.
+		/// The trap-shot cue's filter: a spear wall fires its lanes on a timer forever,
+		/// whether or not anyone stands in them, so only a shot whose lane covers the
+		/// player is worth an alert - cueing every volley of every wall would be a wall of
+		/// noise. A degenerate direction never threatens.
+		/// </summary>
+		public static bool ShotThreatens(float right, float forward, float dirRight, float dirForward) {
+			float lengthSq = dirRight * dirRight + dirForward * dirForward;
+			if (lengthSq < 1e-9f) return false;
+			float length = (float)Math.Sqrt(lengthSq);
+			float unitRight = dirRight / length;
+			float unitForward = dirForward / length;
+
+			// The player (the origin) projected onto the shot's ray: a non-positive travel
+			// distance means the closest approach is behind the spawn, a shot moving away.
+			float travel = -(right * unitRight + forward * unitForward);
+			if (travel <= 0f) return false;
+
+			float missRight = right + travel * unitRight;
+			float missForward = forward + travel * unitForward;
+			return missRight * missRight + missForward * missForward < LaneHalfWidth * LaneHalfWidth;
+		}
+
 		/// <summary>
 		/// The voice parameters for an attacker sitting <paramref name="right"/> world units to
 		/// the camera's right (negative is left) and <paramref name="forward"/> world units

@@ -24,6 +24,11 @@ namespace HandOfFateAccess.Combat {
 		/// than an enemy's attack cycle so distinct attacks still cue. Tunable live.</summary>
 		public const float WindowSeconds = 3f;
 
+		/// <summary>The shorter window for trap-fired shots: long enough to fold one
+		/// volley's simultaneous spears into a single crack, short enough that the next
+		/// volley (trap cycles repeat every few seconds) cues again.</summary>
+		public const float VolleyWindowSeconds = 1f;
+
 		/// <summary>Source key meaning "attacker unknown": never noted, never suppressed.</summary>
 		public const int UnknownSource = 0;
 
@@ -40,15 +45,17 @@ namespace HandOfFateAccess.Combat {
 
 		/// <summary>
 		/// Whether a mover launched by <paramref name="sourceKey"/> at <paramref name="now"/>
-		/// should cue. True notes the cue as played, so a sustained barrage from one source
-		/// cues at most once per window (a periodic reminder, not a crack per bomb). A
-		/// suppressed launch does not refresh the window: the next launch after the original
-		/// cue ages out cues normally.
+		/// should cue, with <paramref name="windowSeconds"/> as that record's suppression
+		/// window (<see cref="WindowSeconds"/> for movers, <see cref="VolleyWindowSeconds"/>
+		/// for trap shots). True notes the cue as played, so a sustained barrage from one
+		/// source cues at most once per window (a periodic reminder, not a crack per bomb).
+		/// A suppressed launch does not refresh the window: the next launch after the
+		/// original cue ages out cues normally.
 		/// </summary>
-		public bool ShouldCueLaunch(int sourceKey, float now) {
+		public bool ShouldCueLaunch(int sourceKey, float now, float windowSeconds = WindowSeconds) {
 			if (sourceKey == UnknownSource) return true;
 			float last;
-			if (_lastCue.TryGetValue(sourceKey, out last) && now - last < WindowSeconds) return false;
+			if (_lastCue.TryGetValue(sourceKey, out last) && now - last < windowSeconds) return false;
 			_lastCue[sourceKey] = now;
 			return true;
 		}

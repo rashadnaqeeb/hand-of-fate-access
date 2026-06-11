@@ -30,7 +30,9 @@ namespace HandOfFateAccess.Combat {
 	/// Whether the launch actually plays is decided by Core's <see cref="MoverCueGate"/>: an
 	/// attack that already telegraphed (the Hermit's throw, a boss's Begin) must not crack a
 	/// second time when its proxy engages, so every cue record carries its attacker's key and
-	/// a launch goes silent while that attacker's last cue is fresh.
+	/// a launch goes silent while that attacker's last cue is fresh. Trap-fired projectiles
+	/// (the spear walls) cue the same way at spawn, classified block-or-dodge by their live
+	/// reflectability, lane-filtered at the hook, on the shorter per-volley window.
 	/// </summary>
 	internal sealed class AttackCues {
 		private struct Pending {
@@ -38,6 +40,8 @@ namespace HandOfFateAccess.Combat {
 			public Vector3 Position;
 			public int SourceKey;
 			public bool IsLaunch;
+			// The launch's per-source suppression window (movers and trap volleys differ).
+			public float Window;
 		}
 
 		// Single Unity thread: the hooks fire during the game's combat update and this pump runs
@@ -85,6 +89,25 @@ namespace HandOfFateAccess.Combat {
 				Position = position,
 				SourceKey = sourceKey,
 				IsLaunch = true,
+				Window = MoverCueGate.WindowSeconds,
+			});
+		}
+
+		/// <summary>
+		/// Record a trap-fired projectile's launch cue, classified like a ranged attack
+		/// (block when the shot can be reflected and the player holds a reflect, else
+		/// dodge), at its spawn position. The caller has already filtered to shots whose
+		/// lane covers the player (a trap fires its lanes forever, aimed at no one); the
+		/// shorter volley window folds one volley's simultaneous spears into one crack
+		/// while letting the next volley cue. Called from the projectile engage hook.
+		/// </summary>
+		public static void RecordTrapShot(bool blockable, bool canBlock, Vector3 position, int sourceKey) {
+			_pending.Enqueue(new Pending {
+				Key = AttackCueComposer.ActionKey(blockable, canBlock),
+				Position = position,
+				SourceKey = sourceKey,
+				IsLaunch = true,
+				Window = MoverCueGate.VolleyWindowSeconds,
 			});
 		}
 
@@ -143,7 +166,7 @@ namespace HandOfFateAccess.Combat {
 				if (cue.IsLaunch) {
 					// One attack, one cue: a mover whose attacker telegraphed within the
 					// window stays silent.
-					if (!_gate.ShouldCueLaunch(cue.SourceKey, Time.time)) continue;
+					if (!_gate.ShouldCueLaunch(cue.SourceKey, Time.time, cue.Window)) continue;
 				} else {
 					_gate.NoteAttackCue(cue.SourceKey, Time.time);
 				}

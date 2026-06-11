@@ -6,6 +6,7 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+- Trap spear launchers now play a telegraph cue when a spear fires down a lane that covers where you stand: the block cue if the spear can be reflected and you hold a reflect-capable counter, otherwise the dodge cue. Spears aimed elsewhere stay quiet, a multi-spear volley cracks once, and the flight voice still tracks every spear in the air.
 - A trap on its safe beat now stays readable while you are standing on it: the harsh inside rattle plays only while the hazard is actually live, and a crossed trap's arming throb (or primed pulse) keeps playing underfoot at full volume. Crossing a spike floor is now timeable by ear: step in on the throb, and if it flips to the rattle the trap has gone hot. The glossary's zone entries reflect the new meanings.
 - In trap rooms only the single nearest hazard sounds at a time, instead of the three nearest all looping at once: the gauntlet is crossed one obstacle at a time, and three loops trading places read as noise. A hazard you are standing in still seizes the voice instantly. Everywhere else, a hazard now keeps its voice until another is clearly closer, so the loops no longer flicker between similar-distance hazards with every step.
 - Beacon pings now encode distance in their rhythm, parking-sensor style: sparse when the chest or exit is far, tightening steadily as you approach. Volume alone could not carry distance across a room, which made a far exit sound like a companion trailing at fixed distance.
