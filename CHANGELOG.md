@@ -6,6 +6,7 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+- The enemy ping's loudness now reads as distance: full volume means the enemy is within melee swing reach (the game's default attack range, 3 units), fading down to a faint floor at 20 units and beyond. Previously the ping stayed loud everywhere (it never dropped below roughly half volume), so near and far enemies sounded much the same.
 - The Dealer fight is now cued like the other bosses: his hand swipe, lightning, and pulse attacks each play the dodge cue as they begin, and the lightning's rotating beams carry the same hazard voice as every other beam.
 - The Dealer's missile duel speaks through the telegraph cues: the block cue means press counter now, the dodge cue means press dodge now, each fired the moment the game shows its own button prompt.
 - During the missile duel the environmental sounds (wall tones, hazard voices, beacons, projectile voices, enemy ping) go quiet, like pause: the game moves the player onto a cinematic platform there, so their bearings would mislead. The duel's own cues stay live.

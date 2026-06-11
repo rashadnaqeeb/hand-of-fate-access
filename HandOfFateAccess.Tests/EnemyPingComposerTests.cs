@@ -14,29 +14,43 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void Volume_RidesTheAlertFloorNotTheAmbientOne() {
-			// A far enemy must still answer loud: the ping is a one-shot whose absence
-			// means "no enemies", so it takes the telegraph alert floor, well above the
-			// projectile loop's faint one.
-			var far = EnemyPingComposer.Compose(AttackCueComposer.FalloffRange * 2f, 0f);
-			Assert.Equal(AttackCueComposer.MinVolume, far.Volume);
-			Assert.True(far.Volume > ProjectileSonifier.MinVolume * 2f);
+		public void Volume_FullThroughoutMeleeReach() {
+			// Full volume means "in swing reach": anywhere inside the game's default
+			// melee attack range pings at peak, not just on top of the player.
+			Assert.Equal(EnemyPingComposer.MaxVolume, EnemyPingComposer.VolumeFor(0f));
+			Assert.Equal(EnemyPingComposer.MaxVolume, EnemyPingComposer.VolumeFor(EnemyPingComposer.MeleeRange));
 		}
 
 		[Fact]
-		public void Volume_PeaksOnTopOfThePlayer() {
-			var onTop = EnemyPingComposer.Compose(0f, 0f);
-			Assert.Equal(AttackCueComposer.MaxVolume, onTop.Volume);
+		public void Volume_HoldsTheFloorAcrossTheArena() {
+			// Far enemies are quiet but never silent: a silent ping reads as "no enemies".
+			Assert.Equal(EnemyPingComposer.MinVolume, EnemyPingComposer.VolumeFor(EnemyPingComposer.FloorRange));
+			Assert.Equal(EnemyPingComposer.MinVolume, EnemyPingComposer.VolumeFor(EnemyPingComposer.FloorRange * 3f));
+			Assert.True(EnemyPingComposer.MinVolume > 0f);
+		}
+
+		[Fact]
+		public void Volume_DegenerateDistanceDropsToTheFloor() {
+			Assert.Equal(EnemyPingComposer.MinVolume, EnemyPingComposer.VolumeFor(float.NaN));
+			Assert.Equal(EnemyPingComposer.MinVolume, EnemyPingComposer.VolumeFor(float.PositiveInfinity));
 		}
 
 		[Fact]
 		public void Volume_FallsWithDistanceAtFixedBearing() {
-			var near = EnemyPingComposer.Compose(2f, 2f);
-			var mid = EnemyPingComposer.Compose(6f, 6f);
+			var near = EnemyPingComposer.Compose(3f, 3f);
+			var mid = EnemyPingComposer.Compose(8f, 8f);
 			Assert.True(near.Volume > mid.Volume);
 			// Bearing is distance-independent: same direction, same pan and pitch.
 			Assert.Equal(near.Pan, mid.Pan, 5);
 			Assert.Equal(near.Pitch, mid.Pitch, 5);
+		}
+
+		[Fact]
+		public void Volume_MidpointSitsMidCurve() {
+			// Linear between melee reach and the floor: halfway out is halfway down.
+			float mid = (EnemyPingComposer.MeleeRange + EnemyPingComposer.FloorRange) * 0.5f;
+			float expected = (EnemyPingComposer.MaxVolume + EnemyPingComposer.MinVolume) * 0.5f;
+			Assert.Equal(expected, EnemyPingComposer.VolumeFor(mid), 5);
 		}
 	}
 }

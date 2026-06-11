@@ -7,9 +7,9 @@ namespace HandOfFateAccess.Combat {
 	/// <summary>
 	/// The on-demand enemy locator: pressing the locator key in a fight answers with one
 	/// synthesized ping at the nearest living enemy, composed by Core's
-	/// <see cref="EnemyPingComposer"/> (the projectile voices' bearing grammar, the
-	/// telegraph cues' alert loudness), so the skill of reading a projectile's bearing
-	/// transfers directly to reading the enemy's. One enemy, one ping: the nearest is the
+	/// <see cref="EnemyPingComposer"/> (the projectile voices' bearing grammar, with
+	/// loudness as a melee-reach-to-arena distance readout), so the skill of reading a
+	/// projectile's bearing transfers directly to reading the enemy's. One enemy, one ping: the nearest is the
 	/// one to fight or flee, and a press per ping keeps the answer in the player's
 	/// control. Silence in a fight means nothing attackable: no living enemy, or none
 	/// that damage can currently touch.
