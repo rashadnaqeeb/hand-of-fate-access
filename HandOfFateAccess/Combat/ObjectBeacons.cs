@@ -20,6 +20,14 @@ namespace HandOfFateAccess.Combat {
 	/// positioned by Core's <see cref="BeaconComposer"/>, repinging a beat of silence after
 	/// the sound ends.
 	///
+	/// Except treasure in a trap room (a level the game wires a <c>TrapExit</c> for, read
+	/// off the public <c>CombatEncounter.HasTrapExit</c>): those rooms seed a dozen gold
+	/// piles, and all of them pinging on the cadence is a wall of noise (heard in play as
+	/// "something following me around"). There chests and loot do not ping on their own;
+	/// the locator key answers with ONE chest ping at the nearest uncollected treasure,
+	/// the enemy locator's press-per-answer grammar, and silence means nothing left to
+	/// collect. The exit keeps its cadence - it is the room's goal and there is only one.
+	///
 	/// A chest or exit pings from its walk-in trigger collider, not the component's
 	/// transform: in the trap rooms the component sits on a controller object away from the
 	/// door (heard in play as an exit tone that circled the player), and the trigger volume
@@ -141,7 +149,7 @@ namespace HandOfFateAccess.Combat {
 			// gap is silence after ALL of them.
 			if (now >= _nextChestPing) {
 				_nextChestPing = now + BeaconComposer.PingGap;
-				if (_clips.TryGetValue(BeaconComposer.ChestKey, out float chestClip)) {
+				if (!TreasureOnDemand() && _clips.TryGetValue(BeaconComposer.ChestKey, out float chestClip)) {
 					for (int i = 0; i < _chests.Count; i++) {
 						TrapChest chest = _chests[i].Object;
 						if (chest == null || chest.IsComplete || !chest.gameObject.activeInHierarchy) continue;
@@ -185,6 +193,58 @@ namespace HandOfFateAccess.Combat {
 					}
 				}
 			}
+		}
+
+		/// <summary>
+		/// The treasure locator, from the locator key: one chest ping at the nearest
+		/// uncollected chest or pickup. Only live in a trap room, where treasure does not
+		/// ping on its own; everywhere else the press is inert (loot pings on its cadence
+		/// there) and the key keeps its enemy-locator meaning. Silence on a press means
+		/// nothing left to collect.
+		/// </summary>
+		public void TriggerLocate() {
+			if (!_ready || !_clips.ContainsKey(BeaconComposer.ChestKey)) return;
+			if (!TreasureOnDemand()) return;
+			if (CombatManager.Instance == null || DealerQte.IsActive
+					|| !CombatFrame.TryGet(out CombatFrame frame)) return;
+
+			bool found = false;
+			Vector3 nearest = default(Vector3);
+			float nearestSqr = float.MaxValue;
+			for (int i = 0; i < _chests.Count; i++) {
+				TrapChest chest = _chests[i].Object;
+				if (chest == null || chest.IsComplete || !chest.gameObject.activeInHierarchy) continue;
+				Vector3 position = BeaconPosition(chest, _chests[i].Trigger);
+				float sqr = (position - frame.Origin).sqrMagnitude;
+				if (sqr >= nearestSqr) continue;
+				found = true;
+				nearest = position;
+				nearestSqr = sqr;
+			}
+			for (int i = 0; i < _loot.Length; i++) {
+				Loot loot = _loot[i];
+				if (loot == null || !loot.gameObject.activeInHierarchy) continue;
+				Vector3 position = loot.transform.position;
+				float sqr = (position - frame.Origin).sqrMagnitude;
+				if (sqr >= nearestSqr) continue;
+				found = true;
+				nearest = position;
+				nearestSqr = sqr;
+			}
+
+			if (!found) {
+				Log.Debug("treasure locator: nothing left to collect");
+				return;
+			}
+			Ping(BeaconComposer.ChestKey, nearest, frame, out _);
+		}
+
+		// A trap room: the game wired a TrapExit as the level's completion condition.
+		// Decided once at the encounter's start game-side, so it is stable for the level;
+		// re-read live here per the no-caching rule.
+		private static bool TreasureOnDemand() {
+			CombatEncounter encounter = CombatEncounter.Instance;
+			return encounter != null && encounter.HasTrapExit;
 		}
 
 		// Plays the ping and reports the pitch it played at (a playback-rate multiplier, so

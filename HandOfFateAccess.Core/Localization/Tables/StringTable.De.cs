@@ -74,7 +74,7 @@ namespace HandOfFateAccess.Localization {
 				GlossaryWallTones = "Wandtöne, Wände rechts, links, oben, unten",
 				GlossaryWallCollision = "Wandkollision, gegen eine Wand gelaufen",
 				GlossaryEnemyPing = "Gegner-Ping, nächster Gegner, antwortet auf die Ortungstaste",
-				GlossaryChest = "Truhensignal, eine Truhe oder liegendes Gold oder Essen, hingehen sammelt es ein",
+				GlossaryChest = "Truhensignal, eine Truhe oder liegendes Gold oder Essen, hingehen sammelt es ein, in Fallenräumen antwortet es auf die Ortungstaste",
 				GlossaryExit = "Ausgangssignal, hingehen schließt das Level ab, beendet auch einen Bosskampf",
 				GlossaryRecharge = "Aufladung, eine Waffen- oder Artefaktfähigkeit ist wieder bereit, Waffe links, Artefakt rechts",
 				PluginLoadedFormat = "Hand of Fate Zugang Version {0} geladen"

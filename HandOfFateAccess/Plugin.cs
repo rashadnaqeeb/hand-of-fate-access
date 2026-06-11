@@ -174,20 +174,28 @@ namespace HandOfFateAccess {
 			_rechargeCues = new RechargeCues();
 			_rechargeCues.Initialize(pluginDir);
 
-			// The on-demand enemy locator: L on the keyboard and left-stick click on the
+			// The on-demand locator: L on the keyboard and left-stick click on the
 			// controller (both verified unbound by the game: L is absent from its default
 			// keyboard table and no game action reads LeftStickButton) ping the nearest
-			// living enemy. An audio-tier feature, so the input router is created here,
-			// before the speech path, and the binding works whether or not the screen
-			// reader came up; the speech path registers its own bindings on the same
-			// router below. The gate scopes the key to live fights; everywhere else the
-			// press is inert.
+			// living enemy, and in a trap room also the nearest uncollected treasure (two
+			// bindings on one key; each side gates itself, and a trap room normally has no
+			// enemies, so in practice one press means one answer). An audio-tier feature,
+			// so the input router is created here, before the speech path, and the binding
+			// works whether or not the screen reader came up; the speech path registers
+			// its own bindings on the same router below. The gate scopes the key to live
+			// fights; everywhere else the press is inert.
 			_enemyLocator = new EnemyLocator();
 			_enemyLocator.Initialize();
 			_input = new InputRouter();
 			_input.Register(new ButtonAction(
 				"enemy locator",
 				_enemyLocator.Trigger,
+				new[] { KeyCode.L },
+				new[] { InControl.InputControlType.LeftStickButton },
+				() => CombatGate.IsLive));
+			_input.Register(new ButtonAction(
+				"treasure locator",
+				_beacons.TriggerLocate,
 				new[] { KeyCode.L },
 				new[] { InControl.InputControlType.LeftStickButton },
 				() => CombatGate.IsLive));
