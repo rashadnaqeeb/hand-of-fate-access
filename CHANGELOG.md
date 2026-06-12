@@ -6,6 +6,8 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+## 1.1.1 - 2026-06-12
+
 * The wall collision bump is now louder.
 * Walls to the left and right now pan closer as you approach them, to try and make close walls more distinct.
 
