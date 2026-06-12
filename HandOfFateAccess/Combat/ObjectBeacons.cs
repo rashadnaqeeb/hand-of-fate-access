@@ -195,8 +195,8 @@ namespace HandOfFateAccess.Combat {
 				_nextPing[key] = next;
 			}
 			if (now < next) return;
-			if (Ping(sampleKey, position, frame, out float pitch, out float distance))
-				_nextPing[key] = BeaconComposer.NextPingTime(now, clipDuration, pitch, distance);
+			if (Ping(sampleKey, position, frame, out SoundParams played, out float distance))
+				_nextPing[key] = BeaconComposer.NextPingTime(now, clipDuration, played.Pitch, distance);
 			else
 				_nextPing[key] = now + BeaconComposer.PingGap;
 		}
@@ -238,25 +238,32 @@ namespace HandOfFateAccess.Combat {
 				nearestSqr = sqr;
 			}
 
+			// Every outcome of the press is logged at Info: the player asked and heard either
+			// one ping or silence, and the log must say which silence it was.
 			if (!found) {
-				Log.Debug("treasure locator: nothing left to collect");
+				Log.Info("treasure locator: nothing left to collect");
 				return;
 			}
-			Ping(BeaconComposer.ChestKey, nearest, frame, out _, out _);
+			frame.Project(nearest, out float right, out float forward);
+			if (Ping(BeaconComposer.ChestKey, nearest, frame, out SoundParams played, out float distance))
+				Log.Info("treasure locator: answered " + distance.ToString("F1") + " away at (right "
+					+ right.ToString("F1") + ", forward " + forward.ToString("F1") + "); pan "
+					+ played.Pan.ToString("F2") + ", pitch " + played.Pitch.ToString("F2")
+					+ ", volume " + played.Volume.ToString("F2"));
+			else
+				Log.Info("treasure locator: treasure underfoot ("
+					+ distance.ToString("F1") + " away), ping suppressed");
 		}
 
-		// Plays the ping and reports the pitch it played at (a playback-rate multiplier, so
-		// the caller can tell when this sound will end) plus the ground distance the next
-		// gap is scheduled from; false when the ping was suppressed.
+		// Plays the ping and reports the parameters it played with (the pitch is a
+		// playback-rate multiplier, so the caller can tell when this sound will end) plus
+		// the ground distance the next gap is scheduled from; false when the ping was
+		// suppressed (the player standing on the object).
 		private static bool Ping(string key, Vector3 position, CombatFrame frame,
-				out float pitch, out float distance) {
+				out SoundParams parameters, out float distance) {
 			frame.Project(position, out float right, out float forward);
-			if (!BeaconComposer.TryCompose(right, forward, out SoundParams parameters, out distance)) {
-				pitch = 1f;
-				return false;
-			}
+			if (!BeaconComposer.TryCompose(right, forward, out parameters, out distance)) return false;
 			AudioEngine.PlayOneShot(key, parameters);
-			pitch = parameters.Pitch;
 			return true;
 		}
 
@@ -323,6 +330,18 @@ namespace HandOfFateAccess.Combat {
 			if (setChanged || _loot.Length != _lastLoot) {
 				Log.Info("beacons: " + chests.Length + " chest(s), " + exits.Length + " exit(s), "
 					+ _loot.Length + " loot");
+				if (_loot.Length > 0) {
+					// Where the treasure sits, as recon for a session spent hunting it: world
+					// coordinates in the same x, z form as the chest/exit resolution lines.
+					var positions = new System.Text.StringBuilder("beacons: loot at ");
+					for (int i = 0; i < _loot.Length; i++) {
+						if (i > 0) positions.Append(", ");
+						Vector3 at = _loot[i].transform.position;
+						positions.Append("(").Append(at.x.ToString("F1")).Append(", ")
+							.Append(at.z.ToString("F1")).Append(")");
+					}
+					Log.Info(positions.ToString());
+				}
 				if (setChanged) {
 					// Where each chest and exit will sound from, as recon for a beacon heard
 					// in the wrong place: the component transform versus the resolved trigger.
