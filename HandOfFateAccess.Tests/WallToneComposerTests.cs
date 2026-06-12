@@ -46,15 +46,73 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void SideWallsPanHardToTheirEar() {
-			Assert.Equal(1f, WallToneComposer.PanFor(WallSide.Right));
-			Assert.Equal(-1f, WallToneComposer.PanFor(WallSide.Left));
+		public void SideWallsRestStronglyPanned_BeyondTheGate() {
+			Assert.Equal(WallToneComposer.RestPan, WallToneComposer.PanFor(WallSide.Right, WallToneComposer.PanGateRange));
+			Assert.Equal(WallToneComposer.RestPan, WallToneComposer.PanFor(WallSide.Right, WallToneComposer.Range));
+			Assert.Equal(-WallToneComposer.RestPan, WallToneComposer.PanFor(WallSide.Left, float.PositiveInfinity));
 		}
 
 		[Fact]
-		public void ForwardAndBackWallsAreCentred() {
-			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Above));
-			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Below));
+		public void SideWallsSlideFullyInEar_AtContact() {
+			Assert.Equal(1f, WallToneComposer.PanFor(WallSide.Right, 0f));
+			Assert.Equal(-1f, WallToneComposer.PanFor(WallSide.Left, 0f));
+		}
+
+		[Fact]
+		public void SidePanSlidesLinearlyInsideTheGate() {
+			float midway = WallToneComposer.PanFor(WallSide.Right, WallToneComposer.PanGateRange / 2f);
+			Assert.Equal((1f + WallToneComposer.RestPan) / 2f, midway, 3);
+		}
+
+		[Fact]
+		public void SidePanNeverLeavesItsSide() {
+			// The slide is into the ear only: at no distance does a side wind drift toward
+			// center, where it would walk into the fore/aft pair's position.
+			for (float d = 0f; d <= WallToneComposer.Range; d += 0.1f) {
+				float pan = WallToneComposer.PanFor(WallSide.Right, d);
+				Assert.InRange(pan, WallToneComposer.RestPan, 1f);
+			}
+		}
+
+		[Fact]
+		public void DegenerateDistance_RestsThePan() {
+			// No wall (or a broken measurement) settles back to rest, never to hard pan.
+			Assert.Equal(WallToneComposer.RestPan, WallToneComposer.PanFor(WallSide.Right, float.NaN));
+			Assert.Equal(WallToneComposer.RestPan, WallToneComposer.PanFor(WallSide.Right, -1f));
+		}
+
+		[Fact]
+		public void ForwardAndBackWallsAreCentred_AtAnyDistance() {
+			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Above, 0f));
+			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Above, float.PositiveInfinity));
+			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Below, 0f));
+			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Below, 1f));
+		}
+
+		[Fact]
+		public void Pitch_AheadIsUnshifted_BehindIsTheFullSpanDown() {
+			Assert.Equal(1f, WallToneComposer.PitchFor(WallSide.Above));
+			Assert.Equal((float)System.Math.Pow(2.0, -WallToneComposer.PitchSpanOctaves),
+				WallToneComposer.PitchFor(WallSide.Below), 4);
+		}
+
+		[Fact]
+		public void Pitch_SideWindsSitHalfwayDown() {
+			float halfway = (float)System.Math.Pow(2.0, -WallToneComposer.PitchSpanOctaves * 0.5);
+			Assert.Equal(halfway, WallToneComposer.PitchFor(WallSide.Left), 4);
+			Assert.Equal(WallToneComposer.PitchFor(WallSide.Left), WallToneComposer.PitchFor(WallSide.Right));
+		}
+
+		[Fact]
+		public void Pitch_OrderedNorthDownToSouth_AndNeverAboveTheAuthoredClip() {
+			// Souther is darker, and the shifter only ever works downward from the synth's
+			// authored brightness, the rule every pitched sound follows.
+			float above = WallToneComposer.PitchFor(WallSide.Above);
+			float side = WallToneComposer.PitchFor(WallSide.Right);
+			float below = WallToneComposer.PitchFor(WallSide.Below);
+			Assert.True(above > side && side > below);
+			Assert.True(above <= 1f);
+			Assert.True(below >= HandOfFateAccess.Audio.SoundParams.MinPitch);
 		}
 
 		[Fact]

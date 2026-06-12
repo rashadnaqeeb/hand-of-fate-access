@@ -9,8 +9,9 @@ namespace HandOfFateAccess.Glossary {
 	/// tracking voices, then navigation). Each demo is the canonical authored sound:
 	/// centered, at the clip's own pitch, at the feature's peak loudness, so the player
 	/// hears the cleanest version of what they will later read bearing and distance
-	/// off. The one exception is the wall tones, whose per-side pan IS the sound, so
-	/// the four sides play in sequence each at its real stereo position.
+	/// off. The one exception is the wall tones, whose per-side pan and pitch ARE the
+	/// sound, so the four sides play in sequence each at its real stereo position and
+	/// register.
 	///
 	/// Demo clips: the zone loops are authored at exactly one second, so a single
 	/// non-looping play is the one-second demo. The projectile has no registered clip
@@ -75,9 +76,15 @@ namespace HandOfFateAccess.Glossary {
 		}
 
 		private static GlossaryStep WallStep(WallSide side) {
+			// At-rest pan (the position heard through most of the range; the slide to hard
+			// pan is the live contact cue) and the side's fixed pitch, both part of the
+			// sound's identity.
 			return new GlossaryStep(
 				WallToneComposer.KeyFor(side),
-				new SoundParams(WallToneComposer.PanFor(side), 1f, WallToneComposer.MaxVolume),
+				new SoundParams(
+					WallToneComposer.PanFor(side, float.PositiveInfinity),
+					WallToneComposer.PitchFor(side),
+					WallToneComposer.MaxVolume),
 				true, LoopHoldSeconds);
 		}
 	}

@@ -6,6 +6,9 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+* The four wall tones are now one wind sound instead of three: every side plays the same synthesized wind, and the side is carried by position alone. Left and right keep their pan, the wall ahead is the wind at its brightest, and the wall behind is the same wind pitched deep, following the souther-is-darker rule the projectile and hazard voices already use. Standing in a corner, the two winds now blend into one thicker wind instead of two competing sounds.
+* A side wall's wind now slides from its resting position into your ear over the last couple of meters before contact. The moment it starts moving in the stereo field means "this is the wall you are about to walk into"; volume still carries distance the whole way, and the collision bump still marks actual contact.
+
 ## 1.1.0 - 2026-06-11
 
 * Trap spear launchers now play a telegraph cue when a spear fires down a lane that covers where you stand: the block cue if the spear can be reflected and you hold a reflect-capable counter, otherwise the dodge cue. Spears aimed elsewhere stay quiet, a multi-spear volley cracks once, and the flight voice still tracks every spear in the air.

@@ -95,7 +95,7 @@ $required = @(
     "BepInEx\plugins\Tolk.dll",
     "BepInEx\plugins\nvdaControllerClient32.dll",
     "BepInEx\plugins\HofSapi.dll",
-    "BepInEx\plugins\sounds\walltone_left.wav"
+    "BepInEx\plugins\sounds\walltone_collision.wav"
 )
 $missing = $required | Where-Object { -not (Test-Path "$Stage\$_") }
 if ($missing) {

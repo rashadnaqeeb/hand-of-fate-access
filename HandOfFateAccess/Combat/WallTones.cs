@@ -1,29 +1,31 @@
-using System;
-using System.IO;
 using HandOfFateAccess.Audio;
 using HandOfFateAccess.Util;
 using UnityEngine;
 
 namespace HandOfFateAccess.Combat {
 	/// <summary>
-	/// The wall-tone combat aid: while a fight is live, a looping tone for each side
+	/// The wall-tone combat aid: while a fight is live, a looping wind for each side
 	/// (left, right, ahead, behind) swells as an impassable wall or column closes in, so
 	/// a player who cannot see the arena can hear how boxed in they are and which way is
-	/// clear. The four clips are authored mono wind loops loaded from the plugin's sounds
-	/// folder; the engine pans them at play time, so the spatial position is exact.
+	/// clear. All four sides are decorrelated takes of one synthesized wind
+	/// (<see cref="WindSynth"/>, one seed per side), told apart by position: pan for the
+	/// side winds, the bearing grammar's pitch axis for the fore/aft pair. A side wind's
+	/// pan also slides from its rest position into the ear over the last stretch before
+	/// contact, the Core composer's contact-imminent cue.
 	///
-	/// All four voices run continuously for the whole fight; each frame their volumes are
-	/// eased toward the targets the Core composer derives from the live distances. Driving
-	/// volume rather than starting and stopping loops is deliberate: in cluttered arenas
-	/// the nearest object on a side flickers across the range edge and swaps identity
-	/// constantly, and restarting a loop each time clicks and lurches. The voice handles
-	/// are the mod's own audio state, not game state; the distances behind them are
-	/// re-measured live every frame.
+	/// All four voices run continuously for the whole fight; each frame their volumes and
+	/// pans are eased toward the targets the Core composer derives from the live
+	/// distances. Driving the running loops rather than starting and stopping them is
+	/// deliberate: in cluttered arenas the nearest object on a side flickers across the
+	/// range edge and swaps identity constantly, and restarting a loop each time clicks
+	/// and lurches. The voice handles are the mod's own audio state, not game state; the
+	/// distances behind them are re-measured live every frame.
 	/// </summary>
 	internal sealed class WallTones {
-		// Indexed by (int)WallSide: Right, Left, Above, Below. The keys (and the
-		// sounds-folder file stems they double as) live on the Core composer, which the
-		// sound glossary also reads.
+		private const int RenderSampleRate = 44100;
+
+		// Indexed by (int)WallSide: Right, Left, Above, Below. The keys live on the Core
+		// composer, which the sound glossary also reads.
 		private static readonly string[] Keys = {
 			WallToneComposer.RightKey,
 			WallToneComposer.LeftKey,
@@ -35,40 +37,24 @@ namespace HandOfFateAccess.Combat {
 		// otherwise shadows the audio pool's handle here.
 		private readonly HandOfFateAccess.Audio.Voice[] _voice = new HandOfFateAccess.Audio.Voice[4];
 		private readonly float[] _volume = new float[4];
-		private readonly bool[] _loaded = new bool[4];
+		private readonly float[] _pan = new float[4];
 		private bool _started;
 
-		/// <summary>
-		/// Load and register the four tone clips from <paramref name="pluginDir"/>/sounds.
-		/// A clip that fails to load leaves its side silent (logged), so a missing or bad
-		/// file degrades one direction rather than the whole feature.
-		/// </summary>
-		public void Initialize(string pluginDir) {
+		/// <summary>Render and register the four wind loops, one seed per side so the
+		/// takes are decorrelated and simultaneous sides image separately.</summary>
+		public void Initialize() {
 			if (!AudioEngine.IsAvailable) {
 				Log.Warn("audio backend unavailable; wall tones disabled");
 				return;
 			}
-			string soundsDir = Path.Combine(pluginDir, "sounds");
 			for (int i = 0; i < Keys.Length; i++)
-				_loaded[i] = LoadClip(soundsDir, Keys[i]);
-		}
-
-		private bool LoadClip(string soundsDir, string key) {
-			string path = Path.Combine(soundsDir, key + ".wav");
-			try {
-				byte[] bytes = File.ReadAllBytes(path);
-				WavAudio.Decode(bytes, out float[] pcm, out int channels, out int sampleRate);
-				AudioEngine.Register(key, pcm, channels, sampleRate);
-				return true;
-			} catch (Exception ex) {
-				Log.Error("wall tone '" + key + "' failed to load from " + path + ": " + ex);
-				return false;
-			}
+				AudioEngine.Register(Keys[i], WindSynth.Render(RenderSampleRate, (uint)(i + 1)), 1, RenderSampleRate);
 		}
 
 		/// <summary>
 		/// Drive the tones for this frame. Outside a live fight (or before audio is up) the
-		/// voices are stopped; inside combat each side's volume eases toward its live target.
+		/// voices are stopped; inside combat each side's volume and pan ease toward their
+		/// live targets.
 		/// </summary>
 		public void Pump() {
 			if (!AudioEngine.IsAvailable) return;
@@ -94,15 +80,16 @@ namespace HandOfFateAccess.Combat {
 				Drive((WallSide)i, probe, dt);
 		}
 
-		// Open every loaded side's voice at silence; the per-frame easing brings each up
-		// from there, so the fight starts without a click.
+		// Open every side's voice at silence and at rest pan; the per-frame easing brings
+		// each up from there, so the fight starts without a click.
 		private void StartSession() {
 			_started = true;
 			for (int i = 0; i < 4; i++) {
-				_volume[i] = 0f;
-				if (!_loaded[i]) continue;
 				var side = (WallSide)i;
-				_voice[i] = AudioEngine.Play(Keys[i], new SoundParams(WallToneComposer.PanFor(side), 1f, 0f), true);
+				_volume[i] = 0f;
+				_pan[i] = WallToneComposer.PanFor(side, float.PositiveInfinity);
+				_voice[i] = AudioEngine.Play(Keys[i],
+					new SoundParams(_pan[i], WallToneComposer.PitchFor(side), 0f), true);
 			}
 			Log.Debug("wall tones started");
 		}
@@ -110,9 +97,10 @@ namespace HandOfFateAccess.Combat {
 		private void Drive(WallSide side, WallProbe probe, float dt) {
 			int i = (int)side;
 			if (!_voice[i].IsValid) return;
-			float target = WallToneComposer.TargetVolume(probe.DistanceTo(side));
-			_volume[i] = WallToneComposer.Smooth(_volume[i], target, dt);
-			AudioEngine.Update(_voice[i], new SoundParams(WallToneComposer.PanFor(side), 1f, _volume[i]));
+			float distance = probe.DistanceTo(side);
+			_volume[i] = WallToneComposer.Smooth(_volume[i], WallToneComposer.TargetVolume(distance), dt);
+			_pan[i] = WallToneComposer.Smooth(_pan[i], WallToneComposer.PanFor(side, distance), dt);
+			AudioEngine.Update(_voice[i], new SoundParams(_pan[i], WallToneComposer.PitchFor(side), _volume[i]));
 		}
 
 		private void StopSession() {
