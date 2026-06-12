@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using HandOfFateAccess.Audio;
 using HandOfFateAccess.Util;
 using UnityEngine;
@@ -7,11 +9,10 @@ namespace HandOfFateAccess.Combat {
 	/// The wall-tone combat aid: while a fight is live, a looping wind for each side
 	/// (left, right, ahead, behind) swells as an impassable wall or column closes in, so
 	/// a player who cannot see the arena can hear how boxed in they are and which way is
-	/// clear. All four sides are decorrelated takes of one synthesized wind
-	/// (<see cref="WindSynth"/>, one seed per side), told apart by position: pan for the
-	/// side winds, the bearing grammar's pitch axis for the fore/aft pair. A side wind's
-	/// pan also slides from its rest position into the ear over the last stretch before
-	/// contact, the Core composer's contact-imminent cue.
+	/// clear. The four clips are authored mono wind loops loaded from the plugin's sounds
+	/// folder, distinct timbres so simultaneous close walls stay readable (see the Core
+	/// composer's remarks). A side wind's pan slides from its rest position into the ear
+	/// over the last stretch before contact, the Core composer's contact-imminent cue.
 	///
 	/// All four voices run continuously for the whole fight; each frame their volumes and
 	/// pans are eased toward the targets the Core composer derives from the live
@@ -22,10 +23,9 @@ namespace HandOfFateAccess.Combat {
 	/// distances behind them are re-measured live every frame.
 	/// </summary>
 	internal sealed class WallTones {
-		private const int RenderSampleRate = 44100;
-
-		// Indexed by (int)WallSide: Right, Left, Above, Below. The keys live on the Core
-		// composer, which the sound glossary also reads.
+		// Indexed by (int)WallSide: Right, Left, Above, Below. The keys (and the
+		// sounds-folder file stems they double as) live on the Core composer, which the
+		// sound glossary also reads.
 		private static readonly string[] Keys = {
 			WallToneComposer.RightKey,
 			WallToneComposer.LeftKey,
@@ -38,17 +38,35 @@ namespace HandOfFateAccess.Combat {
 		private readonly HandOfFateAccess.Audio.Voice[] _voice = new HandOfFateAccess.Audio.Voice[4];
 		private readonly float[] _volume = new float[4];
 		private readonly float[] _pan = new float[4];
+		private readonly bool[] _loaded = new bool[4];
 		private bool _started;
 
-		/// <summary>Render and register the four wind loops, one seed per side so the
-		/// takes are decorrelated and simultaneous sides image separately.</summary>
-		public void Initialize() {
+		/// <summary>
+		/// Load and register the four tone clips from <paramref name="pluginDir"/>/sounds.
+		/// A clip that fails to load leaves its side silent (logged), so a missing or bad
+		/// file degrades one direction rather than the whole feature.
+		/// </summary>
+		public void Initialize(string pluginDir) {
 			if (!AudioEngine.IsAvailable) {
 				Log.Warn("audio backend unavailable; wall tones disabled");
 				return;
 			}
+			string soundsDir = Path.Combine(pluginDir, "sounds");
 			for (int i = 0; i < Keys.Length; i++)
-				AudioEngine.Register(Keys[i], WindSynth.Render(RenderSampleRate, (uint)(i + 1)), 1, RenderSampleRate);
+				_loaded[i] = LoadClip(soundsDir, Keys[i]);
+		}
+
+		private bool LoadClip(string soundsDir, string key) {
+			string path = Path.Combine(soundsDir, key + ".wav");
+			try {
+				byte[] bytes = File.ReadAllBytes(path);
+				WavAudio.Decode(bytes, out float[] pcm, out int channels, out int sampleRate);
+				AudioEngine.Register(key, pcm, channels, sampleRate);
+				return true;
+			} catch (Exception ex) {
+				Log.Error("wall tone '" + key + "' failed to load from " + path + ": " + ex);
+				return false;
+			}
 		}
 
 		/// <summary>
@@ -80,16 +98,16 @@ namespace HandOfFateAccess.Combat {
 				Drive((WallSide)i, probe, dt);
 		}
 
-		// Open every side's voice at silence and at rest pan; the per-frame easing brings
-		// each up from there, so the fight starts without a click.
+		// Open every loaded side's voice at silence and at rest pan; the per-frame easing
+		// brings each up from there, so the fight starts without a click.
 		private void StartSession() {
 			_started = true;
 			for (int i = 0; i < 4; i++) {
-				var side = (WallSide)i;
 				_volume[i] = 0f;
+				if (!_loaded[i]) continue;
+				var side = (WallSide)i;
 				_pan[i] = WallToneComposer.PanFor(side, float.PositiveInfinity);
-				_voice[i] = AudioEngine.Play(Keys[i],
-					new SoundParams(_pan[i], WallToneComposer.PitchFor(side), 0f), true);
+				_voice[i] = AudioEngine.Play(Keys[i], new SoundParams(_pan[i], 1f, 0f), true);
 			}
 			Log.Debug("wall tones started");
 		}
@@ -100,7 +118,7 @@ namespace HandOfFateAccess.Combat {
 			float distance = probe.DistanceTo(side);
 			_volume[i] = WallToneComposer.Smooth(_volume[i], WallToneComposer.TargetVolume(distance), dt);
 			_pan[i] = WallToneComposer.Smooth(_pan[i], WallToneComposer.PanFor(side, distance), dt);
-			AudioEngine.Update(_voice[i], new SoundParams(_pan[i], WallToneComposer.PitchFor(side), _volume[i]));
+			AudioEngine.Update(_voice[i], new SoundParams(_pan[i], 1f, _volume[i]));
 		}
 
 		private void StopSession() {

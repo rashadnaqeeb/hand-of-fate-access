@@ -141,7 +141,7 @@ namespace HandOfFateAccess {
 			// Wall tones ride on the audio backend alone, so they come up here, before the
 			// speech path, and keep working even if the screen reader never initializes.
 			_wallTones = new WallTones();
-			_wallTones.Initialize();
+			_wallTones.Initialize(pluginDir);
 			_collisionCue = new CollisionCue();
 			_collisionCue.Initialize(pluginDir);
 			_projectiles = new ProjectileSonification();

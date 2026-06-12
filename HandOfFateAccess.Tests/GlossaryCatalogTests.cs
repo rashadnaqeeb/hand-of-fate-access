@@ -23,14 +23,11 @@ namespace HandOfFateAccess.Tests {
 
 		[Fact]
 		public void Steps_AllHaveClipKeyAndAudibleParams() {
-			// Pitch is 1 (the clip's own) for every demo except the wall winds, whose
-			// per-side pitch is part of the sound's identity; never above 1 (the shifter
-			// only works downward) and never low enough to clamp.
 			foreach (var entry in GlossaryCatalog.Entries)
 				foreach (var step in entry.Steps) {
 					Assert.False(string.IsNullOrEmpty(step.ClipKey));
 					Assert.True(step.Params.Volume > 0f, entry.Label + ": silent demo step");
-					Assert.InRange(step.Params.Pitch, SoundParams.MinPitch, 1f);
+					Assert.Equal(1f, step.Params.Pitch);
 				}
 		}
 
@@ -47,10 +44,10 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void WallTonesEntry_PlaysAllFourSidesAtTheirPansAndPitches() {
-			// The looping multi-step entry: four side winds in sequence, the side walls at
+		public void WallTonesEntry_PlaysAllFourSidesAtTheirPans() {
+			// The looping multi-step entry: four side tones in sequence, the side walls at
 			// their rest pan (the position heard through most of the range), fore and aft
-			// centered and split by the pitch axis, like the live feature.
+			// centered, like the live feature.
 			GlossaryEntry walls = null;
 			foreach (var entry in GlossaryCatalog.Entries)
 				if (entry.Steps.Length > 1 && entry.Steps[0].Loop)
@@ -61,10 +58,6 @@ namespace HandOfFateAccess.Tests {
 			Assert.Equal(-WallToneComposer.RestPan, walls.Steps[1].Params.Pan);
 			Assert.Equal(0f, walls.Steps[2].Params.Pan);
 			Assert.Equal(0f, walls.Steps[3].Params.Pan);
-			Assert.Equal(WallToneComposer.PitchFor(WallSide.Right), walls.Steps[0].Params.Pitch);
-			Assert.Equal(WallToneComposer.PitchFor(WallSide.Left), walls.Steps[1].Params.Pitch);
-			Assert.Equal(1f, walls.Steps[2].Params.Pitch);
-			Assert.Equal(WallToneComposer.PitchFor(WallSide.Below), walls.Steps[3].Params.Pitch);
 			foreach (var step in walls.Steps)
 				Assert.True(step.Loop);
 		}

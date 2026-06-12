@@ -2,17 +2,19 @@ using System;
 
 namespace HandOfFateAccess.Combat {
 	/// <summary>
-	/// Turns a measured distance to a wall into the loudness, stereo position, and pitch
-	/// the player hears for one side. This is the "what the player hears" decision, so it
+	/// Turns a measured distance to a wall into the loudness and stereo position the
+	/// player hears for one side. This is the "what the player hears" decision, so it
 	/// lives in Core and is unit-tested off-engine; the adapter only measures distance
 	/// with a raycast.
 	///
-	/// The four tones are decorrelated takes of one wind (<see cref="Audio.WindSynth"/>),
-	/// told apart by where they sit, not by what they are: the side winds by pan, the
-	/// fore/aft pair by the bearing grammar's pitch axis (ahead unshifted and brightest,
-	/// behind <see cref="PitchSpanOctaves"/> darker, the souther-is-darker rule every
-	/// positioned sound follows). One wall instrument to learn instead of three, and a
-	/// corner's two winds blend into a thicker wind instead of competing timbres.
+	/// The four tones are authored recordings with distinct timbres: one wind for the
+	/// side pair (two decorrelated takes, so left and right image separately when both
+	/// sound), a brighter wind ahead, a darker one behind. Distinct timbres are
+	/// deliberate, twice over: a synthesized one-wind-for-all-sides redesign (identity
+	/// carried by pan and pitch alone) was field-tested and reverted, because with walls
+	/// close on several sides, the common case in complex arena geometry, same-family
+	/// streams blend into one unreadable mass, and decorrelation alone cannot separate
+	/// more than two; per-stream timbre is what keeps a corner readable.
 	///
 	/// They run continuously through a fight rather than starting and stopping
 	/// as walls cross the range edge: in cluttered arenas the nearest object on a side
@@ -35,9 +37,8 @@ namespace HandOfFateAccess.Combat {
 	/// as. The fore/aft winds have no pan axis and stay centered, volume-only.
 	/// </summary>
 	public static class WallToneComposer {
-		/// <summary>Clip keys for the four side winds, registered from
-		/// <see cref="Audio.WindSynth"/> renders at startup (one seed per side).
-		/// Indexable by side via <see cref="KeyFor"/>.</summary>
+		/// <summary>Clip keys for the four side tones, doubling as the sounds-folder file
+		/// stems (walltone_right.wav ...). Indexable by side via <see cref="KeyFor"/>.</summary>
 		public const string RightKey = "walltone_right";
 		public const string LeftKey = "walltone_left";
 		public const string AboveKey = "walltone_above";
@@ -67,13 +68,6 @@ namespace HandOfFateAccess.Combat {
 		/// <see cref="Range"/>: the wind is established by volume first, then starts
 		/// moving.</summary>
 		public const float PanGateRange = 2.5f;
-
-		/// <summary>Octaves between the ahead wind (unshifted, brightest) and the behind
-		/// wind (darkest), the bearing grammar's souther-is-darker axis. Wider than the
-		/// projectile span: a wall's pitch is its identity, not a live bearing readout,
-		/// so the spread is sized for instant telling-apart. Matches the spectral spread
-		/// the original three authored recordings had.</summary>
-		public const float PitchSpanOctaves = 1.5f;
 
 		// Time constant, in seconds, of the volume easing: roughly the time to close most
 		// of the gap to a new target. Small enough to track movement, large enough to turn
@@ -119,18 +113,6 @@ namespace HandOfFateAccess.Combat {
 			// NaN fails the comparison and rests, like the volume curve's range test.
 			if (!(distance >= 0f) || distance >= PanGateRange) return sign * RestPan;
 			return sign * (1f - (1f - RestPan) * (distance / PanGateRange));
-		}
-
-		/// <summary>The fixed pitch for a side's wind, the playback rate its loop always
-		/// plays at: ahead unshifted (the synth's authored brightness), behind the full
-		/// <see cref="PitchSpanOctaves"/> down, the side winds halfway, per the shared
-		/// souther-is-darker axis (left/right sit at zero north/south deflection).</summary>
-		public static float PitchFor(WallSide side) {
-			switch (side) {
-				case WallSide.Above: return 1f;
-				case WallSide.Below: return (float)Math.Pow(2.0, -PitchSpanOctaves);
-				default: return (float)Math.Pow(2.0, -PitchSpanOctaves * 0.5);
-			}
 		}
 
 		/// <summary>

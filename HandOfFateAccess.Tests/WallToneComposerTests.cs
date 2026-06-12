@@ -90,32 +90,6 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void Pitch_AheadIsUnshifted_BehindIsTheFullSpanDown() {
-			Assert.Equal(1f, WallToneComposer.PitchFor(WallSide.Above));
-			Assert.Equal((float)System.Math.Pow(2.0, -WallToneComposer.PitchSpanOctaves),
-				WallToneComposer.PitchFor(WallSide.Below), 4);
-		}
-
-		[Fact]
-		public void Pitch_SideWindsSitHalfwayDown() {
-			float halfway = (float)System.Math.Pow(2.0, -WallToneComposer.PitchSpanOctaves * 0.5);
-			Assert.Equal(halfway, WallToneComposer.PitchFor(WallSide.Left), 4);
-			Assert.Equal(WallToneComposer.PitchFor(WallSide.Left), WallToneComposer.PitchFor(WallSide.Right));
-		}
-
-		[Fact]
-		public void Pitch_OrderedNorthDownToSouth_AndNeverAboveTheAuthoredClip() {
-			// Souther is darker, and the shifter only ever works downward from the synth's
-			// authored brightness, the rule every pitched sound follows.
-			float above = WallToneComposer.PitchFor(WallSide.Above);
-			float side = WallToneComposer.PitchFor(WallSide.Right);
-			float below = WallToneComposer.PitchFor(WallSide.Below);
-			Assert.True(above > side && side > below);
-			Assert.True(above <= 1f);
-			Assert.True(below >= HandOfFateAccess.Audio.SoundParams.MinPitch);
-		}
-
-		[Fact]
 		public void Smooth_MovesTowardTarget_WithoutOvershooting() {
 			float next = WallToneComposer.Smooth(0f, 1f, 1f / 60f);
 			Assert.True(next > 0f && next < 1f);
