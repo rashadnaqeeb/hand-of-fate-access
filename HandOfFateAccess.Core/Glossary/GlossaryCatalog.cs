@@ -36,7 +36,7 @@ namespace HandOfFateAccess.Glossary {
 		private const float RechargeHoldSeconds = 1.6f;
 
 		// The collision bump's demo loudness, matching the plugin's CollisionCue.
-		private const float CollisionVolume = 0.7f;
+		private const float CollisionVolume = 1f;
 
 		// Labels are passed as delegates so the array, built once at class load,
 		// reads each line through Strings live and follows a language switch.

@@ -24,9 +24,10 @@ namespace HandOfFateAccess.Combat {
 	/// </summary>
 	internal sealed class CollisionCue {
 		private const string Key = WallToneComposer.CollisionKey;
-		// Slightly above the wall tones' ceiling so the transient reads as an event over the
-		// continuous bed rather than blending into it.
-		private const float Volume = 0.7f;
+		// Full gain, well above the wall tones' ceiling: the transient is an event the player
+		// must not miss over the continuous bed and the game's own mix. The clip's authored
+		// peak (0.7) leaves this clip-free; renormalizing the wav is the remaining headroom.
+		private const float Volume = 1f;
 
 		private bool _loaded;
 		private bool _armed;

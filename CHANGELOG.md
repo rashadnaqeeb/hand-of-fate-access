@@ -6,6 +6,8 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+* The wall collision bump is noticeably louder, so walking into a wall can no longer get lost under the fight and the game's ambience.
+
 * The four wall tones are now one wind sound instead of three: every side plays the same synthesized wind, and the side is carried by position alone. Left and right keep their pan, the wall ahead is the wind at its brightest, and the wall behind is the same wind pitched deep, following the souther-is-darker rule the projectile and hazard voices already use. Standing in a corner, the two winds now blend into one thicker wind instead of two competing sounds.
 * A side wall's wind now slides from its resting position into your ear over the last couple of meters before contact. The moment it starts moving in the stereo field means "this is the wall you are about to walk into"; volume still carries distance the whole way, and the collision bump still marks actual contact.
 
