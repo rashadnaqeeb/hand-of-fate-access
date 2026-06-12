@@ -6,9 +6,8 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
-* The wall collision bump is noticeably louder, so walking into a wall can no longer get lost under the fight and the game's ambience.
-
-* A side wall's wind now slides from its resting position into your ear over the last couple of meters before contact. The moment it starts moving in the stereo field means "this is the wall you are about to walk into"; volume still carries distance the whole way, and the collision bump still marks actual contact. (At rest the side winds now sit slightly off hard pan to leave room for the slide.)
+* The wall collision bump is now louder.
+* Walls to the left and right now pan closer as you approach them, to try and make close walls more distinct.
 
 ## 1.1.0 - 2026-06-11
 
@@ -20,7 +19,7 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 * In trap rooms, to avoid overwhelming noise, chests no longer loop. instead, use left stick click or l to locate them.
 * Added support for several unsupported traps, specifically spinning blades. Traps remain very difficult to handle, and I'm always open to suggestions on improving the experience.
 * The mod now survives "Reset progress".
-* A recharge chime now plays the moment an equipped ability becomes usable again in a fight: in the left ear for the weapon's ability, in the right ear for the artefact's, matching the button layout. 
+* A recharge chime now plays the moment an equipped ability becomes usable again in a fight: in the left ear for the weapon's ability, in the right ear for the artefact's, matching the button layout.
 * The enemy ping's loudness now reads as distance: full volume means the enemy is within melee swing reach (the game's default attack range, 3 units), fading down to a faint floor at 20 units and beyond. Previously the ping stayed loud everywhere (it never dropped below roughly half volume), so near and far enemies sounded much the same.
 * The Dealer fight is now cued like the other bosses: his hand swipe, lightning, and pulse attacks each play the dodge cue as they begin, and the lightning's rotating beams carry the same hazard voice as every other beam.
 * The Dealer's missile duel speaks through the telegraph cues: the block cue means press counter now, the dodge cue means press dodge now, each fired the moment the game shows its own button prompt.
