@@ -2,8 +2,11 @@ using System;
 
 namespace HandOfFateAccess.Audio {
 	/// <summary>
-	/// Renders the wall wind: white noise through a slowly meandering band-pass, the one
-	/// timbre all four wall tones share. Each side plays its own seed, so the takes are
+	/// Renders the wall wind: white noise through a slowly meandering resonant band-pass,
+	/// the one timbre all four wall tones share. The resonance matters as much as the
+	/// noise: the game's own ambiences (rain above all) are also broadband noise, so the
+	/// wind is identified by the two things rain lacks, a whistling pitch center that
+	/// glides and a slow gusting swell, not by being noise. Each side plays its own seed, so the takes are
 	/// decorrelated copies of the same sound: simultaneous sides (a corner, a corridor)
 	/// sum into one thicker wind yet still image at their own stereo positions, where
 	/// identical copies would fuse into a single phantom somewhere between. The side a
@@ -22,20 +25,23 @@ namespace HandOfFateAccess.Audio {
 		/// repeating pattern; the slow modulators complete whole cycles in it.</summary>
 		public const float LoopSeconds = 4f;
 
-		// Band-pass center at pitch 1 (the unshifted ahead wind, the brightest the wind is
-		// ever heard). Chosen so the south wind, the full pitch span down, still sits in a
-		// clearly windy register rather than a rumble.
-		private const float CenterHz = 4400f;
+		// Whistle center at pitch 1 (the unshifted ahead wind, the brightest the wind is
+		// ever heard). Chosen so the south wind, the full pitch span down, still whistles
+		// rather than rumbles, and no wind's register approaches the ping (414 Hz) or the
+		// zone buzz (160 Hz).
+		private const float CenterHz = 3400f;
 
-		// Octaves the band center wanders each way, the gusty brightness drift of wind.
-		private const float MeanderOctaves = 0.4f;
+		// Octaves the whistle wanders each way: the glide is the wind's signature against
+		// the game's static ambiences, so it is a real sweep, not a shimmer.
+		private const float MeanderOctaves = 0.6f;
 
-		// State-variable filter damping: high, so the band is wide and breathy rather than
-		// a whistling resonance.
-		private const float Damp = 0.9f;
+		// State-variable filter damping: low, a clear whistling resonance. A wide breathy
+		// band disappears into rain; a pitched, gliding peak reads through it.
+		private const float Damp = 0.3f;
 
 		// Depth of the slow loudness gusting: 0 is a steady hiss, 1 swells from silence.
-		private const float GustDepth = 0.35f;
+		// Deep enough that the swell itself is audible against a steady ambience.
+		private const float GustDepth = 0.5f;
 
 		// Tail length blended into the head to close the noise seam.
 		private const float CrossfadeSeconds = 0.25f;
