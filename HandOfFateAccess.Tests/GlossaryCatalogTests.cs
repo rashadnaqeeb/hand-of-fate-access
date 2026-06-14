@@ -45,17 +45,16 @@ namespace HandOfFateAccess.Tests {
 
 		[Fact]
 		public void WallTonesEntry_PlaysAllFourSidesAtTheirPans() {
-			// The looping multi-step entry: four side tones in sequence, the side walls at
-			// their rest pan (the position heard through most of the range), fore and aft
-			// centered, like the live feature.
+			// The looping multi-step entry: four side tones in sequence, the side walls hard
+			// in-ear, fore and aft centered, like the live feature.
 			GlossaryEntry walls = null;
 			foreach (var entry in GlossaryCatalog.Entries)
 				if (entry.Steps.Length > 1 && entry.Steps[0].Loop)
 					walls = entry;
 			Assert.NotNull(walls);
 			Assert.Equal(4, walls.Steps.Length);
-			Assert.Equal(WallToneComposer.RestPan, walls.Steps[0].Params.Pan);
-			Assert.Equal(-WallToneComposer.RestPan, walls.Steps[1].Params.Pan);
+			Assert.Equal(1f, walls.Steps[0].Params.Pan);
+			Assert.Equal(-1f, walls.Steps[1].Params.Pan);
 			Assert.Equal(0f, walls.Steps[2].Params.Pan);
 			Assert.Equal(0f, walls.Steps[3].Params.Pan);
 			foreach (var step in walls.Steps)

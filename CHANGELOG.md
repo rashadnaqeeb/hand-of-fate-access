@@ -7,6 +7,8 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 ## Unreleased
 
 * Most combat cues (walls, hazards, beacons, attack telegraphs, the enemy ping, projectiles) now play through a dedicated audio engine, for harder stereo panning and lower latency.
+* Walls to the left and right now stay panned hard into their ear at every distance; loudness alone tells you how close they are.
+* The wall collision bump no longer fires the instant you touch a wall, only as you keep pushing into it.
 
 ## 1.1.1 - 2026-06-12
 

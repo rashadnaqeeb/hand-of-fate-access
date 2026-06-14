@@ -46,47 +46,17 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void SideWallsRestStronglyPanned_BeyondTheGate() {
-			Assert.Equal(WallToneComposer.RestPan, WallToneComposer.PanFor(WallSide.Right, WallToneComposer.PanGateRange));
-			Assert.Equal(WallToneComposer.RestPan, WallToneComposer.PanFor(WallSide.Right, WallToneComposer.Range));
-			Assert.Equal(-WallToneComposer.RestPan, WallToneComposer.PanFor(WallSide.Left, float.PositiveInfinity));
+		public void SideWallsAreHardPanned() {
+			// Bearing only: a wall's bearing is fully lateral, so the side winds sit hard in
+			// their ear, no distance term.
+			Assert.Equal(1f, WallToneComposer.PanFor(WallSide.Right));
+			Assert.Equal(-1f, WallToneComposer.PanFor(WallSide.Left));
 		}
 
 		[Fact]
-		public void SideWallsSlideFullyInEar_AtContact() {
-			Assert.Equal(1f, WallToneComposer.PanFor(WallSide.Right, 0f));
-			Assert.Equal(-1f, WallToneComposer.PanFor(WallSide.Left, 0f));
-		}
-
-		[Fact]
-		public void SidePanSlidesLinearlyInsideTheGate() {
-			float midway = WallToneComposer.PanFor(WallSide.Right, WallToneComposer.PanGateRange / 2f);
-			Assert.Equal((1f + WallToneComposer.RestPan) / 2f, midway, 3);
-		}
-
-		[Fact]
-		public void SidePanNeverLeavesItsSide() {
-			// The slide is into the ear only: at no distance does a side wind drift toward
-			// center, where it would walk into the fore/aft pair's position.
-			for (float d = 0f; d <= WallToneComposer.Range; d += 0.1f) {
-				float pan = WallToneComposer.PanFor(WallSide.Right, d);
-				Assert.InRange(pan, WallToneComposer.RestPan, 1f);
-			}
-		}
-
-		[Fact]
-		public void DegenerateDistance_RestsThePan() {
-			// No wall (or a broken measurement) settles back to rest, never to hard pan.
-			Assert.Equal(WallToneComposer.RestPan, WallToneComposer.PanFor(WallSide.Right, float.NaN));
-			Assert.Equal(WallToneComposer.RestPan, WallToneComposer.PanFor(WallSide.Right, -1f));
-		}
-
-		[Fact]
-		public void ForwardAndBackWallsAreCentred_AtAnyDistance() {
-			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Above, 0f));
-			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Above, float.PositiveInfinity));
-			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Below, 0f));
-			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Below, 1f));
+		public void ForwardAndBackWallsAreCentred() {
+			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Above));
+			Assert.Equal(0f, WallToneComposer.PanFor(WallSide.Below));
 		}
 
 		[Fact]

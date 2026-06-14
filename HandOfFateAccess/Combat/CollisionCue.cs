@@ -6,15 +6,17 @@ using UnityEngine;
 
 namespace HandOfFateAccess.Combat {
 	/// <summary>
-	/// A short bump played once each time the player walks into a wall, panned toward the
-	/// impact. The footstep patch detects the moment a step fires while the player is not
+	/// A short bump panned toward the impact, played while the player keeps walking into a
+	/// wall. The footstep patch detects the moment a step fires while the player is not
 	/// translating, i.e. pushing into geometry the NavMesh will not let them cross; it
 	/// swallows that step and flags it on <see cref="PlayerMotion"/>.
 	///
-	/// One bump per impact, not a stream while held: the cue arms whenever the player is
-	/// actually moving and disarms when it fires, so a continuous push gives a single bump
-	/// and only real movement (walking off the wall and back, sliding into a fresh corner)
-	/// re-arms it.
+	/// The first blocked step of a contact is silent: the wall tone has already swelled to
+	/// full there, so the touch is covered, and a single tap on every glancing brush would
+	/// be noise. Each further blocked step while still grinding into the same wall bumps, so
+	/// a player wasting movement against geometry keeps hearing it; walking off the wall (any
+	/// real movement) ends the contact, and the next fresh collision is again silent on its
+	/// first step.
 	///
 	/// The pan is the left/right component of the player's facing in the combat camera's
 	/// frame: the player faces the way they are walking, so that is the direction of the
@@ -30,7 +32,7 @@ namespace HandOfFateAccess.Combat {
 		private const float Volume = 1f;
 
 		private bool _loaded;
-		private bool _armed;
+		private bool _inContact;
 
 		public void Initialize(string pluginDir) {
 			if (!AudioEngine.IsAvailable) return;
@@ -54,17 +56,23 @@ namespace HandOfFateAccess.Combat {
 			// (the player is teleported, not walking).
 			if (!CombatGate.IsLive || DealerQte.IsActive) {
 				PlayerMotion.ConsumeBlockedStep();
-				_armed = false;
+				_inContact = false;
 				return;
 			}
 
-			// Real movement re-arms the cue, so the next time the player jams into a wall it
-			// fires afresh; while pinned (never moving) it stays disarmed after the first hit.
-			if (PlayerMotion.IsMoving) _armed = true;
+			// Real movement means the player has left the wall, so the next collision is a
+			// fresh contact whose first blocked step is again silent.
+			if (PlayerMotion.IsMoving) _inContact = false;
 
 			bool blockedStep = PlayerMotion.ConsumeBlockedStep();
-			if (!blockedStep || !_armed) return;
-			_armed = false;
+			if (!blockedStep) return;
+
+			// The first blocked step opens a contact silently (the wall tone already swelled
+			// to full there); only continued grinding into the same wall bumps.
+			if (!_inContact) {
+				_inContact = true;
+				return;
+			}
 
 			PlayerController player = PlayerController.Instance;
 			PlayerCamera camera = PlayerCamera.Instance;

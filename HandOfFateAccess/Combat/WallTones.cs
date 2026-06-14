@@ -11,12 +11,12 @@ namespace HandOfFateAccess.Combat {
 	/// a player who cannot see the arena can hear how boxed in they are and which way is
 	/// clear. The four clips are authored mono wind loops loaded from the plugin's sounds
 	/// folder, distinct timbres so simultaneous close walls stay readable (see the Core
-	/// composer's remarks). A side wind's pan slides from its rest position into the ear
-	/// over the last stretch before contact, the Core composer's contact-imminent cue.
+	/// composer's remarks). Each side wind is hard-panned into its ear and stays there;
+	/// volume alone carries distance.
 	///
-	/// All four voices run continuously for the whole fight; each frame their volumes and
-	/// pans are eased toward the targets the Core composer derives from the live
-	/// distances. Driving the running loops rather than starting and stopping them is
+	/// All four voices run continuously for the whole fight; each frame their volumes are
+	/// eased toward the targets the Core composer derives from the live distances. Driving
+	/// the running loops rather than starting and stopping them is
 	/// deliberate: in cluttered arenas the nearest object on a side flickers across the
 	/// range edge and swaps identity constantly, and restarting a loop each time clicks
 	/// and lurches. The voice handles are the mod's own audio state, not game state; the
@@ -37,7 +37,6 @@ namespace HandOfFateAccess.Combat {
 		// otherwise shadows the audio pool's handle here.
 		private readonly HandOfFateAccess.Audio.Voice[] _voice = new HandOfFateAccess.Audio.Voice[4];
 		private readonly float[] _volume = new float[4];
-		private readonly float[] _pan = new float[4];
 		private readonly bool[] _loaded = new bool[4];
 		private bool _started;
 
@@ -98,16 +97,14 @@ namespace HandOfFateAccess.Combat {
 				Drive((WallSide)i, probe, dt);
 		}
 
-		// Open every loaded side's voice at silence and at rest pan; the per-frame easing
-		// brings each up from there, so the fight starts without a click.
+		// Open every loaded side's voice at silence and at its fixed hard pan; the per-frame
+		// easing brings the volume up from there, so the fight starts without a click.
 		private void StartSession() {
 			_started = true;
 			for (int i = 0; i < 4; i++) {
 				_volume[i] = 0f;
 				if (!_loaded[i]) continue;
-				var side = (WallSide)i;
-				_pan[i] = WallToneComposer.PanFor(side, float.PositiveInfinity);
-				_voice[i] = AudioEngine.Play(Keys[i], new SoundParams(_pan[i], 1f, 0f), true);
+				_voice[i] = AudioEngine.Play(Keys[i], new SoundParams(WallToneComposer.PanFor((WallSide)i), 1f, 0f), true);
 			}
 			Log.Debug("wall tones started");
 		}
@@ -117,8 +114,7 @@ namespace HandOfFateAccess.Combat {
 			if (!_voice[i].IsValid) return;
 			float distance = probe.DistanceTo(side);
 			_volume[i] = WallToneComposer.Smooth(_volume[i], WallToneComposer.TargetVolume(distance), dt);
-			_pan[i] = WallToneComposer.Smooth(_pan[i], WallToneComposer.PanFor(side, distance), dt);
-			AudioEngine.Update(_voice[i], new SoundParams(_pan[i], 1f, _volume[i]));
+			AudioEngine.Update(_voice[i], new SoundParams(WallToneComposer.PanFor(side), 1f, _volume[i]));
 		}
 
 		private void StopSession() {

@@ -75,14 +75,10 @@ namespace HandOfFateAccess.Glossary {
 		}
 
 		private static GlossaryStep WallStep(WallSide side) {
-			// At-rest pan: the position heard through most of the range; the slide to hard
-			// pan is the live contact cue.
+			// The side's fixed pan: side walls hard in-ear, fore/aft centered.
 			return new GlossaryStep(
 				WallToneComposer.KeyFor(side),
-				new SoundParams(
-					WallToneComposer.PanFor(side, float.PositiveInfinity),
-					1f,
-					WallToneComposer.MaxVolume),
+				new SoundParams(WallToneComposer.PanFor(side), 1f, WallToneComposer.MaxVolume),
 				true, LoopHoldSeconds);
 		}
 	}
