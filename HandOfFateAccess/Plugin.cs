@@ -179,6 +179,15 @@ namespace HandOfFateAccess {
 			// combat path.
 			_attackCues = new AttackCues();
 			_attackCues.Initialize(pluginDir);
+
+			// Lock the combat camera's yaw so "up on the stick" stays one fixed world
+			// direction for the whole fight. The game steers movement, attack-aim, and the
+			// mod's audio bearing off the live camera matrix, so the camera orbiting to frame
+			// enemies spins the player's whole spatial frame; freezing it stabilizes all
+			// three. Independent of the audio and speech paths (it is a control aid, not a
+			// sound), so it installs unconditionally.
+			InstallCameraLockPatch();
+
 			if (AudioEngine.IsAvailable)
 				InstallCombatPatches();
 
@@ -340,6 +349,20 @@ namespace HandOfFateAccess {
 				new[] { AccessTools.Inner(typeof(Controller), "Footstep") },
 				prefix: AccessTools.Method(typeof(Controller_OnFootstep_Patch), "Prefix"),
 				postfix: null);
+		}
+
+		// The combat camera yaw lock. Its own Harmony group, installed independent of the
+		// audio and speech paths: re-pinning the camera stabilizes the player's controls
+		// (up on the stick = one fixed world direction) whether or not any mod sound came up.
+		// UpdateCombatCamera is the private per-frame combat path inside LateUpdate; the
+		// postfix overrides only its final rotation.
+		private void InstallCameraLockPatch() {
+			var patcher = new HarmonyPatcher(new Harmony(PluginGuid + ".camera"));
+			patcher.Patch(
+				typeof(PlayerCamera), "UpdateCombatCamera",
+				new System.Type[0],
+				prefix: null,
+				postfix: AccessTools.Method(typeof(PlayerCamera_UpdateCombatCamera_Patch), "Postfix"));
 		}
 
 		// The combat attack-telegraph hooks, installed with the audio path so they come up whether
