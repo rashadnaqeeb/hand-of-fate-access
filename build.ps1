@@ -3,12 +3,15 @@
 
 param(
     [switch]$NoBuild,
+    [switch]$Fmod,
     [switch]$Help
 )
 
 if ($Help) {
-    Write-Host "Usage: .\build.ps1 [-NoBuild] [-Help]"
+    Write-Host "Usage: .\build.ps1 [-NoBuild] [-Fmod] [-Help]"
     Write-Host "  -NoBuild  Skip building; just redeploy the last built DLL and native deps"
+    Write-Host "  -Fmod     Build with the FMOD audio backend (needs the vendored FMOD SDK;"
+    Write-Host "            see third_party\fmod\README.md)"
     Write-Host "  -Help     Show this help"
     exit 0
 }
@@ -59,7 +62,18 @@ $BuildOutput = "$ProjectDir\bin\Release\HandOfFateAccess.dll"
 # --- Build ---
 if (-not $NoBuild) {
     Write-Host "Building HandOfFateAccess (game: $Game)..." -ForegroundColor Cyan
-    dotnet build "$ProjectDir\HandOfFateAccess.csproj" -c Release
+    $BuildArgs = @("build", "$ProjectDir\HandOfFateAccess.csproj", "-c", "Release")
+    if ($Fmod) {
+        $FmodBinding = "$PSScriptRoot\third_party\fmod\binding\fmod.cs"
+        if (-not (Test-Path $FmodBinding)) {
+            Write-Host "ERROR: -Fmod set but the FMOD binding is missing at $FmodBinding" -ForegroundColor Red
+            Write-Host "Drop the SDK's fmod.cs there (see third_party\fmod\README.md)." -ForegroundColor Red
+            exit 1
+        }
+        $BuildArgs += "-p:HofFmod=true"
+        Write-Host "FMOD backend enabled (HofFmod=true)." -ForegroundColor Cyan
+    }
+    dotnet @BuildArgs
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Build FAILED." -ForegroundColor Red
         exit 1
@@ -101,6 +115,16 @@ if (Test-Path $SapiDll) {
     Write-Host "Deployed HofSapi.dll to $PluginsDir" -ForegroundColor Green
 } else {
     Write-Host "WARNING: HofSapi.dll not found at $SapiDll; build it via native\hofsapi\build.bat" -ForegroundColor Yellow
+}
+
+# Deploy the vendored x86 FMOD runtime (fmod.dll) when present, so the FMOD backend's
+# P/Invoke resolves it via NativeLoader. Only the runtime dll is shipped, never the SDK.
+$FmodDll = "$PSScriptRoot\third_party\fmod\lib\x86\fmod.dll"
+if (Test-Path $FmodDll) {
+    Copy-Item $FmodDll "$PluginsDir\fmod.dll" -Force
+    Write-Host "Deployed fmod.dll to $PluginsDir" -ForegroundColor Green
+} elseif ($Fmod) {
+    Write-Host "WARNING: -Fmod set but fmod.dll not found at $FmodDll" -ForegroundColor Yellow
 }
 
 # Deploy the authored audio cues (wall tones, etc). The plugin loads these at

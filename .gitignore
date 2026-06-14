@@ -16,6 +16,13 @@ obj/
 *.exp
 *.res
 
+# FMOD SDK: license-gated, not redistributable as source/SDK, so vendored locally
+# (see third_party/fmod/README.md) rather than committed. The runtime dll still ships
+# inside the release zip, which is permitted product redistribution. The folder's
+# README and the SDK LICENSE.TXT stay tracked.
+third_party/fmod/lib/x86/fmod.dll
+third_party/fmod/binding/*.cs
+
 # Local Claude settings (machine paths, local permission grants)
 .claude/settings.local.json
 .claude/scheduled_tasks.lock

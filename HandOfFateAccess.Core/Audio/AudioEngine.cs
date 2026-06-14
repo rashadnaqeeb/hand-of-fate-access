@@ -21,6 +21,8 @@ namespace HandOfFateAccess.Audio {
 		// keep the null check.
 		public static void Shutdown() => _backend.Shutdown();
 
+		public static void Pump() => _backend.Pump();
+
 		public static void Register(string key, float[] pcm, int channels, int sampleRate) =>
 			_backend.Register(key, pcm, channels, sampleRate);
 

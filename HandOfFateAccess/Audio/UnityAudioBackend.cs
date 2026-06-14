@@ -63,6 +63,9 @@ namespace HandOfFateAccess.Audio {
 			}
 		}
 
+		// Unity services its own audio mixer; the AudioSource pool needs no per-frame call.
+		public void Pump() { }
+
 		public void Shutdown() {
 			if (!_initialized) return;
 

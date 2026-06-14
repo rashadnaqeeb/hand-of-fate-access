@@ -31,9 +31,20 @@ if ($props -notmatch '<Version>([^<]+)</Version>') {
 $Version = $Matches[1]
 
 # --- Build & test ---
+# The shipped audio backend is FMOD, so the release always builds with it (HofFmod=true)
+# and stages fmod.dll below. The Unity backend stays in the build as a runtime fallback.
+$FmodBinding = "$PSScriptRoot\third_party\fmod\binding\fmod.cs"
+$FmodDll     = "$PSScriptRoot\third_party\fmod\lib\x86\fmod.dll"
+foreach ($f in @($FmodBinding, $FmodDll)) {
+    if (-not (Test-Path $f)) {
+        Write-Host "ERROR: FMOD SDK not vendored: missing $f" -ForegroundColor Red
+        Write-Host "See third_party\fmod\README.md." -ForegroundColor Red
+        exit 1
+    }
+}
 if (-not $NoBuild) {
-    Write-Host "Building HandOfFateAccess v$Version (Release)..." -ForegroundColor Cyan
-    dotnet build "$PSScriptRoot\HandOfFateAccess\HandOfFateAccess.csproj" -c Release
+    Write-Host "Building HandOfFateAccess v$Version (Release, FMOD)..." -ForegroundColor Cyan
+    dotnet build "$PSScriptRoot\HandOfFateAccess\HandOfFateAccess.csproj" -c Release -p:HofFmod=true
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Build FAILED." -ForegroundColor Red
         exit 1
@@ -78,6 +89,10 @@ Get-ChildItem "$PSScriptRoot\third_party\tolk\dist\x86" -Include *.dll, *.ini -F
     Copy-Item -Destination $PluginsDir
 Copy-Item "$PSScriptRoot\native\hofsapi\HofSapi.dll" "$PluginsDir\HofSapi.dll"
 
+# The x86 FMOD runtime backing the audio engine. Only the runtime dll is redistributed,
+# never the SDK; its presence was verified with the binding above.
+Copy-Item $FmodDll "$PluginsDir\fmod.dll"
+
 # Authored sound cues, loaded at runtime from a sounds folder beside the DLL.
 New-Item -ItemType Directory -Path "$PluginsDir\sounds" -Force | Out-Null
 Copy-Item "$PSScriptRoot\sounds\*.wav" "$PluginsDir\sounds\"
@@ -95,6 +110,7 @@ $required = @(
     "BepInEx\plugins\Tolk.dll",
     "BepInEx\plugins\nvdaControllerClient32.dll",
     "BepInEx\plugins\HofSapi.dll",
+    "BepInEx\plugins\fmod.dll",
     "BepInEx\plugins\sounds\walltone_collision.wav"
 )
 $missing = $required | Where-Object { -not (Test-Path "$Stage\$_") }

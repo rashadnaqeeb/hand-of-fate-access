@@ -56,8 +56,14 @@ The mod speaks in whatever language the game is set to. All twelve of the game's
 
 The final Dealer boss fight is cued like the other bosses (attack telegraphs, the missile duel's counter and dodge prompts, hazard voices, the enemy ping pointing at what is currently attackable), but none of it has been heard in a real fight yet: the author has deliberately left the fight unspoiled until reaching it in their own playthrough. Treat it as untested. Everything else in the game is expected to work; if you find something that does not, please report it.
 
+## Acknowledgements
+
+Combat and gambit audio is played through FMOD by Firelight Technologies Pty Ltd. FMOD, copyright Firelight Technologies Pty Ltd.
+
 ## For developers
 
 The repo builds with the .NET SDK and requires a local install of the game (the plugin references its assemblies). `setup-bepinex.ps1` installs the vendored, correctly configured BepInEx into the game folder; `build.ps1` builds the plugin and deploys it plus its native dependencies into the game's plugins folder; `test.ps1` runs the offline test suite, which needs neither the game nor Unity. `release.ps1` builds, runs the tests, and packages the player release zip (preconfigured BepInEx, mod DLLs, native runtimes, sounds) into `release\`.
+
+The audio backend is FMOD, whose SDK is license-gated and cannot be redistributed in full, so it is not committed. Before building or releasing, vendor it once by following `third_party\fmod\README.md` (drop in the x86 `fmod.dll` and the core C# binding). `build.ps1` builds the Unity-backed plugin by default; `build.ps1 -Fmod` and `release.ps1` build with FMOD.
 
 Logs: the game writes `Hand of Fate_Data\output_log.txt` in the game folder, and BepInEx writes `BepInEx\LogOutput.log`. Both reset on every launch. All mod lines are prefixed `[HoFAccess]`.

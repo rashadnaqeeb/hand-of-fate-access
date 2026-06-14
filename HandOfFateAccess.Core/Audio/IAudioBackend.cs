@@ -18,6 +18,14 @@ namespace HandOfFateAccess.Audio {
 		void Shutdown();
 
 		/// <summary>
+		/// Services the backend once per frame from the update pump. Backends that mix on
+		/// their own thread and need no per-frame servicing (the Unity AudioSource pool)
+		/// leave this empty; a backend wrapping a native engine that requires a periodic
+		/// update call (FMOD's System::update) does its housekeeping here.
+		/// </summary>
+		void Pump();
+
+		/// <summary>
 		/// Registers interleaved PCM under a key for later playback. <paramref name="pcm"/>
 		/// length must be channels times the per-channel frame count. Mono is the norm
 		/// for spatial sources, since pan is applied at play time.

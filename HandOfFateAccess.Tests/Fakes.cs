@@ -68,6 +68,9 @@ namespace HandOfFateAccess.Tests {
 			IsAvailable = false;
 		}
 
+		public int PumpCount;
+		public void Pump() => PumpCount++;
+
 		public void Register(string key, float[] pcm, int channels, int sampleRate) =>
 			Registered.Add(key);
 
