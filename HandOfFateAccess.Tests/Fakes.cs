@@ -58,6 +58,7 @@ namespace HandOfFateAccess.Tests {
 		public bool IsInitialized { get; private set; }
 		public bool IsAvailable { get; private set; }
 		public int OutputSampleRate => 44100;
+		public bool IsOutputMono => false;
 
 		public bool Initialize() {
 			IsInitialized = true;

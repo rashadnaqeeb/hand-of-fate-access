@@ -20,6 +20,11 @@ namespace HandOfFateAccess.Audio {
 		/// Zero before <see cref="Initialize"/> succeeds.</summary>
 		int OutputSampleRate { get; }
 
+		/// <summary>Whether the output is a single speaker. Every spatial cue conveys position by
+		/// stereo pan, so on mono output that information is lost; the plugin warns once. False
+		/// before <see cref="Initialize"/> succeeds.</summary>
+		bool IsOutputMono { get; }
+
 		bool Initialize();
 		void Shutdown();
 

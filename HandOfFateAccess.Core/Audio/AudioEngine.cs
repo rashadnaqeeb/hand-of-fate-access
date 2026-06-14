@@ -10,6 +10,7 @@ namespace HandOfFateAccess.Audio {
 		public static bool IsInitialized => _backend?.IsInitialized ?? false;
 		public static bool IsAvailable => _backend?.IsAvailable ?? false;
 		public static int OutputSampleRate => _backend?.OutputSampleRate ?? 0;
+		public static bool IsOutputMono => _backend?.IsOutputMono ?? false;
 
 		public static bool Initialize(IAudioBackend backend) {
 			_backend = backend;

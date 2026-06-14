@@ -62,6 +62,7 @@ namespace HandOfFateAccess.Audio {
 		private volatile string _synthDiag;
 		private bool _synthDiagLogged;
 		private int _mixRate;
+		private bool _outputMono;
 		private VoicePool _pool;
 		private bool _initialized;
 		private bool _available;
@@ -69,6 +70,7 @@ namespace HandOfFateAccess.Audio {
 		public bool IsInitialized => _initialized;
 		public bool IsAvailable => _available;
 		public int OutputSampleRate => _mixRate;
+		public bool IsOutputMono => _outputMono;
 
 		public bool Initialize() {
 			if (_initialized) return _available;
@@ -97,8 +99,10 @@ namespace HandOfFateAccess.Audio {
 
 				_system.getMasterChannelGroup(out _master);
 				// The mixer rate: synth sources generate at this so FMOD resamples nothing and the
-				// output matches what the old device-rate synth produced.
-				_system.getSoftwareFormat(out _mixRate, out _, out _);
+				// output matches what the old device-rate synth produced. The speaker mode drives
+				// the mono-output warning.
+				_system.getSoftwareFormat(out _mixRate, out FMOD.SPEAKERMODE speakerMode, out _);
+				_outputMono = speakerMode == FMOD.SPEAKERMODE.MONO;
 				_pool = new VoicePool(VoiceCount);
 				_available = true;
 
