@@ -3,11 +3,10 @@ using System;
 namespace HandOfFateAccess.Audio {
 	/// <summary>
 	/// Decodes a 16-bit PCM WAV byte buffer into the interleaved float PCM the audio
-	/// backend registers. The mod's authored cues (the wall tones, later the gambit
-	/// and projectile samples) ship as .wav files on disk; this turns the file bytes
-	/// into a buffer AudioClip.Create can take, with no Unity dependency, so a botched
-	/// decode (a silent cue the blind player can never see is missing) is caught by
-	/// the offline tests.
+	/// backend registers. The mod's authored cues (the wall tones, the collision cue)
+	/// ship as .wav files on disk; this turns the file bytes into the float buffer the
+	/// backend takes, with no Unity dependency, so a botched decode (a silent cue the
+	/// blind player can never see is missing) is caught by the offline tests.
 	///
 	/// It walks the RIFF chunk list rather than assuming a fixed header layout: real
 	/// encoders interleave metadata chunks (LIST/INFO, fact) between "fmt " and "data",

@@ -5,13 +5,13 @@ namespace HandOfFateAccess.Audio {
 	/// Fixed-size allocator of playback voices. Engine-agnostic bookkeeping only: it
 	/// tracks which of N slots are busy and stamps a generation on each so stale
 	/// handles stop resolving once a slot is recycled. The backend owns the actual
-	/// AudioSource for each slot and maps this pool's slot index onto it.
+	/// playing voice for each slot and maps this pool's slot index onto it.
 	///
 	/// This is the silent-failure surface of the audio layer: exhausting the pool
 	/// means a sound the player should hear simply does not play, with nothing on
 	/// screen to reveal it. <see cref="Acquire"/> logs that drop rather than failing
 	/// quietly, and the pool is unit-tested off-engine. Concurrency is not a concern:
-	/// all calls come from the single Unity update pump.
+	/// all acquire and release calls come from the single Unity update pump.
 	/// </summary>
 	public sealed class VoicePool {
 		private readonly bool[] _active;
@@ -54,7 +54,7 @@ namespace HandOfFateAccess.Audio {
 		}
 
 		/// <summary>Whether a slot is currently in use, by raw index. The backend
-		/// sweeps these to reclaim slots whose AudioSource has finished playing.</summary>
+		/// sweeps these to reclaim slots whose voice has finished playing.</summary>
 		public bool IsActiveSlot(int slot) => _active[slot];
 
 		/// <summary>Frees the voice behind a handle. A stale or invalid handle is

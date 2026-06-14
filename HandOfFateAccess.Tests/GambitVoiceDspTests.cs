@@ -8,7 +8,7 @@ namespace HandOfFateAccess.Tests {
 		private static (float[] l, float[] r, double pos, bool fin) RenderStereo(
 				float[] buffer, double pos, double step, bool loop, float pan, float vol, int frames) {
 			var output = new float[frames * 2];
-			double newPos = GambitVoiceDsp.Fill(buffer, pos, step, loop, pan, vol, output, 2, out bool fin);
+			double newPos = GambitVoiceDsp.Fill(buffer, pos, step, loop, pan, vol, output, 2, frames, out bool fin);
 			var l = new float[frames];
 			var r = new float[frames];
 			for (int i = 0; i < frames; i++) { l[i] = output[2 * i]; r[i] = output[2 * i + 1]; }
@@ -74,7 +74,7 @@ namespace HandOfFateAccess.Tests {
 		public void BadStep_FinishesSilentlyWithoutReading(double step) {
 			float[] buf = { 0.5f, -0.5f, 0.5f };
 			var output = new float[8];
-			GambitVoiceDsp.Fill(buf, 0, step, true, -1f, 1f, output, 2, out bool fin);
+			GambitVoiceDsp.Fill(buf, 0, step, true, -1f, 1f, output, 2, 4, out bool fin);
 			Assert.True(fin);
 			foreach (float s in output) Assert.Equal(0f, s, 6);
 		}
@@ -82,7 +82,7 @@ namespace HandOfFateAccess.Tests {
 		[Fact]
 		public void EmptyBuffer_FinishesSilently() {
 			var output = new float[8];
-			GambitVoiceDsp.Fill(new float[0], 0, 1.0, true, -1f, 1f, output, 2, out bool fin);
+			GambitVoiceDsp.Fill(new float[0], 0, 1.0, true, -1f, 1f, output, 2, 4, out bool fin);
 			Assert.True(fin);
 			foreach (float s in output) Assert.Equal(0f, s, 6);
 		}

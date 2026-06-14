@@ -9,25 +9,26 @@ namespace HandOfFateAccess.Gambit {
 	/// spatial audio: a centred voice is -3 dB and positions read evenly across the field.
 	///
 	/// Pure and engine-free so the audio-thread logic is unit-tested off-engine; the plugin's
-	/// GambitVoice calls it from OnAudioFilterRead.
+	/// GambitVoice calls it from the backend's synth fill callback.
 	/// </summary>
 	public static class GambitVoiceDsp {
 		/// <summary>
-		/// Fills <paramref name="output"/> from mono <paramref name="buffer"/> starting at
-		/// <paramref name="pos"/>, advancing <paramref name="step"/> source samples per output
-		/// frame, panned to <paramref name="pan"/> at <paramref name="volume"/>. Loops when
-		/// <paramref name="loop"/>; otherwise stops at the end, zero-filling the rest and setting
-		/// <paramref name="finished"/>. Returns the new read position.
+		/// Fills <paramref name="frames"/> frames of <paramref name="output"/> from mono
+		/// <paramref name="buffer"/> starting at <paramref name="pos"/>, advancing
+		/// <paramref name="step"/> source samples per output frame, panned to <paramref name="pan"/>
+		/// at <paramref name="volume"/>. Loops when <paramref name="loop"/>; otherwise stops at the
+		/// end, zero-filling the rest and setting <paramref name="finished"/>. <paramref name="output"/>
+		/// must be at least frames times channels long. Returns the new read position.
 		/// </summary>
 		public static double Fill(float[] buffer, double pos, double step, bool loop,
-				float pan, float volume, float[] output, int channels, out bool finished) {
+				float pan, float volume, float[] output, int channels, int frames, out bool finished) {
 			finished = false;
 			int len = buffer != null ? buffer.Length : 0;
 			// A non-positive or non-finite step (a bad source rate) would never advance, or would
 			// drive pos negative into an out-of-range read on the audio thread. Refuse it rather
 			// than crash the audio callback silently.
 			if (len == 0 || channels < 1 || !(step > 0.0)) {
-				Array.Clear(output, 0, output.Length);
+				Array.Clear(output, 0, frames * channels);
 				finished = true;
 				return pos;
 			}
@@ -37,7 +38,6 @@ namespace HandOfFateAccess.Gambit {
 			float leftGain = (float)Math.Cos(angle) * volume;
 			float rightGain = (float)Math.Sin(angle) * volume;
 
-			int frames = output.Length / channels;
 			int j = 0;
 			for (int i = 0; i < frames; i++) {
 				float s = 0f;

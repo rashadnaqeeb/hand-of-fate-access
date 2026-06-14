@@ -238,11 +238,12 @@ namespace HandOfFateAccess.Audio {
 					return;
 				}
 
-				// Force mono output so the playing channel pans the voice (FMOD's mono pan law is
-				// equal-power, the placement the mod's spatial audio uses). Left to default, a
-				// generator can present a channel count that bypasses the channel panner and the
-				// source plays centred.
-				dsp.setChannelFormat((FMOD.CHANNELMASK)0, 1, FMOD.SPEAKERMODE.MONO);
+				// Pin the DSP's channel count. A mono source (1) is panned by the playing channel
+				// (FMOD's mono pan law is equal-power, the placement the mod uses); a source that
+				// pans itself into stereo (2, the gambit) plays through a neutral channel. Left to
+				// default, a generator can present a count that bypasses the channel panner.
+				FMOD.SPEAKERMODE mode = channels == 1 ? FMOD.SPEAKERMODE.MONO : FMOD.SPEAKERMODE.STEREO;
+				dsp.setChannelFormat((FMOD.CHANNELMASK)0, channels, mode);
 
 				if (_synthDsps.TryGetValue(key, out FMOD.DSP existing))
 					existing.release();

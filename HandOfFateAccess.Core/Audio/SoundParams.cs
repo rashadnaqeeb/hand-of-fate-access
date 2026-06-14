@@ -3,12 +3,12 @@ namespace HandOfFateAccess.Audio {
 	/// The live spatial state of one playing sound: where it sits in the stereo
 	/// field, its pitch multiplier, and its loudness. This is the medium the audio
 	/// seam speaks in (as text is for speech): Core decides these three numbers from
-	/// game state, the backend maps them onto an AudioSource. No engine types here,
+	/// game state, the backend maps them onto a playing voice. No engine types here,
 	/// so the mapping that decides what the player hears stays unit-testable.
 	///
 	/// Pan is the equal-power stereo position, -1 hard left to +1 hard right. Pitch
-	/// is a playback-rate multiplier where 1 is the clip's own pitch (the backend's
-	/// AudioSource.pitch); it is clamped to two octaves each way. Volume is linear
+	/// is a playback-rate multiplier where 1 is the clip's own pitch (the backend voice's
+	/// pitch); it is clamped to two octaves each way. Volume is linear
 	/// gain, 0 to 1.
 	///
 	/// Use the constructor or <see cref="Neutral"/>. A default(SoundParams) has
@@ -33,7 +33,7 @@ namespace HandOfFateAccess.Audio {
 		}
 
 		/// <summary>This value with each field forced into its valid range, so the
-		/// backend never hands an AudioSource an out-of-range pan or a silent pitch.</summary>
+		/// backend never hands a voice an out-of-range pan or a silent pitch.</summary>
 		public SoundParams Clamped() => new SoundParams(
 			Clamp(Pan, -1f, 1f),
 			Clamp(Pitch, MinPitch, MaxPitch),

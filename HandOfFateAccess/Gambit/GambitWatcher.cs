@@ -1,3 +1,4 @@
+using HandOfFateAccess.Audio;
 using HandOfFateAccess.Focus;
 using HandOfFateAccess.Speech;
 using HandOfFateAccess.Util;
@@ -101,7 +102,7 @@ namespace HandOfFateAccess.Gambit {
 			_available = _speech != null && _speech.IsAvailable;
 			if (!_available) return false;
 
-			_outRate = AudioSettings.outputSampleRate > 0 ? AudioSettings.outputSampleRate : 44100;
+			_outRate = AudioEngine.OutputSampleRate > 0 ? AudioEngine.OutputSampleRate : 44100;
 			_toneBuffers = new float[MaxSlots][];
 			_sustainBuffers = new float[MaxSlots][];
 			for (int i = 0; i < MaxSlots; i++) {
@@ -110,28 +111,16 @@ namespace HandOfFateAccess.Gambit {
 				_sustainBuffers[i] = GambitTones.GenerateSustain(i, _outRate);
 			}
 
-			var root = new GameObject("HoFAccess_GambitVoices");
-			ScenePersistence.Protect(root);
-			// A silent looping clip keeps each voice's filter callback firing; the callback
-			// overwrites it with the panned buffer.
-			AudioClip silence = AudioClip.Create("hofaccess_gambit_silence", 2048, 1, _outRate, false);
-			_toneVoice = CreateVoice(root, "GambitToneVoice", silence);
-			_wordVoice = CreateVoice(root, "GambitWordVoice", silence);
+			// Each voice owns a backend synth registered under a unique key; the loop is generated,
+			// so there is no clip to load.
+			_toneVoice = new GambitVoice("hofaccess_gambit_tone", _outRate);
+			_wordVoice = new GambitVoice("hofaccess_gambit_word", _outRate);
 			_cardVoices = new GambitVoice[MaxSlots];
 			for (int i = 0; i < MaxSlots; i++)
-				_cardVoices[i] = CreateVoice(root, "GambitCardVoice" + i, silence);
+				_cardVoices[i] = new GambitVoice("hofaccess_gambit_card" + i, _outRate);
 
 			Log.Info("gambit voices ready");
 			return true;
-		}
-
-		private static GambitVoice CreateVoice(GameObject root, string name, AudioClip silence) {
-			var go = new GameObject(name);
-			ScenePersistence.Protect(go);
-			go.transform.parent = root.transform;
-			var voice = go.AddComponent<GambitVoice>();
-			voice.Init(silence);
-			return voice;
 		}
 
 		public void Pump() {
