@@ -6,6 +6,8 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+## 1.1.2 - 2026-06-14
+
 * The combat camera no longer rotates during a fight, so up on the stick always moves you in the same direction and walls keep their bearing as you move.
 * Combat cues now play through a dedicated audio engine, for harder stereo panning and lower latency.
 * The wall collision bump loops when your movement is blocked by a wall.
