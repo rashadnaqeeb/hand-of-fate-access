@@ -1,12 +1,13 @@
 # FMOD Core (vendored)
 
-The FMOD audio backend (`HandOfFateAccess\Audio\FmodAudioBackend.cs`) is an optional
-replacement for the Unity AudioSource pool. It exists because Unity's mixer denies three
-things this audio-only mod needs: a flat hard stereo pan, low trigger latency, and freedom
-from positional postprocessing applied behind our back. See that file's summary for detail.
+FMOD is the mod's non-speech audio backend (`HandOfFateAccess\Audio\FmodAudioBackend.cs`).
+It replaced Unity's AudioSource pool because Unity's mixer denied three things this
+audio-only mod needs: a flat hard stereo pan, low trigger latency, and freedom from
+positional postprocessing applied behind our back. See that file's summary for detail.
 
-FMOD's SDK is behind a mandatory account login, so it cannot be fetched automatically. These
-files must be downloaded once by hand and dropped in here. Only two files are needed.
+The build requires this SDK; it is not committed (license-gated) and not optional. FMOD's
+SDK is behind a mandatory account login, so it cannot be fetched automatically. These files
+must be downloaded once by hand and dropped in here.
 
 ## What to download
 
@@ -46,28 +47,23 @@ must be reapplied if you re-vendor a newer SDK:
          -e 's/Marshal\.GetDelegateForFunctionPointer<([A-Za-z0-9_.]+)>\(([A-Za-z0-9_.]+)\)/(\1)Marshal.GetDelegateForFunctionPointer(\2, typeof(\1))/g' \
          "$f"; done
 
-2. `fmod_dsp.cs` uses C# 8 `readonly` struct members, so the FMOD build raises `LangVersion`
-   to 8.0 (default build stays 7.3). That is set in the csproj's `HofFmod` PropertyGroup, not
-   in the binding, so re-vendoring needs no change for it.
+2. `fmod_dsp.cs` uses C# 8 `readonly` struct members, so the plugin's `LangVersion` is 8.0.
+   That is set in the csproj, not in the binding, so re-vendoring needs no change for it.
 
-## Build and run with FMOD
+## Build and run
 
-    .\build.ps1 -Fmod
+    .\build.ps1
 
-This defines `HOF_FMOD`, compiles in the binding and `FmodAudioBackend`, and deploys
-`fmod.dll` beside the plugin. Plain `.\build.ps1` still builds the Unity-only backend.
-
-At runtime the backend is chosen by a BepInEx config flag, so you can A/B without rebuilding:
-`BepInEx\config\com.rashad.handoffateaccess.cfg`, section `[Audio]`, `UseFmod = true|false`
-(default true when built with `-Fmod`). Set it false to hear the old Unity backend from the
-same build.
+The build compiles in the binding and deploys `fmod.dll` beside the plugin. It fails with a
+clear message if the SDK is not vendored here. `release.ps1` does the same and stages
+`fmod.dll` into the player zip.
 
 ## Verifying the two-FMOD-systems question
 
 The game's own engine (Unity 5.3 is FMOD internally) already runs one FMOD System; this
 backend starts a second one in the same process. To confirm they coexist:
 
-1. `.\build.ps1 -Fmod`, launch the game.
+1. `.\build.ps1`, launch the game.
 2. In `output_log.txt`, find the `[HoFAccess] fmod ... output ... dsp buffer ...` line. The
    output should be a real device (e.g. `WASAPI`), not `NOSOUND`. `NOSOUND` means our System
    failed to grab the device, i.e. a conflict.

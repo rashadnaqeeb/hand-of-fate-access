@@ -64,6 +64,6 @@ Combat and gambit audio is played through FMOD by Firelight Technologies Pty Ltd
 
 The repo builds with the .NET SDK and requires a local install of the game (the plugin references its assemblies). `setup-bepinex.ps1` installs the vendored, correctly configured BepInEx into the game folder; `build.ps1` builds the plugin and deploys it plus its native dependencies into the game's plugins folder; `test.ps1` runs the offline test suite, which needs neither the game nor Unity. `release.ps1` builds, runs the tests, and packages the player release zip (preconfigured BepInEx, mod DLLs, native runtimes, sounds) into `release\`.
 
-The audio backend is FMOD, whose SDK is license-gated and cannot be redistributed in full, so it is not committed. Before building or releasing, vendor it once by following `third_party\fmod\README.md` (drop in the x86 `fmod.dll` and the core C# binding). `build.ps1` builds the Unity-backed plugin by default; `build.ps1 -Fmod` and `release.ps1` build with FMOD.
+The audio backend is FMOD, whose SDK is license-gated and cannot be redistributed in full, so it is not committed. It is required to build: vendor it once by following `third_party\fmod\README.md` (drop in the x86 `fmod.dll` and the core C# binding), and `build.ps1` will fail with a clear message until you do.
 
 Logs: the game writes `Hand of Fate_Data\output_log.txt` in the game folder, and BepInEx writes `BepInEx\LogOutput.log`. Both reset on every launch. All mod lines are prefixed `[HoFAccess]`.

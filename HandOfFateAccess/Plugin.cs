@@ -130,29 +130,13 @@ namespace HandOfFateAccess {
 			NativeLoader.Preload(pluginDir, "Tolk.dll");
 			NativeLoader.Preload(pluginDir, "HofSapi.dll");
 
-			// Non-speech audio backend. Independent of speech (combat sonification needs no
-			// screen reader), so it comes up regardless of the Tolk result. It is the seam
-			// the combat and gambit layers register clips and play voices through.
-#if HOF_FMOD
-			// Built with the FMOD backend compiled in; a config flag picks it at runtime so the
-			// two backends can be A/B compared without a rebuild. FMOD needs its native dll
-			// preloaded from the plugins folder first, like Tolk and the SAPI shim. If it fails
-			// to initialize (missing dll, no device), fall back to the Unity backend rather than
-			// leave every audio feature silent.
-			bool useFmod = Config.Bind("Audio", "UseFmod", true,
-				"Use the FMOD audio backend instead of Unity's AudioSource pool.").Value;
-			if (useFmod) {
-				NativeLoader.Preload(pluginDir, "fmod.dll");
-				if (!AudioEngine.Initialize(new FmodAudioBackend())) {
-					Log.Warn("fmod backend unavailable; falling back to the Unity audio backend");
-					AudioEngine.Initialize(new UnityAudioBackend());
-				}
-			} else {
-				AudioEngine.Initialize(new UnityAudioBackend());
-			}
-#else
-			AudioEngine.Initialize(new UnityAudioBackend());
-#endif
+			// Non-speech audio backend (FMOD). Independent of speech (combat sonification needs
+			// no screen reader), so it comes up regardless of the Tolk result. It is the seam
+			// the combat and gambit layers register clips and play voices through. FMOD needs
+			// its native dll preloaded from the plugins folder first, like Tolk and the SAPI
+			// shim; if it fails to initialize the audio features log and stay silent.
+			NativeLoader.Preload(pluginDir, "fmod.dll");
+			AudioEngine.Initialize(new FmodAudioBackend());
 
 			// Every spatial feature (wall tones, projectiles, the gambit) conveys position by
 			// stereo pan; on a mono output device that cue is gone. Surface it once rather than

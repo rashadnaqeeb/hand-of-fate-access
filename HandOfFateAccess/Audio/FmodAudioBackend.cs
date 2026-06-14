@@ -1,4 +1,3 @@
-#if HOF_FMOD
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -6,24 +5,22 @@ using HandOfFateAccess.Util;
 
 namespace HandOfFateAccess.Audio {
 	/// <summary>
-	/// IAudioBackend over an FMOD Core <c>System</c>, the dedicated-engine path that
-	/// replaces Unity's AudioSource pool. FMOD is chosen for three things Unity's mixer
-	/// denies us: a flat stereo pan law (<c>Channel.setPan(-1..1)</c> places a cue fully
-	/// in one ear with no constant-power curve), much lower trigger latency (a small DSP
-	/// buffer set before init, versus Unity's ~200ms), and no positional postprocessing
-	/// the engine applies behind our back. The spatial grammar Core computes is the one
-	/// the player hears.
+	/// The non-speech audio backend: an FMOD Core <c>System</c> driving a pool of voices.
+	/// FMOD is used for three things Unity's mixer denied: a flat stereo pan law
+	/// (<c>Channel.setPan(-1..1)</c> places a cue fully in one ear with no constant-power
+	/// curve), much lower trigger latency (a small DSP buffer set before init, versus
+	/// Unity's ~200ms), and no positional postprocessing applied behind our back. The
+	/// spatial grammar Core computes is the one the player hears.
 	///
-	/// Compiled only when the build defines HOF_FMOD (set HofFmod=true), since it needs
-	/// the license-gated FMOD SDK: the official <c>fmod.cs</c> binding (compiled in by the
-	/// csproj) and the native x86 <c>fmod.dll</c> (preloaded from the plugins folder by
-	/// NativeLoader before the first call, exactly as Tolk and the SAPI shim are). Without
-	/// the define the repo builds against the Unity backend alone.
+	/// It needs the license-gated FMOD SDK, vendored locally (see third_party/fmod): the
+	/// official <c>fmod.cs</c> binding (compiled in by the csproj) and the native x86
+	/// <c>fmod.dll</c> (preloaded from the plugins folder by NativeLoader before the first
+	/// call, exactly as Tolk and the SAPI shim are).
 	///
 	/// One FMOD System runs alongside the System the game's own engine (Unity 5.3 is FMOD
 	/// under the hood) already owns. The default output is the shared OS mixer, which does
-	/// not take the device exclusively, so the two coexist; init logs the driver and output
-	/// so a device conflict is visible rather than guessed. Slot bookkeeping is the shared
+	/// not take the device exclusively, so the two coexist; init logs the output so a
+	/// device conflict is visible rather than guessed. Slot bookkeeping is the shared
 	/// engine-agnostic <see cref="VoicePool"/>; this class binds slots to FMOD Channels and
 	/// reclaims slots whose one-shot has finished.
 	/// </summary>
@@ -254,4 +251,3 @@ namespace HandOfFateAccess.Audio {
 		}
 	}
 }
-#endif

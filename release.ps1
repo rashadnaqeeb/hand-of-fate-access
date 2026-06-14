@@ -31,8 +31,8 @@ if ($props -notmatch '<Version>([^<]+)</Version>') {
 $Version = $Matches[1]
 
 # --- Build & test ---
-# The shipped audio backend is FMOD, so the release always builds with it (HofFmod=true)
-# and stages fmod.dll below. The Unity backend stays in the build as a runtime fallback.
+# FMOD is the audio backend, vendored locally and staged into the zip below. Confirm the
+# SDK is present before building (the build also enforces this, but fail early and clearly).
 $FmodBinding = "$PSScriptRoot\third_party\fmod\binding\fmod.cs"
 $FmodDll     = "$PSScriptRoot\third_party\fmod\lib\x86\fmod.dll"
 foreach ($f in @($FmodBinding, $FmodDll)) {
@@ -43,8 +43,8 @@ foreach ($f in @($FmodBinding, $FmodDll)) {
     }
 }
 if (-not $NoBuild) {
-    Write-Host "Building HandOfFateAccess v$Version (Release, FMOD)..." -ForegroundColor Cyan
-    dotnet build "$PSScriptRoot\HandOfFateAccess\HandOfFateAccess.csproj" -c Release -p:HofFmod=true
+    Write-Host "Building HandOfFateAccess v$Version (Release)..." -ForegroundColor Cyan
+    dotnet build "$PSScriptRoot\HandOfFateAccess\HandOfFateAccess.csproj" -c Release
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Build FAILED." -ForegroundColor Red
         exit 1

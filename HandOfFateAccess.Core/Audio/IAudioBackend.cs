@@ -2,7 +2,7 @@ namespace HandOfFateAccess.Audio {
 	/// <summary>
 	/// The engine seam for non-speech audio: a pool of independently controllable
 	/// voices over which Core plays spatialized cues. The real implementation
-	/// (UnityAudioBackend) wraps a set of AudioSources; tests use a fake.
+	/// (FmodAudioBackend) wraps an FMOD Core System; tests use a fake.
 	///
 	/// Sounds are referenced by a string key registered once from raw PCM, so Core
 	/// stays free of engine clip types and can synthesize waveforms itself (the
@@ -18,10 +18,9 @@ namespace HandOfFateAccess.Audio {
 		void Shutdown();
 
 		/// <summary>
-		/// Services the backend once per frame from the update pump. Backends that mix on
-		/// their own thread and need no per-frame servicing (the Unity AudioSource pool)
-		/// leave this empty; a backend wrapping a native engine that requires a periodic
-		/// update call (FMOD's System::update) does its housekeeping here.
+		/// Services the backend once per frame from the update pump. FMOD's System::update
+		/// (mixer housekeeping, voice management) runs here; a backend that mixes on its own
+		/// thread and needs no per-frame servicing leaves it empty.
 		/// </summary>
 		void Pump();
 

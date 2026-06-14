@@ -41,21 +41,22 @@
     </ItemGroup>
   </Target>
 
-  <!-- Optional FMOD audio backend. Off by default so the repo builds with no FMOD SDK
-       present. Enable with `dotnet build -p:HofFmod=true` (build.ps1 -Fmod) after dropping
-       the SDK's core C# binding (fmod.cs, fmod_dsp.cs, fmod_errors.cs) into
-       third_party\fmod\binding\ and the x86 fmod.dll into third_party\fmod\lib\x86\
-       (see third_party\fmod\README.md). The define gates FmodAudioBackend.cs and its
-       wiring in Plugin.cs; the binding sources are compiled in here so no managed
-       assembly reference is needed (fmod.cs depends on the DSP types in fmod_dsp.cs). -->
-  <PropertyGroup Condition="'$(HofFmod)' == 'true'">
-    <DefineConstants>$(DefineConstants);HOF_FMOD</DefineConstants>
-    <!-- The SDK's fmod_dsp.cs uses C# 8 readonly struct members. Raise the language
-         version for this build only (default stays 7.3); the feature is compile-only,
-         so Roslyn synthesizes IsReadOnlyAttribute on net35. -->
+  <!-- FMOD is the audio backend. Its SDK is license-gated and not committed, so it is
+       vendored locally (see third_party\fmod\README.md): the core C# binding (fmod.cs,
+       fmod_dsp.cs, fmod_errors.cs) into third_party\fmod\binding\ and the x86 fmod.dll
+       into third_party\fmod\lib\x86\. The binding sources are compiled in here so no
+       managed assembly reference is needed (fmod.cs depends on the DSP types in
+       fmod_dsp.cs). The SDK's fmod_dsp.cs uses C# 8 readonly struct members, so the
+       language version is raised to 8.0 (compile-only; Roslyn synthesizes
+       IsReadOnlyAttribute on net35). -->
+  <PropertyGroup>
     <LangVersion>8.0</LangVersion>
   </PropertyGroup>
-  <ItemGroup Condition="'$(HofFmod)' == 'true'">
+  <Target Name="CheckFmodSdk" BeforeTargets="CoreCompile">
+    <Error Condition="!Exists('$(MSBuildThisFileDirectory)..\third_party\fmod\binding\fmod.cs')"
+           Text="FMOD SDK not vendored. Drop the SDK's core C# binding and the x86 fmod.dll into third_party\fmod (see third_party\fmod\README.md)." />
+  </Target>
+  <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)..\third_party\fmod\binding\*.cs" />
   </ItemGroup>
 

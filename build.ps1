@@ -3,16 +3,16 @@
 
 param(
     [switch]$NoBuild,
-    [switch]$Fmod,
     [switch]$Help
 )
 
 if ($Help) {
-    Write-Host "Usage: .\build.ps1 [-NoBuild] [-Fmod] [-Help]"
+    Write-Host "Usage: .\build.ps1 [-NoBuild] [-Help]"
     Write-Host "  -NoBuild  Skip building; just redeploy the last built DLL and native deps"
-    Write-Host "  -Fmod     Build with the FMOD audio backend (needs the vendored FMOD SDK;"
-    Write-Host "            see third_party\fmod\README.md)"
     Write-Host "  -Help     Show this help"
+    Write-Host ""
+    Write-Host "The audio backend is FMOD; the build needs the FMOD SDK vendored into"
+    Write-Host "third_party\fmod (see third_party\fmod\README.md)."
     exit 0
 }
 
@@ -62,18 +62,7 @@ $BuildOutput = "$ProjectDir\bin\Release\HandOfFateAccess.dll"
 # --- Build ---
 if (-not $NoBuild) {
     Write-Host "Building HandOfFateAccess (game: $Game)..." -ForegroundColor Cyan
-    $BuildArgs = @("build", "$ProjectDir\HandOfFateAccess.csproj", "-c", "Release")
-    if ($Fmod) {
-        $FmodBinding = "$PSScriptRoot\third_party\fmod\binding\fmod.cs"
-        if (-not (Test-Path $FmodBinding)) {
-            Write-Host "ERROR: -Fmod set but the FMOD binding is missing at $FmodBinding" -ForegroundColor Red
-            Write-Host "Drop the SDK's fmod.cs there (see third_party\fmod\README.md)." -ForegroundColor Red
-            exit 1
-        }
-        $BuildArgs += "-p:HofFmod=true"
-        Write-Host "FMOD backend enabled (HofFmod=true)." -ForegroundColor Cyan
-    }
-    dotnet @BuildArgs
+    dotnet build "$ProjectDir\HandOfFateAccess.csproj" -c Release
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Build FAILED." -ForegroundColor Red
         exit 1
@@ -117,15 +106,17 @@ if (Test-Path $SapiDll) {
     Write-Host "WARNING: HofSapi.dll not found at $SapiDll; build it via native\hofsapi\build.bat" -ForegroundColor Yellow
 }
 
-# Deploy the vendored x86 FMOD runtime (fmod.dll) when present, so the FMOD backend's
-# P/Invoke resolves it via NativeLoader. Only the runtime dll is shipped, never the SDK.
+# Deploy the vendored x86 FMOD runtime (fmod.dll), the audio backend's native library,
+# so its P/Invoke resolves it via NativeLoader. Only the runtime dll is shipped, never
+# the SDK. Required: without it the audio features cannot come up.
 $FmodDll = "$PSScriptRoot\third_party\fmod\lib\x86\fmod.dll"
-if (Test-Path $FmodDll) {
-    Copy-Item $FmodDll "$PluginsDir\fmod.dll" -Force
-    Write-Host "Deployed fmod.dll to $PluginsDir" -ForegroundColor Green
-} elseif ($Fmod) {
-    Write-Host "WARNING: -Fmod set but fmod.dll not found at $FmodDll" -ForegroundColor Yellow
+if (-not (Test-Path $FmodDll)) {
+    Write-Host "ERROR: fmod.dll not found at $FmodDll" -ForegroundColor Red
+    Write-Host "Vendor the FMOD SDK (see third_party\fmod\README.md)." -ForegroundColor Red
+    exit 1
 }
+Copy-Item $FmodDll "$PluginsDir\fmod.dll" -Force
+Write-Host "Deployed fmod.dll to $PluginsDir" -ForegroundColor Green
 
 # Deploy the authored audio cues (wall tones, etc). The plugin loads these at
 # runtime from a sounds folder beside its DLL, so mirror the repo's sounds folder.

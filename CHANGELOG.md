@@ -6,7 +6,7 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
-* Combat and gambit audio now plays through a dedicated audio engine, for harder stereo panning and lower latency on every cue.
+* Most combat cues (walls, hazards, beacons, attack telegraphs, the enemy ping) now play through a dedicated audio engine, for harder stereo panning and lower latency.
 
 ## 1.1.1 - 2026-06-12
 
