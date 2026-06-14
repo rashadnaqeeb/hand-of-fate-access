@@ -119,6 +119,14 @@ namespace HandOfFateAccess {
 			_gambitStatus?.Shutdown();
 		}
 
+		// Release the FMOD system on quit. Its mixer threads, and the synth DSP callbacks into
+		// managed code, must be torn down cleanly: left running, they hang the process at exit
+		// (observed on Alt+F4, with voices still sounding). OnApplicationQuit fires before the
+		// managed runtime starts unwinding, the safe point to release native FMOD.
+		private void OnApplicationQuit() {
+			if (AudioEngine.IsInitialized) AudioEngine.Shutdown();
+		}
+
 		private void Initialize() {
 			Log.Info("update reached; initializing speech");
 			// The BepInEx manager object hosts this component (and with it every pump);

@@ -9,6 +9,7 @@ namespace HandOfFateAccess.Audio {
 
 		public static bool IsInitialized => _backend?.IsInitialized ?? false;
 		public static bool IsAvailable => _backend?.IsAvailable ?? false;
+		public static int OutputSampleRate => _backend?.OutputSampleRate ?? 0;
 
 		public static bool Initialize(IAudioBackend backend) {
 			_backend = backend;
@@ -25,6 +26,9 @@ namespace HandOfFateAccess.Audio {
 
 		public static void Register(string key, float[] pcm, int channels, int sampleRate) =>
 			_backend.Register(key, pcm, channels, sampleRate);
+
+		public static void RegisterSynth(string key, IPcmSource source, int channels, int sampleRate) =>
+			_backend.RegisterSynth(key, source, channels, sampleRate);
 
 		public static void PlayOneShot(string key, SoundParams parameters) =>
 			_backend.PlayOneShot(key, parameters);

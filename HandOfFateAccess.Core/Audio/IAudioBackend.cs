@@ -14,6 +14,12 @@ namespace HandOfFateAccess.Audio {
 	public interface IAudioBackend {
 		bool IsInitialized { get; }
 		bool IsAvailable { get; }
+
+		/// <summary>The backend's mixer sample rate. A synth source should generate at this rate so
+		/// the backend resamples nothing and the output matches what a device-rate synth produced.
+		/// Zero before <see cref="Initialize"/> succeeds.</summary>
+		int OutputSampleRate { get; }
+
 		bool Initialize();
 		void Shutdown();
 
@@ -30,6 +36,14 @@ namespace HandOfFateAccess.Audio {
 		/// for spatial sources, since pan is applied at play time.
 		/// </summary>
 		void Register(string key, float[] pcm, int channels, int sampleRate);
+
+		/// <summary>
+		/// Registers a live synthesized source under a key, the real-time counterpart to
+		/// <see cref="Register"/>'s fixed PCM. The backend pulls <paramref name="source"/> on its
+		/// audio thread to feed the voice; the source fills interleaved PCM including its own pan
+		/// and volume. Play it with <see cref="Play"/> by key, looping for a continuous voice.
+		/// </summary>
+		void RegisterSynth(string key, IPcmSource source, int channels, int sampleRate);
 
 		/// <summary>
 		/// Plays a registered sound once, then lets its voice free itself. Fire and forget:

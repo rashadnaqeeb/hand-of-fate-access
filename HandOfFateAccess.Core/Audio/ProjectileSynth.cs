@@ -11,8 +11,8 @@ namespace HandOfFateAccess.Audio {
 	/// pitch were never welded onto one timeline.
 	///
 	/// Pure and engine-free, so it is unit-tested off-engine; the plugin owns one per voice
-	/// and pumps <see cref="Process"/> from an OnAudioFilterRead callback. Pan and volume are
-	/// applied by the voice; this emits mono. <see cref="Pitch"/> is written from the main
+	/// and pumps <see cref="Process"/> from the backend's synth fill callback. Pan and volume
+	/// are applied by the voice; this emits mono. <see cref="Pitch"/> is written from the main
 	/// thread and read on the audio thread without a lock, a torn read being one harmless
 	/// block at a slightly stale cutoff.
 	/// </summary>

@@ -1,16 +1,15 @@
 using System.Collections.Generic;
+using HandOfFateAccess.Audio;
 using HandOfFateAccess.Util;
-using UnityEngine;
 
 namespace HandOfFateAccess.Combat {
 	/// <summary>
-	/// A fixed pool of <see cref="ProjectileVoice"/> objects, each a child GameObject with
-	/// its own AudioSource and synthesis callback. The projectile loop is generated, not
-	/// played from a clip, so the pool needs no source PCM; it only shares one silent looping
-	/// clip that keeps each voice's filter callback firing.
+	/// A fixed pool of <see cref="ProjectileVoice"/> objects, each owning a backend synth stream
+	/// it generates into. The loop is synthesized, not played from a clip, so the pool needs no
+	/// source PCM; it only hands each voice a distinct key and noise seed at construction.
 	///
-	/// Exhaustion is the silent-failure surface here, so <see cref="Acquire"/> logs and
-	/// returns null when every voice is busy rather than dropping a threat without trace.
+	/// Exhaustion is the silent-failure surface here, so <see cref="Acquire"/> logs and returns
+	/// null when every voice is busy rather than dropping a threat without trace.
 	/// </summary>
 	internal sealed class ProjectileVoicePool {
 		private readonly List<ProjectileVoice> _all;
@@ -20,20 +19,14 @@ namespace HandOfFateAccess.Combat {
 			_all = new List<ProjectileVoice>(count);
 			_free = new Stack<ProjectileVoice>(count);
 
-			var root = new GameObject("HoFAccess_ProjectileVoices");
-			ScenePersistence.Protect(root);
-
-			// One silent looping clip keeps every voice's AudioSource "playing" so its filter
-			// callback fires; the callback overwrites the silence with synthesized audio.
-			int rate = AudioSettings.outputSampleRate > 0 ? AudioSettings.outputSampleRate : 44100;
-			AudioClip silence = AudioClip.Create("hofaccess_silence", 2048, 1, rate, false);
+			// Generate at the backend's mixer rate so it resamples nothing and the tumble sounds
+			// exactly as it did when Unity ran the synth at the device rate.
+			int rate = AudioEngine.OutputSampleRate > 0 ? AudioEngine.OutputSampleRate : 44100;
 
 			for (int i = 0; i < count; i++) {
-				var go = new GameObject("ProjectileVoice" + i);
-				ScenePersistence.Protect(go);
-				go.transform.parent = root.transform;
-				var voice = go.AddComponent<ProjectileVoice>();
-				voice.Init(i + 1, silence);   // distinct seed per voice so their noise does not correlate
+				// Distinct seed and key per voice: the seed decorrelates their noise, the key gives
+				// each its own backend synth stream.
+				var voice = new ProjectileVoice("hofaccess_projectile_" + i, i + 1, rate);
 				_all.Add(voice);
 				_free.Push(voice);
 			}

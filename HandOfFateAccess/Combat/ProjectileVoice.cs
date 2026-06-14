@@ -1,43 +1,45 @@
 using System;
 using HandOfFateAccess.Audio;
-using UnityEngine;
 
 namespace HandOfFateAccess.Combat {
 	/// <summary>
-	/// One playing projectile voice. Its audio is synthesized on the audio thread by Core's
-	/// <see cref="ProjectileSynth"/> (rhythm envelope times filtered noise, so pitch and
-	/// tempo are independent); pan and volume are applied here as the mono output is spread
-	/// to stereo. A silent looping clip keeps the AudioSource "playing" so the filter
-	/// callback fires; the callback overwrites that silence with the generated audio.
+	/// One projectile voice: a live PCM source the audio backend pulls. Its mono tumble is
+	/// synthesized on the audio thread by Core's <see cref="ProjectileSynth"/> (rhythm envelope
+	/// times filtered noise, so pitch and tempo are independent); <see cref="Fill"/> emits that
+	/// raw mono, and the backend channel applies pan and volume (its mono pan is equal-power,
+	/// the placement the rest of the mod's spatial audio uses). Each voice owns a backend synth
+	/// voice registered once under its key; <see cref="Play"/> and <see cref="Stop"/> start and
+	/// stop it as projectiles cycle through the pool.
 	///
-	/// Parameters are written from the main thread and read on the audio thread without a
-	/// lock: each is a single field, so the worst case is one audio block at a slightly stale
-	/// value. The callback never allocates and clamps its output, so a bad parameter degrades
-	/// to quiet rather than a screech.
+	/// Pan, volume, and pitch are pushed to the channel and synth from the main thread each
+	/// frame. <see cref="Fill"/> runs on the audio thread; the only field it reads is the play
+	/// gate, and it never allocates and clamps its output, so it degrades to quiet rather than a
+	/// screech.
 	/// </summary>
-	internal sealed class ProjectileVoice : MonoBehaviour {
-		private AudioSource _source;
-		private ProjectileSynth _synth;
-		private float[] _scratch;
+	internal sealed class ProjectileVoice : IPcmSource {
+		private const int Channels = 1;   // mono; the channel pans the voice
+		// Mono scratch headroom over any block the backend requests; never resized on the audio thread.
+		private const int MaxBlockFrames = 2048;
 
+		private readonly string _key;
+		private readonly ProjectileSynth _synth;
+		private readonly float[] _mono = new float[MaxBlockFrames];
+
+		// Fully qualified: the game's Assembly-CSharp has its own global Voice type that
+		// otherwise shadows the audio pool's handle here.
+		private HandOfFateAccess.Audio.Voice _handle = HandOfFateAccess.Audio.Voice.None;
 		private volatile bool _playing;
 		private float _pan;
 		private float _volume;
 
-		/// <summary>One-time setup: build the synth and an AudioSource fed a silent loop.
-		/// Call on the main thread once the engine is live.</summary>
-		public void Init(int seed, AudioClip silentLoop) {
-			int rate = AudioSettings.outputSampleRate > 0 ? AudioSettings.outputSampleRate : 44100;
-			_synth = new ProjectileSynth(rate, (uint)seed);
-			_scratch = new float[16384];  // headroom over any DSP block; never resized on the audio thread
-
-			_source = gameObject.AddComponent<AudioSource>();
-			_source.clip = silentLoop;
-			_source.loop = true;
-			_source.playOnAwake = false;
-			_source.spatialBlend = 0f;   // 2D; pan is applied in the callback
-			_source.volume = 1f;
-			_source.panStereo = 0f;
+		/// <param name="key">Unique backend key for this voice's synth.</param>
+		/// <param name="seed">Per-voice noise seed; concurrent voices get different seeds so their
+		/// noise does not correlate into a comb.</param>
+		/// <param name="sampleRate">Rate the synth generates at; matches the backend mixer rate.</param>
+		public ProjectileVoice(string key, int seed, int sampleRate) {
+			_key = key;
+			_synth = new ProjectileSynth(sampleRate, (uint)seed);
+			AudioEngine.RegisterSynth(key, this, Channels, sampleRate);
 		}
 
 		public bool IsPlaying => _playing;
@@ -45,7 +47,9 @@ namespace HandOfFateAccess.Combat {
 		public void Play(float pitch, float pan, float volume, bool reflected) {
 			SetParams(pitch, pan, volume, reflected);
 			_playing = true;
-			_source.Play();
+			// Pitch lives in the synth (the cutoff), so the channel plays at unity pitch; pan and
+			// volume drive the channel.
+			_handle = AudioEngine.Play(_key, new SoundParams(_pan, 1f, _volume), true);
 		}
 
 		/// <summary>Re-aim a playing voice for this frame. <paramref name="reflected"/> flags the
@@ -55,45 +59,36 @@ namespace HandOfFateAccess.Combat {
 			_synth.Reflected = reflected;
 			_pan = pan < -1f ? -1f : (pan > 1f ? 1f : pan);
 			_volume = volume < 0f ? 0f : (volume > 1f ? 1f : volume);
+			if (_handle.IsValid)
+				AudioEngine.Update(_handle, new SoundParams(_pan, 1f, _volume));
 		}
 
 		public void Stop() {
 			_playing = false;
-			if (_source != null) _source.Stop();
+			if (_handle.IsValid) {
+				AudioEngine.Stop(_handle);
+				_handle = HandOfFateAccess.Audio.Voice.None;
+			}
 		}
 
-		private void OnAudioFilterRead(float[] data, int channels) {
-			if (!_playing || _synth == null) {
-				Array.Clear(data, 0, data.Length);
-				return;
-			}
-			int frames = data.Length / channels;
-			if (frames > _scratch.Length) {        // unreachable in practice; never allocate here
-				Array.Clear(data, 0, data.Length);
+		public void Fill(float[] buffer, int channels, int frames) {
+			if (!_playing || frames > _mono.Length) {
+				Array.Clear(buffer, 0, frames * channels);
 				return;
 			}
 
-			_synth.Process(_scratch, 0, frames);
+			_synth.Process(_mono, 0, frames);
 
-			// Equal-power pan, so a centred voice is not louder than a hard-panned one.
-			float vol = _volume;
-			float angle = (_pan + 1f) * 0.25f * (float)Math.PI;   // 0..pi/2 across left..right
-			float lGain = vol * (float)Math.Cos(angle);
-			float rGain = vol * (float)Math.Sin(angle);
-
+			// Emit the raw tumble; the channel applies pan and volume. Written across however many
+			// channels the backend asks for (mono in practice), so a non-mono request stays centred
+			// for the channel pan to act on.
 			int j = 0;
 			for (int i = 0; i < frames; i++) {
-				float s = _scratch[i];
+				float s = _mono[i];
 				if (float.IsNaN(s)) s = 0f;         // flush NaN before it can scream
 				else if (s > 1f) s = 1f;
 				else if (s < -1f) s = -1f;
-				if (channels >= 2) {
-					data[j] = s * lGain;
-					data[j + 1] = s * rGain;
-					for (int c = 2; c < channels; c++) data[j + c] = 0f;
-				} else {
-					data[j] = s * vol;
-				}
+				for (int c = 0; c < channels; c++) buffer[j + c] = s;
 				j += channels;
 			}
 		}

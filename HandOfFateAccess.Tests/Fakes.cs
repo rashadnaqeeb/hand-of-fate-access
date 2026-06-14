@@ -45,6 +45,7 @@ namespace HandOfFateAccess.Tests {
 	/// </summary>
 	internal sealed class FakeAudioBackend : IAudioBackend {
 		public readonly List<string> Registered = new List<string>();
+		public readonly List<string> RegisteredSynth = new List<string>();
 		public readonly List<(string key, SoundParams p, bool loop)> Played =
 			new List<(string, SoundParams, bool)>();
 		public readonly List<(Voice voice, SoundParams p)> Updated = new List<(Voice, SoundParams)>();
@@ -56,6 +57,7 @@ namespace HandOfFateAccess.Tests {
 		public bool InitializeResult = true;
 		public bool IsInitialized { get; private set; }
 		public bool IsAvailable { get; private set; }
+		public int OutputSampleRate => 44100;
 
 		public bool Initialize() {
 			IsInitialized = true;
@@ -73,6 +75,9 @@ namespace HandOfFateAccess.Tests {
 
 		public void Register(string key, float[] pcm, int channels, int sampleRate) =>
 			Registered.Add(key);
+
+		public void RegisterSynth(string key, IPcmSource source, int channels, int sampleRate) =>
+			RegisteredSynth.Add(key);
 
 		public void PlayOneShot(string key, SoundParams parameters) =>
 			Play(key, parameters, false);
