@@ -140,12 +140,18 @@ namespace HandOfFateAccess.Combat {
 		}
 
 		private bool _ready;
-		private readonly Dictionary<Component, ZoneVoice> _voices =
+		// Swapped each frame with _voicesNext to rebuild the surviving voice set. A hazard
+		// whose Unity object was destroyed since last frame can no longer be located in the
+		// dictionary (a destroyed object's hash and identity are gone), so the dead set is
+		// dropped by being left out of the rebuild rather than removed by key, which would
+		// throw out of the indexer and leave the entry stuck, re-throwing every frame.
+		private Dictionary<Component, ZoneVoice> _voices =
+			new Dictionary<Component, ZoneVoice>();
+		private Dictionary<Component, ZoneVoice> _voicesNext =
 			new Dictionary<Component, ZoneVoice>();
 		// Per-frame scratch, reused to avoid allocating in the pump.
 		private readonly List<LiveZone> _live = new List<LiveZone>();
 		private readonly HashSet<Component> _keep = new HashSet<Component>();
-		private readonly List<Component> _gone = new List<Component>();
 		// The level's traps, rescanned when the encounter changes or a trap becomes active.
 		private readonly List<TrapEntry> _traps = new List<TrapEntry>();
 		private readonly List<EmitterEntry> _emitters = new List<EmitterEntry>();
@@ -500,15 +506,20 @@ namespace HandOfFateAccess.Combat {
 				}
 			}
 
-			// Release voices for zones that ended, went silent, or fell outside the cap.
+			// Release voices for zones that ended, went silent, or fell outside the cap, and
+			// rebuild the surviving set. A hazard destroyed since last frame is stopped from the
+			// voice in hand (never an indexer or remove-by-key, which a destroyed Unity key can
+			// no longer satisfy) and dropped by being left out of the rebuilt dictionary.
+			_voicesNext.Clear();
 			foreach (KeyValuePair<Component, ZoneVoice> kv in _voices) {
-				if (kv.Key == null || !_keep.Contains(kv.Key)) _gone.Add(kv.Key);
+				if (kv.Key == null || !_keep.Contains(kv.Key))
+					AudioEngine.Stop(kv.Value.Voice);
+				else
+					_voicesNext[kv.Key] = kv.Value;
 			}
-			for (int i = 0; i < _gone.Count; i++) {
-				AudioEngine.Stop(_voices[_gone[i]].Voice);
-				_voices.Remove(_gone[i]);
-			}
-			_gone.Clear();
+			Dictionary<Component, ZoneVoice> swapped = _voices;
+			_voices = _voicesNext;
+			_voicesNext = swapped;
 		}
 
 		// Stage a hazard for this frame's voice selection. The rank discount applies while
