@@ -26,9 +26,10 @@ namespace HandOfFateAccess.Gambit {
 	/// keep-or-redraw choice, so the outcome is spoken there too; a redraw reshuffles, which is
 	/// followed by ear again like the first shuffle.
 	///
-	/// Tones and words play through <see cref="GambitVoice"/> objects (equal-power panning,
-	/// like the projectile voices and the validated prototype), not the panStereo audio backend,
-	/// so positions read evenly across the field. Each card's identity is its starting slot; it
+	/// Tones and words play through <see cref="GambitVoice"/> objects on the shared spatial
+	/// chain (equal-power panning plus the interaural delay, the placement every positioned
+	/// sound uses), so positions read evenly across the field and the mid-field inner cards,
+	/// the hardest to tell apart, get the delay cue's extra sharpness. Each card's identity is its starting slot; it
 	/// travels with the card (held by live reference, the sanctioned exception to the
 	/// no-cached-state rule) while its type and position are re-read every frame. Sequencing uses
 	/// unscaled time. The Harmony hooks only set flags; all work runs from the Update pump. A
@@ -99,6 +100,13 @@ namespace HandOfFateAccess.Gambit {
 		/// without the spoken outcomes that name them.</summary>
 		public bool Initialize() {
 			if (_toneVoice != null) return _available;   // idempotent: never build a second voice set
+			// The tones and words both play through the mod's audio engine, so with it
+			// down the whole minigame choreography is off, like every other audio feature.
+			if (!AudioEngine.IsAvailable) {
+				Log.Warn("audio backend unavailable; gambit audio disabled");
+				_available = false;
+				return false;
+			}
 			_available = _speech != null && _speech.IsAvailable;
 			if (!_available) return false;
 
@@ -111,13 +119,13 @@ namespace HandOfFateAccess.Gambit {
 				_sustainBuffers[i] = GambitTones.GenerateSustain(i, _outRate);
 			}
 
-			// Each voice owns a backend synth registered under a unique key; the loop is generated,
-			// so there is no clip to load.
-			_toneVoice = new GambitVoice("hofaccess_gambit_tone", _outRate);
-			_wordVoice = new GambitVoice("hofaccess_gambit_word", _outRate);
+			// Each voice plays generated buffers on the shared spatial chain; there is
+			// no clip to load.
+			_toneVoice = new GambitVoice();
+			_wordVoice = new GambitVoice();
 			_cardVoices = new GambitVoice[MaxSlots];
 			for (int i = 0; i < MaxSlots; i++)
-				_cardVoices[i] = new GambitVoice("hofaccess_gambit_card" + i, _outRate);
+				_cardVoices[i] = new GambitVoice();
 
 			Log.Info("gambit voices ready");
 			return true;

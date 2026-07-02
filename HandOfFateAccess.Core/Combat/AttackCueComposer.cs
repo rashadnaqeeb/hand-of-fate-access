@@ -18,12 +18,14 @@ namespace HandOfFateAccess.Combat {
 	/// unit-tested off-engine; the plugin adapter only reads the attacker's offset off its live
 	/// transform and feeds the two numbers in.
 	///
-	/// Pan and pitch carry the attacker's bearing on the combat camera's ground plane, the same
-	/// grammar as projectile sonification so the player learns one spatial language for the whole
-	/// fight: east/west (camera-right) maps to stereo pan, north/south (into the screen) to a
-	/// down-biased pitch, brightest due north and darkening south. Volume carries distance, but a
-	/// telegraph is a critical alert rather than ambient tracking, so it stays loud throughout and
-	/// only tapers to a high floor far off, never to a faint one.
+	/// Bearing rides the shared placement law (<see cref="Spatializer"/>), the same
+	/// grammar as projectile sonification so the player learns one spatial language for
+	/// the whole fight: east/west (camera-right) is the stereo position, and an attacker
+	/// in the southern hemisphere is progressively muffled by the rear low-pass. The
+	/// sample itself plays unaltered at every bearing, so block and dodge keep their full
+	/// authored contrast wherever the attack comes from. Volume carries distance, but a
+	/// telegraph is a critical alert rather than ambient tracking, so it stays loud
+	/// throughout and only tapers to a high floor far off, never to a faint one.
 	/// </summary>
 	public static class AttackCueComposer {
 		/// <summary>Sample key for a blockable attack: block it, or reflect it if ranged.</summary>
@@ -31,11 +33,6 @@ namespace HandOfFateAccess.Combat {
 
 		/// <summary>Sample key for an unblockable attack: dodge, never block.</summary>
 		public const string DodgeKey = "attack_dodge";
-
-		/// <summary>Octaves the pitch is dropped at full south deflection (due north is
-		/// unshifted), matching the projectile grammar. Down only: up-shifting a sample
-		/// stretches time and smears it.</summary>
-		public const float DownOctaves = 0.8f;
 
 		/// <summary>Distance, in world units, over which volume falls from its peak to the
 		/// far floor. Roughly an arena's engagement reach.</summary>
@@ -94,32 +91,13 @@ namespace HandOfFateAccess.Combat {
 		/// <summary>
 		/// The voice parameters for an attacker sitting <paramref name="right"/> world units to
 		/// the camera's right (negative is left) and <paramref name="forward"/> world units
-		/// toward screen-north (negative is south) of the player. Pan and pitch encode its
-		/// bearing (distance-independent); volume encodes its ground distance.
+		/// toward screen-north (negative is south) of the player. Pan and depth encode its
+		/// bearing (pure bearing past the near-field crossover); volume encodes its ground
+		/// distance.
 		/// </summary>
 		public static SoundParams Compose(float right, float forward) {
 			float distance = (float)Math.Sqrt(right * right + forward * forward);
-			float volume = VolumeFor(distance);
-
-			// L1-normalize the horizontal direction so pan and pitch share one unit of
-			// deflection by angle: due west (-1, 0), due north (0, +1), northwest (-0.5, +0.5).
-			float budget = Math.Abs(right) + Math.Abs(forward);
-			if (budget < 1e-6f) return new SoundParams(0f, PitchFor(0f), volume);  // on the player: no bearing, mid pitch
-
-			float pan = right / budget;
-			float deflection = forward / budget;
-			return new SoundParams(pan, PitchFor(deflection), volume);
-		}
-
-		/// <summary>
-		/// The down-biased pitch ratio for a north/south <paramref name="deflection"/> in
-		/// [-1, +1] (south to north): 1 (the authored sample) at due north, falling to
-		/// <see cref="DownOctaves"/> lower at due south, never above 1. Mid-deflection (due
-		/// east or west) sits halfway down.
-		/// </summary>
-		public static float PitchFor(float deflection) {
-			float octaves = (deflection - 1f) * 0.5f * DownOctaves;  // 0 at north, -DownOctaves at south
-			return (float)Math.Pow(2.0, octaves);
+			return Spatializer.Place(right, forward, VolumeFor(distance));
 		}
 
 		/// <summary>Volume for a ground distance: <see cref="MaxVolume"/> at zero, falling

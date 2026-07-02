@@ -12,10 +12,9 @@ namespace HandOfFateAccess.Audio {
 	///   arming - slow soft throb: the zone exists but damage is off; leaving is free.
 	///   active - mid-rate buzz: standing in it hurts.
 	///   inside - fast hard rattle: you are in it, get out now, away from the sound.
-	/// The bearing pitch-shift (down to 0.57x at due south) also slows a loop's pulse, so the
-	/// rates are spaced so their shifted ranges never overlap: a southern active zone can
-	/// never sound like a northern arming one, and a southern arming throb (1.15 Hz) stays
-	/// above the primed pulse (1 Hz).
+	/// The rates are spaced widely so the states stay separable at a listen under the
+	/// rest of the combat mix, and the loops play at their authored rate at every bearing
+	/// (position is carried by the placement chain, never by modulating the loop).
 	///
 	/// Seamless by construction: the loop is exactly one second and every component, the
 	/// integer-Hz tone partials and the integer-rate pulse envelope, completes a whole number
@@ -29,7 +28,7 @@ namespace HandOfFateAccess.Audio {
 		public const string InsideKey = "zone_inside";
 
 		/// <summary>Pulses per second per state. Integer values keep the one-second loop
-		/// seamless; the spacing keeps the states separable under the bearing pitch-shift.</summary>
+		/// seamless; the wide spacing keeps the states separable at a listen.</summary>
 		public const int PrimedPulseHz = 1;
 		public const int ArmingPulseHz = 2;
 		public const int ActivePulseHz = 6;

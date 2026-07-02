@@ -8,16 +8,17 @@ using UnityEngine;
 namespace HandOfFateAccess.Combat {
 	/// <summary>
 	/// Sonifies every hostile projectile in a fight: each gets its own looping voice whose
-	/// pan, pitch, and volume track where the projectile sits relative to the player, so a
-	/// player who cannot see the arena can hear a projectile's bearing (pan for east/west,
-	/// pitch for north/south), its proximity (volume), and where it is heading as those move
-	/// frame to frame. Only enemy-team projectiles are voiced: the player's own shots and
-	/// reflections are not threats and would only clutter the field.
+	/// placement tracks where the projectile sits relative to the player, so a player who
+	/// cannot see the arena can hear a projectile's bearing (pan and interaural delay for
+	/// east/west, the rear muffle for behind), its proximity (volume), and where it is
+	/// heading as those move frame to frame. Only enemy-team projectiles are voiced: the
+	/// player's own shots and reflections are not threats and would only clutter the field.
 	///
 	/// The loop is synthesized per voice by a <see cref="ProjectileVoicePool"/> rather than
-	/// played from a sample, so the north/south pitch can drop without the tumble dragging.
-	/// Core's <see cref="ProjectileSonifier"/> decides the three numbers from each projectile's
-	/// offset; this reads that offset off the live transform and owns the voices.
+	/// played from a sample, so its rhythm and brightness stay the authored identity at
+	/// every bearing. Core's <see cref="ProjectileSonifier"/> decides the placement from
+	/// each projectile's offset; this reads that offset off the live transform and owns
+	/// the voices.
 	///
 	/// The voice map is keyed by the live projectile object: one entering CombatManager's
 	/// list gets a voice, one leaving it (expired or impacted) has its voice released. Holding
@@ -170,11 +171,11 @@ namespace HandOfFateAccess.Combat {
 				bool reflected = proj is CombatProxyProjectile p && p.IsReflected;
 				ProjectileVoice voice;
 				if (_voices.TryGetValue(proj, out voice)) {
-					voice.SetParams(sp.Pitch, sp.Pan, sp.Volume, reflected);
+					voice.SetParams(sp, reflected);
 				} else {
 					voice = _pool.Acquire();
 					if (voice != null) {
-						voice.Play(sp.Pitch, sp.Pan, sp.Volume, reflected);
+						voice.Play(sp, reflected);
 						_voices[proj] = voice;
 					}
 				}

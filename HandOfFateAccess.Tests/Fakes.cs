@@ -39,25 +39,20 @@ namespace HandOfFateAccess.Tests {
 	}
 
 	/// <summary>
-	/// Records audio calls and hands back real Voice handles from an actual VoicePool,
-	/// so feature tests can assert what played and so handle resolution behaves as in
-	/// the live backend. No sound is produced.
+	/// A backend that opens no device: it hands the hosted mixer back to the test,
+	/// which pulls rendered blocks from it directly. That drives the WHOLE Core
+	/// engine (registry, voice pool, spatial chain, mix clamp) exactly as the FMOD
+	/// callback would, so tests assert on the actual samples a player would hear.
 	/// </summary>
 	internal sealed class FakeAudioBackend : IAudioBackend {
-		public readonly List<string> Registered = new List<string>();
-		public readonly List<string> RegisteredSynth = new List<string>();
-		public readonly List<(string key, SoundParams p, bool loop)> Played =
-			new List<(string, SoundParams, bool)>();
-		public readonly List<(Voice voice, SoundParams p)> Updated = new List<(Voice, SoundParams)>();
-		public int StopCount;
-		public int StopAllCount;
-
-		private readonly VoicePool _pool = new VoicePool(8);
+		public IPcmSource Mixer;
+		public int PumpCount;
 
 		public bool InitializeResult = true;
+		public bool HostResult = true;
 		public bool IsInitialized { get; private set; }
 		public bool IsAvailable { get; private set; }
-		public int OutputSampleRate => 44100;
+		public int OutputSampleRate => IsAvailable ? 44100 : 0;
 		public bool IsOutputMono => false;
 
 		public bool Initialize() {
@@ -69,41 +64,26 @@ namespace HandOfFateAccess.Tests {
 		public void Shutdown() {
 			IsInitialized = false;
 			IsAvailable = false;
+			Mixer = null;
 		}
 
-		public int PumpCount;
 		public void Pump() => PumpCount++;
 
-		public void Register(string key, float[] pcm, int channels, int sampleRate) =>
-			Registered.Add(key);
-
-		public void RegisterSynth(string key, IPcmSource source, int channels, int sampleRate) =>
-			RegisteredSynth.Add(key);
-
-		public void PlayOneShot(string key, SoundParams parameters) =>
-			Play(key, parameters, false);
-
-		public Voice Play(string key, SoundParams parameters, bool loop) {
-			Played.Add((key, parameters, loop));
-			return _pool.Acquire();
-		}
-
-		public void Update(Voice voice, SoundParams parameters) {
-			if (_pool.TryResolve(voice, out _))
-				Updated.Add((voice, parameters));
-		}
-
-		public void Stop(Voice voice) {
-			if (_pool.TryResolve(voice, out _)) {
-				StopCount++;
-				_pool.Release(voice);
+		public bool Host(IPcmSource mixer) {
+			if (!HostResult) {
+				IsAvailable = false;   // matches the real backend: no output = unavailable
+				return false;
 			}
+			Mixer = mixer;
+			return true;
 		}
 
-		public void StopAll() {
-			StopAllCount++;
-			for (int slot = 0; slot < _pool.Capacity; slot++)
-				_pool.ReleaseSlot(slot);
+		/// <summary>Pull one interleaved-stereo block of <paramref name="frames"/> frames
+		/// from the hosted mixer, as the audio thread would.</summary>
+		public float[] Render(int frames) {
+			var buffer = new float[frames * 2];
+			Mixer.Fill(buffer, 2, frames);
+			return buffer;
 		}
 	}
 }

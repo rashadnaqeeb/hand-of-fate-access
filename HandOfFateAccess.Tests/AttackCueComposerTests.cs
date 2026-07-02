@@ -5,10 +5,6 @@ using Xunit;
 
 namespace HandOfFateAccess.Tests {
 	public class AttackCueComposerTests {
-		private static float NorthPitch => AttackCueComposer.PitchFor(1f);
-		private static float SouthPitch => AttackCueComposer.PitchFor(-1f);
-		private static float MidPitch => AttackCueComposer.PitchFor(0f);
-
 		// --- Sample choice: block only when the attack is blockable AND the player can act
 		// on it; everything else is dodge. ---
 
@@ -74,77 +70,69 @@ namespace HandOfFateAccess.Tests {
 			Assert.False(AttackCueComposer.ShotThreatens(10f, 0f, 0f, 0f));
 		}
 
-		// --- Bearing: pan is east/west, pitch is down-biased and brightest due north. ---
+		// --- Bearing: the shared placement law, pan east/west, depth fore/aft; the
+		// sample itself always plays unshifted (block and dodge keep their authored
+		// contrast at every bearing). ---
 
 		[Fact]
-		public void DueNorth_Centered_BrightestUnshifted() {
+		public void DueNorth_Centered_FullAhead() {
 			SoundParams sp = AttackCueComposer.Compose(0f, 5f);
 			Assert.Equal(0f, sp.Pan, 3);
+			Assert.Equal(1f, sp.Depth, 3);
 			Assert.Equal(1f, sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void DueSouth_Centered_Darkest() {
+		public void DueSouth_Centered_FullBehind_StillUnshifted() {
 			SoundParams sp = AttackCueComposer.Compose(0f, -5f);
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal((float)Math.Pow(2.0, -AttackCueComposer.DownOctaves), sp.Pitch, 3);
+			Assert.Equal(-1f, sp.Depth, 3);
+			Assert.Equal(1f, sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void DueWest_FullLeft_MidPitch() {
+		public void DueWest_FullLeft_NoDepth() {
 			SoundParams sp = AttackCueComposer.Compose(-5f, 0f);
 			Assert.Equal(-1f, sp.Pan, 3);
-			Assert.Equal(MidPitch, sp.Pitch, 3);
+			Assert.Equal(0f, sp.Depth, 3);
 		}
 
 		[Fact]
-		public void DueEast_FullRight_MidPitch() {
+		public void DueEast_FullRight_NoDepth() {
 			SoundParams sp = AttackCueComposer.Compose(5f, 0f);
 			Assert.Equal(1f, sp.Pan, 3);
-			Assert.Equal(MidPitch, sp.Pitch, 3);
+			Assert.Equal(0f, sp.Depth, 3);
 		}
 
 		[Fact]
-		public void PitchRisesNorthward() {
-			Assert.True(SouthPitch < MidPitch);
-			Assert.True(MidPitch < NorthPitch);
+		public void Northwest_HalfField_HalfAhead() {
+			SoundParams sp = AttackCueComposer.Compose(-5f, 5f);
+			Assert.Equal(-0.707f, sp.Pan, 3);
+			Assert.Equal(0.707f, sp.Depth, 3);
 		}
 
-		[Fact]
-		public void PitchNeverAboveUnshifted() {
-			for (float d = -1f; d <= 1f; d += 0.25f)
-				Assert.True(AttackCueComposer.PitchFor(d) <= 1f);
-		}
+		// --- Bearing is distance-independent past the near-field crossover. ---
 
 		[Fact]
-		public void Northwest_HalfLeft_AboveMid() {
-			SoundParams sp = AttackCueComposer.Compose(-3f, 3f);
-			Assert.Equal(-0.5f, sp.Pan, 3);
-			Assert.True(sp.Pitch > MidPitch && sp.Pitch < 1f);
-		}
-
-		// --- Bearing is distance-independent: only direction sets pan and pitch. ---
-
-		[Fact]
-		public void SameBearing_SamePanAndPitch_AnyDistance() {
-			SoundParams near = AttackCueComposer.Compose(-1f, 1f);
+		public void SameBearing_SamePlacement_AnyDistancePastCrossover() {
+			SoundParams near = AttackCueComposer.Compose(-4f, 4f);
 			SoundParams far = AttackCueComposer.Compose(-20f, 20f);
 			Assert.Equal(near.Pan, far.Pan, 3);
-			Assert.Equal(near.Pitch, far.Pitch, 3);
+			Assert.Equal(near.Depth, far.Depth, 3);
 		}
 
 		[Fact]
-		public void OnPlayer_Centered_MidPitch() {
+		public void OnPlayer_CenteredAndDry() {
 			SoundParams sp = AttackCueComposer.Compose(0f, 0f);
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal(MidPitch, sp.Pitch, 3);
+			Assert.Equal(0f, sp.Depth, 3);
 		}
 
 		[Fact]
 		public void Bearing_StaysWithinSeamClamps() {
 			SoundParams sp = AttackCueComposer.Compose(-100f, 3f);
 			Assert.InRange(sp.Pan, -1f, 1f);
-			Assert.InRange(sp.Pitch, SoundParams.MinPitch, SoundParams.MaxPitch);
+			Assert.InRange(sp.Depth, -1f, 1f);
 		}
 
 		// --- Volume: a telegraph is reaction-critical, so it stays loud and floors high. ---

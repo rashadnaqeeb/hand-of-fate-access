@@ -4,10 +4,10 @@ using HandOfFateAccess.Audio;
 namespace HandOfFateAccess.Combat {
 	/// <summary>
 	/// Decides what the player hears for an enemy-locator ping: the bearing comes from the
-	/// projectile grammar (<see cref="ProjectileSonifier"/>: pan = east/west, down-biased
-	/// pitch = north/south), so the learned spatial language transfers, but the loudness is
-	/// the locator's own ranging curve, wider than either the telegraph alert's or the
-	/// projectile loop's. The ping is a one-shot answer to "where is the enemy", so its
+	/// shared placement law (<see cref="ProjectileSonifier"/>: pan and interaural delay =
+	/// east/west, rear muffle = behind), so the learned spatial language transfers, but the
+	/// loudness is the locator's own ranging curve, wider than either the telegraph alert's
+	/// or the projectile loop's. The ping is a one-shot answer to "where is the enemy", so its
 	/// volume is the distance readout: full inside the player's default melee reach (the
 	/// answer is "swing now"), tapering to a quiet-but-audible floor across the arena.
 	/// </summary>
@@ -33,13 +33,13 @@ namespace HandOfFateAccess.Combat {
 		/// <summary>
 		/// The ping parameters for an enemy sitting <paramref name="right"/> world units to
 		/// the camera's right (negative is left) and <paramref name="forward"/> world units
-		/// toward screen-north (negative is south) of the player. Pan and pitch encode its
-		/// bearing (distance-independent); volume encodes its ground distance.
+		/// toward screen-north (negative is south) of the player. Pan and depth encode its
+		/// bearing; volume encodes its ground distance.
 		/// </summary>
 		public static SoundParams Compose(float right, float forward) {
 			SoundParams bearing = ProjectileSonifier.Compose(right, forward);
 			float distance = (float)Math.Sqrt(right * right + forward * forward);
-			return new SoundParams(bearing.Pan, bearing.Pitch, VolumeFor(distance));
+			return new SoundParams(bearing.Pan, bearing.Depth, bearing.Pitch, VolumeFor(distance));
 		}
 
 		/// <summary>Volume for a ground distance: <see cref="MaxVolume"/> at and inside

@@ -7,9 +7,9 @@ namespace HandOfFateAccess.Combat {
 	/// exit, and the court fights' end circle (which borrows the exit's voice - standing in
 	/// it is how a boss fight ends), the walk-in objects a sighted player simply sees
 	/// standing in the arena. Each pings on a fixed cadence with a sample naming what it is,
-	/// positioned by the shared bearing grammar (pan = east/west, the down-biased pitch =
-	/// north/south, volume = distance), so the skill of reading a projectile or telegraph
-	/// transfers directly and "walk toward the sound" is the whole instruction.
+	/// positioned by the shared placement law (pan and interaural delay = east/west, the
+	/// rear muffle = behind, volume = distance), so the skill of reading a projectile or
+	/// telegraph transfers directly and "walk toward the sound" is the whole instruction.
 	///
 	/// Pings, not loops, deliberately: in the established language a continuous loop means
 	/// danger (zones, traps) and the wind means walls, so a friendly destination must not
@@ -19,9 +19,9 @@ namespace HandOfFateAccess.Combat {
 	/// approach is audible as an accelerating rhythm. Volume alone could not say this - it
 	/// floors rather than fading out, and across a small room it barely moves, which in
 	/// play made a far exit sound like a companion at fixed distance ("following me
-	/// around"). The gap then starts when the sound ENDS, so the cadence also follows the
-	/// clip's length at the pitch it played (a pitched-down ping runs longer and repings
-	/// later). The exit's first ping is staggered behind the chest's at level entry.
+	/// around"). The gap then starts when the sound ENDS, so the silence between pings is
+	/// a real gap whatever the clip's length. The exit's first ping is staggered behind
+	/// the chest's at level entry.
 	///
 	/// Unlike every hazard voice, volume floors instead of fading to silence: a beacon is a
 	/// navigation target, so silence must mean "no chest here", never "chest far away". The
@@ -81,26 +81,17 @@ namespace HandOfFateAccess.Combat {
 				parameters = default(SoundParams);
 				return false;
 			}
-			float volume = VolumeFor(distance);
-
-			// L1-normalize the horizontal direction so pan and pitch share one unit of
-			// deflection by angle, the grammar shared with every other combat sound.
-			float budget = Math.Abs(right) + Math.Abs(forward);
-			float pan = right / budget;
-			float deflection = forward / budget;
-			parameters = new SoundParams(pan, ProjectileSonifier.PitchFor(deflection), volume);
+			parameters = Spatializer.Place(right, forward, VolumeFor(distance));
 			return true;
 		}
 
 		/// <summary>
 		/// When a ping played at <paramref name="now"/> should ping again:
 		/// <see cref="GapFor"/> the object's <paramref name="distance"/> in silence after
-		/// the sound ends. The clip's authored <paramref name="clipDuration"/> stretches by
-		/// the played <paramref name="pitch"/> (a playback-rate multiplier, so pitched-down
-		/// runs longer), keeping the gap a real gap at any bearing.
+		/// the clip's authored <paramref name="clipDuration"/> ends.
 		/// </summary>
-		public static float NextPingTime(float now, float clipDuration, float pitch, float distance) =>
-			now + clipDuration / pitch + GapFor(distance);
+		public static float NextPingTime(float now, float clipDuration, float distance) =>
+			now + clipDuration + GapFor(distance);
 
 		/// <summary>The silence between pings for a ground distance: <see cref="NearPingGap"/>
 		/// in reach, stretching to <see cref="FarPingGap"/> at

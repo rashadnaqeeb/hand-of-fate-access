@@ -2,19 +2,18 @@ using System;
 
 namespace HandOfFateAccess.Audio {
 	/// <summary>
-	/// Synthesizes the projectile tumble from scratch instead of pitch-shifting a recording,
-	/// so pitch and tempo are independent by construction. The tumble rhythm is a fixed
-	/// amplitude envelope (a strong pulse and a weaker one per period) and the pitch is the
-	/// cutoff of a resonant low-pass over a noise source. Changing pitch moves only the
-	/// filter, never the envelope, so the loop darkens or brightens with no change of speed
-	/// and none of the stretching artifacts that shifting a sample forces: the rhythm and the
-	/// pitch were never welded onto one timeline.
+	/// Synthesizes the projectile tumble from scratch: a fixed amplitude envelope (a
+	/// strong pulse and a weaker one per period) over a resonant low-pass on a noise
+	/// source. The tumble's rhythm and brightness are its identity and never modulate
+	/// with position - placement (pan, delay, rear muffle, volume) is applied by the
+	/// spatial voice chain around it. The one identity variation is
+	/// <see cref="Reflected"/>: the player's own bounced-back shot flutters faster, an
+	/// orthogonal tag that scales the rhythm only.
 	///
-	/// Pure and engine-free, so it is unit-tested off-engine; the plugin owns one per voice
-	/// and pumps <see cref="Process"/> from the backend's synth fill callback. Pan and volume
-	/// are applied by the voice; this emits mono. <see cref="Pitch"/> is written from the main
-	/// thread and read on the audio thread without a lock, a torn read being one harmless
-	/// block at a slightly stale cutoff.
+	/// Pure and engine-free, so it is unit-tested off-engine; the plugin owns one per
+	/// voice and the chain pulls <see cref="Process"/> on the audio thread. Emits raw
+	/// mono. <see cref="Reflected"/> is written from the main thread and read on the
+	/// audio thread without a lock, a torn read being one harmless block.
 	/// </summary>
 	public sealed class ProjectileSynth {
 		// Tumble rhythm (the tempo): a strong pulse at the period start and a weaker one
@@ -31,16 +30,15 @@ namespace HandOfFateAccess.Audio {
 		// scales the rhythm only, never the cutoff, so the spatial cues are untouched.
 		public const float ReflectedTempoScale = 1.8f;
 
-		// Noise colour (the pitch): a resonant low-pass whose cutoff scales with the pitch
-		// param, so a lower pitch is a darker, lower whoosh with the tempo untouched.
-		private const float BaseCutoff = 3000f;   // Hz at pitch 1 (due north, brightest)
+		// Noise colour: a resonant low-pass over the noise source, the tumble's fixed
+		// brightness.
+		private const float BaseCutoff = 3000f;
 		private const float Damp = 0.6f;          // state-variable damping; lower = more resonant
 		private const float OutGain = 0.6f;
 
 		private readonly int _sampleRate;
 		private uint _rng;
 		private float _low, _band;
-		private float _pitch = 1f;
 		private float _tempo = 1f;   // tumble-rate multiplier; >1 flutters faster (reflected)
 
 		// The tumble envelope is fixed and pitch-independent, so it is tabulated once at
@@ -61,16 +59,9 @@ namespace HandOfFateAccess.Audio {
 				_env[i] = Env(i / (double)_sampleRate);
 		}
 
-		/// <summary>Cutoff scale (1 = brightest at due north, falling toward the south). Set
-		/// from the main thread, read on the audio thread.</summary>
-		public float Pitch {
-			get { return _pitch; }
-			set { _pitch = value; }
-		}
-
 		/// <summary>True for a reflected (outgoing) projectile: the tumble flutters faster so the
-		/// player's own bounced-back shot is unmistakable against incoming threats, while pan,
-		/// pitch, and volume still track its bearing and distance. Set from the main thread, read
+		/// player's own bounced-back shot is unmistakable against incoming threats, while its
+		/// placement still tracks its bearing and distance. Set from the main thread, read
 		/// on the audio thread.</summary>
 		public bool Reflected {
 			get { return _tempo > 1f; }
@@ -81,7 +72,7 @@ namespace HandOfFateAccess.Audio {
 		/// Render <paramref name="seconds"/> of the tumble offline into a buffer, for a
 		/// registered demo clip (the sound glossary). Live projectiles synthesize in real
 		/// time per voice instead; this exists so the sound can also be heard outside a
-		/// fight, at neutral pitch, exactly as a due-north projectile would sound.
+		/// fight, exactly as the authored tumble sounds.
 		/// </summary>
 		public static float[] Render(int sampleRate, float seconds, bool reflected, uint seed) {
 			if (sampleRate <= 0) sampleRate = 44100;
@@ -103,9 +94,7 @@ namespace HandOfFateAccess.Audio {
 				_band = 0f;
 			}
 
-			float p = _pitch;
-			if (!(p > 0f)) p = 1f;
-			float fc = BaseCutoff * p;
+			float fc = BaseCutoff;
 			float maxFc = _sampleRate * 0.24f;     // keep the SVF stable below ~Nyquist/2
 			if (fc > maxFc) fc = maxFc;
 			float f = 2f * (float)Math.Sin(Math.PI * fc / _sampleRate);

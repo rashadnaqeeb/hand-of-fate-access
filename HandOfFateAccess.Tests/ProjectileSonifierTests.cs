@@ -1,111 +1,92 @@
-using System;
 using HandOfFateAccess.Audio;
 using HandOfFateAccess.Combat;
 using Xunit;
 
 namespace HandOfFateAccess.Tests {
 	public class ProjectileSonifierTests {
-		// Pitch at the north (unshifted) and south (darkest) extremes, plus the east/west mid.
-		private static float NorthPitch => ProjectileSonifier.PitchFor(1f);
-		private static float SouthPitch => ProjectileSonifier.PitchFor(-1f);
-		private static float MidPitch => ProjectileSonifier.PitchFor(0f);
-
-		// --- Cardinal bearings: pitch is down-biased, brightest north, darkest south. ---
+		// --- Cardinal bearings: pan is east/west, depth is fore/aft, the sample plays
+		// unshifted everywhere (pitch 1: position never modulates the tumble). ---
 
 		[Fact]
-		public void DueNorth_Centered_BrightestUnshifted() {
+		public void DueNorth_Centered_FullAhead() {
 			SoundParams sp = ProjectileSonifier.Compose(0f, 5f);
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal(1f, sp.Pitch, 3);  // the authored sample, no shift
+			Assert.Equal(1f, sp.Depth, 3);
+			Assert.Equal(1f, sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void DueSouth_Centered_Darkest() {
+		public void DueSouth_Centered_FullBehind() {
 			SoundParams sp = ProjectileSonifier.Compose(0f, -5f);
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal((float)Math.Pow(2.0, -ProjectileSonifier.DownOctaves), sp.Pitch, 3);
+			Assert.Equal(-1f, sp.Depth, 3);
+			Assert.Equal(1f, sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void DueWest_FullLeft_MidPitch() {
+		public void DueWest_FullLeft_NoDepth() {
 			SoundParams sp = ProjectileSonifier.Compose(-5f, 0f);
 			Assert.Equal(-1f, sp.Pan, 3);
-			Assert.Equal(MidPitch, sp.Pitch, 3);
+			Assert.Equal(0f, sp.Depth, 3);
 		}
 
 		[Fact]
-		public void DueEast_FullRight_MidPitch() {
+		public void DueEast_FullRight_NoDepth() {
 			SoundParams sp = ProjectileSonifier.Compose(5f, 0f);
 			Assert.Equal(1f, sp.Pan, 3);
-			Assert.Equal(MidPitch, sp.Pitch, 3);
+			Assert.Equal(0f, sp.Depth, 3);
+		}
+
+		// --- Diagonals: pan and depth are the bearing's sine and cosine, so a diagonal
+		// sits evenly between the cardinals. ---
+
+		[Fact]
+		public void Northwest_HalfField_HalfAhead() {
+			SoundParams sp = ProjectileSonifier.Compose(-5f, 5f);
+			Assert.Equal(-0.707f, sp.Pan, 3);
+			Assert.Equal(0.707f, sp.Depth, 3);
 		}
 
 		[Fact]
-		public void WestAndEast_SamePitch() {
-			Assert.Equal(ProjectileSonifier.Compose(-5f, 0f).Pitch, ProjectileSonifier.Compose(5f, 0f).Pitch, 3);
+		public void Southwest_HalfField_HalfBehind() {
+			SoundParams sp = ProjectileSonifier.Compose(-5f, -5f);
+			Assert.Equal(-0.707f, sp.Pan, 3);
+			Assert.Equal(-0.707f, sp.Depth, 3);
 		}
 
-		// --- Pitch is monotonic in northness and never rises above the unshifted sample. ---
+		// --- Past the crossover the bearing is distance-independent; inside it the pan
+		// tracks the absolute offset, so a passing projectile glides across the field
+		// instead of snapping ear to ear. ---
 
 		[Fact]
-		public void PitchRisesNorthward() {
-			Assert.True(SouthPitch < ProjectileSonifier.PitchFor(-0.5f));
-			Assert.True(ProjectileSonifier.PitchFor(-0.5f) < MidPitch);
-			Assert.True(MidPitch < ProjectileSonifier.PitchFor(0.5f));
-			Assert.True(ProjectileSonifier.PitchFor(0.5f) < NorthPitch);
-		}
-
-		[Fact]
-		public void PitchNeverAboveUnshifted() {
-			for (float d = -1f; d <= 1f; d += 0.25f)
-				Assert.True(ProjectileSonifier.PitchFor(d) <= 1f);
-		}
-
-		// --- Diagonals: the unit budget splits the bearing evenly by angle. ---
-
-		[Fact]
-		public void Northwest_HalfLeft_AbovMid() {
-			SoundParams sp = ProjectileSonifier.Compose(-3f, 3f);
-			Assert.Equal(-0.5f, sp.Pan, 3);
-			Assert.True(sp.Pitch > MidPitch && sp.Pitch < 1f);
-		}
-
-		[Fact]
-		public void Southwest_HalfLeft_BelowMid() {
-			SoundParams sp = ProjectileSonifier.Compose(-2f, -2f);
-			Assert.Equal(-0.5f, sp.Pan, 3);
-			Assert.True(sp.Pitch < MidPitch && sp.Pitch > SouthPitch);
-		}
-
-		// --- Bearing is distance-independent: only direction sets pan and pitch. ---
-
-		[Fact]
-		public void DueWest_HardLeft_WhetherNearOrFar() {
-			Assert.Equal(-1f, ProjectileSonifier.Compose(-1f, 0f).Pan, 3);
-			Assert.Equal(-1f, ProjectileSonifier.Compose(-50f, 0f).Pan, 3);
-		}
-
-		[Fact]
-		public void SameBearing_SamePanAndPitch_AnyDistance() {
-			SoundParams near = ProjectileSonifier.Compose(-1f, 1f);
+		public void SameBearing_SamePlacement_AnyDistancePastCrossover() {
+			SoundParams near = ProjectileSonifier.Compose(-4f, 4f);
 			SoundParams far = ProjectileSonifier.Compose(-20f, 20f);
 			Assert.Equal(near.Pan, far.Pan, 3);
-			Assert.Equal(near.Pitch, far.Pitch, 3);
+			Assert.Equal(near.Depth, far.Depth, 3);
 		}
 
 		[Fact]
-		public void OnPlayer_Centered_MidPitch() {
+		public void InsideCrossover_PanSoftensWithOffset() {
+			// One unit to the west, essentially on the player: not hard left.
+			SoundParams sp = ProjectileSonifier.Compose(-1f, 0f);
+			Assert.Equal(-1f / Spatializer.PanWidth, sp.Pan, 3);
+			Assert.True(sp.Pan > -1f);
+		}
+
+		[Fact]
+		public void OnPlayer_CenteredAndDry() {
 			SoundParams sp = ProjectileSonifier.Compose(0f, 0f);
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal(MidPitch, sp.Pitch, 3);
+			Assert.Equal(0f, sp.Depth, 3);
 		}
 
 		[Fact]
 		public void Bearing_StaysWithinSeamClamps() {
-			// Any direction must land inside the backend's valid pan and pitch ranges.
+			// Any direction must land inside the voice chain's valid ranges.
 			SoundParams sp = ProjectileSonifier.Compose(-100f, 3f);
 			Assert.InRange(sp.Pan, -1f, 1f);
-			Assert.InRange(sp.Pitch, SoundParams.MinPitch, SoundParams.MaxPitch);
+			Assert.InRange(sp.Depth, -1f, 1f);
 		}
 
 		// --- Volume: ground distance maps to loudness, peak near, floor far. ---
@@ -144,13 +125,13 @@ namespace HandOfFateAccess.Tests {
 			Assert.Equal(ProjectileSonifier.MinVolume, ProjectileSonifier.VolumeFor(float.NaN), 3);
 		}
 
-		// --- A combined corner: a far southwest projectile sits left, low, and faint. ---
+		// --- A combined corner: a far southwest projectile sits left, behind, and faint. ---
 
 		[Fact]
-		public void FarSouthWest_LeftLowAndQuiet() {
+		public void FarSouthWest_LeftBehindAndQuiet() {
 			SoundParams sp = ProjectileSonifier.Compose(-ProjectileSonifier.FalloffRange, -ProjectileSonifier.FalloffRange);
 			Assert.True(sp.Pan < 0f);
-			Assert.True(sp.Pitch < 1f);
+			Assert.True(sp.Depth < 0f);
 			Assert.Equal(ProjectileSonifier.MinVolume, sp.Volume, 3);
 		}
 	}

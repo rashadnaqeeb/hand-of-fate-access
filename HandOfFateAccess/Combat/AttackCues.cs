@@ -20,9 +20,11 @@ namespace HandOfFateAccess.Combat {
 	/// position into the queue here; this pump, run from the update loop, drains the queue and
 	/// plays each cue. Recording the position is recording the event, not caching live state: a
 	/// telegraph is anchored where the attacker stood when the swing began, and a one-shot fired
-	/// a frame later belongs at that spot, not wherever the attacker has since moved.
+	/// a frame later belongs at that spot, not wherever the attacker has since moved. While a
+	/// cue is still sounding it is re-placed each frame against the moving player, so a dodge
+	/// roll mid-cue keeps the bearing truthful instead of freezing it at fire time.
 	///
-	/// Core's <see cref="AttackCueComposer"/> decides the sample and its pan/pitch/volume from the
+	/// Core's <see cref="AttackCueComposer"/> decides the sample and its placement from the
 	/// attacker's offset; this reads that offset off the live combat frame and owns the playback.
 	///
 	/// Mover hazards (lobs, lightning heads) also cue here as they launch, always as a dodge:
@@ -62,6 +64,14 @@ namespace HandOfFateAccess.Combat {
 		// Per-source launch dedup, fed by the pump as cues actually play. Mod-side event
 		// bookkeeping; cleared whenever combat is not live.
 		private readonly MoverCueGate _gate = new MoverCueGate();
+
+		// Cues still sounding, re-placed each frame against the moving player. The voice
+		// handles are the mod's own audio state; a stale handle stops resolving on its own.
+		private struct LiveCue {
+			public HandOfFateAccess.Audio.Voice Voice;
+			public Vector3 Position;
+		}
+		private readonly List<LiveCue> _live = new List<LiveCue>();
 
 		/// <summary>Record an attack's cue (block when <paramref name="blockable"/> and the
 		/// player currently holds the matching counter/reflect ability per
@@ -157,7 +167,22 @@ namespace HandOfFateAccess.Combat {
 			if (!AudioEngine.IsAvailable || !CombatFrame.TryGet(out CombatFrame frame)) {
 				_pending.Clear();
 				_gate.Clear();
+				// A cue caught mid-ring by the fight ending just plays itself out; only
+				// the tracking is dropped.
+				_live.Clear();
 				return;
+			}
+
+			// Re-place the cues still sounding against this frame's player position, and
+			// drop the ones that finished.
+			for (int i = _live.Count - 1; i >= 0; i--) {
+				LiveCue live = _live[i];
+				if (!AudioEngine.IsPlaying(live.Voice)) {
+					_live.RemoveAt(i);
+					continue;
+				}
+				frame.Project(live.Position, out float liveRight, out float liveForward);
+				AudioEngine.Update(live.Voice, AttackCueComposer.Compose(liveRight, liveForward));
 			}
 
 			while (_pending.Count > 0) {
@@ -171,7 +196,10 @@ namespace HandOfFateAccess.Combat {
 					_gate.NoteAttackCue(cue.SourceKey, Time.time);
 				}
 				frame.Project(cue.Position, out float right, out float forward);
-				AudioEngine.PlayOneShot(cue.Key, AttackCueComposer.Compose(right, forward));
+				HandOfFateAccess.Audio.Voice voice =
+					AudioEngine.Play(cue.Key, AttackCueComposer.Compose(right, forward), false);
+				if (voice.IsValid)
+					_live.Add(new LiveCue { Voice = voice, Position = cue.Position });
 				_lastCueTime = Time.time;
 			}
 		}

@@ -20,9 +20,9 @@ namespace HandOfFateAccess.Combat {
 	/// as walls cross the range edge: in cluttered arenas the nearest object on a side
 	/// flickers in and out and swaps identity constantly, and restarting a loop each time
 	/// clicks and lurches. Instead each side has a target volume (peaking at
-	/// <see cref="MaxVolume"/> at the player's own position, falling linearly to silence at
-	/// <see cref="Range"/>, and silent when nothing is in range) that the live volume eases
-	/// toward with <see cref="Smooth"/>, so
+	/// <see cref="MaxVolume"/> at the player's own position, falling quadratically to
+	/// silence at <see cref="Range"/>, and silent when nothing is in range) that the live
+	/// volume eases toward with <see cref="Smooth"/>, so
 	/// the field glides as the player moves instead of stuttering.
 	///
 	/// Pan is bearing only, distance-independent, the same grammar every other positioned
@@ -64,14 +64,18 @@ namespace HandOfFateAccess.Combat {
 
 		/// <summary>
 		/// The volume a wall on a side should reach at <paramref name="distance"/> world
-		/// units: full at zero, falling linearly to zero at <see cref="Range"/>, and zero
-		/// when there is no wall in range (a non-finite or negative distance, which is how
-		/// the adapter reports "nothing hit").
+		/// units: full at zero, falling to zero at <see cref="Range"/>, and zero when
+		/// there is no wall in range (a non-finite or negative distance, which is how
+		/// the adapter reports "nothing hit"). The falloff is quadratic, so it bites
+		/// close in: only a wall about to stop the player is loud, and a corner's two or
+		/// three mid-range walls contribute a fraction of the energy a linear curve gave
+		/// them, keeping simultaneous walls readable instead of massing into one wind.
 		/// </summary>
 		public static float TargetVolume(float distance) {
 			// NaN fails every comparison, so the range test rejects it too.
 			if (!(distance >= 0f) || distance >= Range) return 0f;
-			return MaxVolume * (Range - distance) / Range;
+			float t = (Range - distance) / Range;
+			return MaxVolume * t * t;
 		}
 
 		/// <summary>The clip key for a side's tone.</summary>

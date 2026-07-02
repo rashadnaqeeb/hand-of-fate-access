@@ -60,15 +60,12 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void PulseRates_StaySeparableUnderTheBearingPitchShift() {
-			// The bearing pitch-shift slows a loop by up to the projectile grammar's full
-			// south deflection. The slowest (southern) faster state must still pulse faster
-			// than the fastest (northern) slower state, or a shifted active zone could read
-			// as an arming one.
-			float slowest = (float)Math.Pow(2.0, -ProjectileSonifier.DownOctaves);
-			Assert.True(ZoneSynth.ArmingPulseHz * slowest > ZoneSynth.PrimedPulseHz);
-			Assert.True(ZoneSynth.ActivePulseHz * slowest > ZoneSynth.ArmingPulseHz);
-			Assert.True(ZoneSynth.InsidePulseHz * slowest > ZoneSynth.ActivePulseHz);
+		public void PulseRates_AreWidelySpaced() {
+			// The states are told apart by rate alone, so each must sit clearly above the
+			// previous, not one notch: at least double, so no two blur at a listen.
+			Assert.True(ZoneSynth.ArmingPulseHz >= ZoneSynth.PrimedPulseHz * 2);
+			Assert.True(ZoneSynth.ActivePulseHz >= ZoneSynth.ArmingPulseHz * 2);
+			Assert.True(ZoneSynth.InsidePulseHz >= ZoneSynth.ActivePulseHz * 2);
 		}
 
 		// Pulses in the loop, counted as rises of the amplitude envelope across a threshold.

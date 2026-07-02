@@ -37,9 +37,9 @@ namespace HandOfFateAccess.Combat {
 	/// arming edge. (The first build rattled for every inside phase, and a player crossing
 	/// a floor trap heard only "you are on it" with no way to hear the cycle.)
 	///
-	/// Bearing uses the same grammar as the rest of the combat audio (pan = east/west, the
-	/// down-biased pitch = north/south, via <see cref="ProjectileSonifier.PitchFor"/>) so the
-	/// player reads one spatial language. Volume is the proximity warning on the shared
+	/// Bearing rides the shared placement law (<see cref="Spatializer"/>: pan and interaural
+	/// delay = east/west, the rear muffle = behind) so the player reads one spatial
+	/// language. Volume is the proximity warning on the shared
 	/// <see cref="RangingCurve"/>: full with the edge within melee reach, fading to silence
 	/// at <see cref="FalloffRange"/> - unlike a projectile, a distant zone is not a live
 	/// threat and silence IS the all-clear, which together with the voice cap keeps a
@@ -116,7 +116,7 @@ namespace HandOfFateAccess.Combat {
 		/// the segment, and the voice sits there both outside and inside: within the beam's
 		/// width the bearing points at the beam's axis, so fleeing the sound is the
 		/// perpendicular step off the line, the shortest exit. Standing exactly on the axis
-		/// gives no bearing, which voices centered at mid pitch like a zone's center -
+		/// gives no bearing, which voices centered and dry like a zone's center -
 		/// either side out works. A degenerate segment (A = B) composes as a point.
 		/// </summary>
 		public static ZoneCue ComposeSegment(
@@ -144,17 +144,6 @@ namespace HandOfFateAccess.Combat {
 		private static ZoneCue BuildCue(float bx, float bf, float gap, bool inside, ZonePhase phase) {
 			if (gap >= FalloffRange) return default(ZoneCue);
 
-			// L1-normalize so pan and pitch share one unit of deflection by angle, the shared
-			// grammar. On top of the zone's center (no bearing) the voice sits centered at
-			// mid pitch: it is everywhere, any direction out works.
-			float pan = 0f;
-			float deflection = 0f;
-			float budget = Math.Abs(bx) + Math.Abs(bf);
-			if (budget > 1e-6f) {
-				pan = bx / budget;
-				deflection = bf / budget;
-			}
-
 			// The shared ranging curve: full within melee reach of the edge, fading to
 			// silence at the curve's far end.
 			float volume = inside ? 1f : MaxVolume * RangingCurve.Closeness(gap);
@@ -165,10 +154,12 @@ namespace HandOfFateAccess.Combat {
 				: phase == ZonePhase.Primed ? ZoneSynth.PrimedKey
 				: inside ? ZoneSynth.InsideKey : ZoneSynth.ActiveKey;
 
+			// The shared placement law. On top of the zone's center (no bearing) the
+			// voice sits centered and dry: it is everywhere, any direction out works.
 			return new ZoneCue {
 				Audible = true,
 				ClipKey = clip,
-				Params = new SoundParams(pan, ProjectileSonifier.PitchFor(deflection), volume),
+				Params = Spatializer.Place(bx, bf, volume),
 				Distance = gap,
 				Inside = inside,
 			};

@@ -6,6 +6,12 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+* Every positioned sound now reaches your far ear a fraction later than your near ear, the way real sounds do, making left/right placement much sharper on headphones.
+* Sounds behind you are now muffled instead of pitched down, and every sound plays at its natural pitch and speed wherever it sits: bright means ahead, dark means behind.
+* Sounds passing very close now glide across the stereo field instead of jumping from ear to ear.
+* Attack cues follow your movement while they ring instead of freezing where they fired.
+* Wall tones stay quieter at mid distance and only swell hard when a wall is about to stop you, so several nearby walls no longer mass into one wind.
+* The gambit's card tones and spoken words share the sharper stereo placement.
 * Fixed combat hazard sounds going silent after a hazard ended, which could leave zone and trap cues quiet for the rest of the fight.
 
 ## 1.1.2 - 2026-06-14

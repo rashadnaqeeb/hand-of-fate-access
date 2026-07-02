@@ -31,8 +31,17 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void VolumeRisesLinearlyAsWallCloses() {
-			Assert.Equal(WallToneComposer.MaxVolume * 0.5f, WallToneComposer.TargetVolume(WallToneComposer.Range / 2f), 3);
+		public void VolumeRisesQuadraticallyAsWallCloses() {
+			// The curve bites close in: halfway out is a quarter volume, so mid-range
+			// walls sit well under an imminent one and a corner's several walls do not
+			// mass into one wind.
+			Assert.Equal(WallToneComposer.MaxVolume * 0.25f, WallToneComposer.TargetVolume(WallToneComposer.Range / 2f), 3);
+		}
+
+		[Fact]
+		public void MidRangeWall_QuieterThanLinear() {
+			float v = WallToneComposer.TargetVolume(WallToneComposer.Range * 0.6f);
+			Assert.True(v < WallToneComposer.MaxVolume * 0.4f);
 		}
 
 		[Fact]

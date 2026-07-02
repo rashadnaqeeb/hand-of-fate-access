@@ -6,8 +6,8 @@ namespace HandOfFateAccess.Tests {
 	public class ProjectileSynthTests {
 		private const int SampleRate = 44100;
 
-		private static float[] Render(float pitch, uint seed, int samples) {
-			var synth = new ProjectileSynth(SampleRate, seed) { Pitch = pitch };
+		private static float[] Render(uint seed, int samples) {
+			var synth = new ProjectileSynth(SampleRate, seed);
 			var buf = new float[samples];
 			synth.Process(buf, 0, buf.Length);
 			return buf;
@@ -19,38 +19,23 @@ namespace HandOfFateAccess.Tests {
 			return Math.Sqrt(sum / buf.Length);
 		}
 
-		// Mean absolute first difference: a brightness proxy that rises with high-frequency
-		// content, so it rises with pitch (the cutoff).
-		private static double Brightness(float[] buf) {
-			double sum = 0;
-			for (int i = 1; i < buf.Length; i++) sum += Math.Abs(buf[i] - buf[i - 1]);
-			return sum / (buf.Length - 1);
-		}
-
 		[Fact]
 		public void ProducesFiniteAudio() {
-			foreach (float s in Render(0.7f, 1u, SampleRate))
+			foreach (float s in Render(1u, SampleRate))
 				Assert.False(float.IsNaN(s) || float.IsInfinity(s));
 		}
 
 		[Fact]
 		public void NotSilent() {
-			Assert.True(Rms(Render(1f, 1u, SampleRate)) > 0.01);
-		}
-
-		[Fact]
-		public void HigherPitch_IsBrighter() {
-			double bright = Brightness(Render(1f, 7u, SampleRate));
-			double dark = Brightness(Render(0.5f, 7u, SampleRate));
-			Assert.True(bright > dark, $"expected brighter {bright} > darker {dark}");
+			Assert.True(Rms(Render(1u, SampleRate)) > 0.01);
 		}
 
 		[Fact]
 		public void Reflected_TumblesFaster() {
-			// Same seed and pitch, so the only difference is the tumble rate. A reflected voice
+			// Same seed, so the only difference is the tumble rate. A reflected voice
 			// flutters faster, so its smoothed envelope crosses its own mean upward more often.
-			var normal = new ProjectileSynth(SampleRate, 9u) { Pitch = 1f };
-			var reflected = new ProjectileSynth(SampleRate, 9u) { Pitch = 1f, Reflected = true };
+			var normal = new ProjectileSynth(SampleRate, 9u);
+			var reflected = new ProjectileSynth(SampleRate, 9u) { Reflected = true };
 			var nbuf = new float[SampleRate];
 			var rbuf = new float[SampleRate];
 			normal.Process(nbuf, 0, nbuf.Length);
@@ -68,24 +53,6 @@ namespace HandOfFateAccess.Tests {
 			for (int i = 1; i < x.Length; i++)
 				if (x[i - 1] <= mean && x[i] > mean) count++;
 			return count;
-		}
-
-		[Fact]
-		public void TempoIndependentOfPitch() {
-			// Same noise seed, two pitches: the filter colour differs but the tumble envelope
-			// is identical, so the smoothed amplitude envelopes line up tightly. If pitch were
-			// leaking into the rhythm (a resampling artifact), this correlation would fall.
-			float[] a = Render(1f, 42u, SampleRate);
-			float[] b = Render(0.5f, 42u, SampleRate);
-			double[] ea = Envelope(a), eb = Envelope(b);
-
-			double ma = Mean(ea), mb = Mean(eb), cov = 0, va = 0, vb = 0;
-			for (int i = 0; i < ea.Length; i++) {
-				double da = ea[i] - ma, db = eb[i] - mb;
-				cov += da * db; va += da * da; vb += db * db;
-			}
-			double corr = cov / Math.Sqrt(va * vb);
-			Assert.True(corr > 0.85, $"envelope correlation {corr} too low; pitch is bleeding into tempo");
 		}
 
 		// Rectified, box-smoothed amplitude envelope (~5 ms window).

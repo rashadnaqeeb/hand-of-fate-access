@@ -183,10 +183,9 @@ namespace HandOfFateAccess.Combat {
 		}
 
 		// One object's cadence step: ping when its own clock comes due, then schedule the
-		// next from this ping's distance and pitch (far = sparse, near = eager; a
-		// pitched-down ping runs longer, so the gap still starts when the sound ends). An
-		// object seen for the first time pings after firstDelay; a suppressed ping (the
-		// player standing on it) re-checks after the bare re-check gap.
+		// next from this ping's distance (far = sparse, near = eager; the gap starts when
+		// the sound ends). An object seen for the first time pings after firstDelay; a
+		// suppressed ping (the player standing on it) re-checks after the bare re-check gap.
 		private void PingOnCadence(string sampleKey, float clipDuration, Component key,
 				Vector3 position, float firstDelay, CombatFrame frame, float now) {
 			float next;
@@ -196,7 +195,7 @@ namespace HandOfFateAccess.Combat {
 			}
 			if (now < next) return;
 			if (Ping(sampleKey, position, frame, out SoundParams played, out float distance))
-				_nextPing[key] = BeaconComposer.NextPingTime(now, clipDuration, played.Pitch, distance);
+				_nextPing[key] = BeaconComposer.NextPingTime(now, clipDuration, distance);
 			else
 				_nextPing[key] = now + BeaconComposer.PingGap;
 		}
@@ -248,17 +247,16 @@ namespace HandOfFateAccess.Combat {
 			if (Ping(BeaconComposer.ChestKey, nearest, frame, out SoundParams played, out float distance))
 				Log.Info("treasure locator: answered " + distance.ToString("F1") + " away at (right "
 					+ right.ToString("F1") + ", forward " + forward.ToString("F1") + "); pan "
-					+ played.Pan.ToString("F2") + ", pitch " + played.Pitch.ToString("F2")
+					+ played.Pan.ToString("F2") + ", depth " + played.Depth.ToString("F2")
 					+ ", volume " + played.Volume.ToString("F2"));
 			else
 				Log.Info("treasure locator: treasure underfoot ("
 					+ distance.ToString("F1") + " away), ping suppressed");
 		}
 
-		// Plays the ping and reports the parameters it played with (the pitch is a
-		// playback-rate multiplier, so the caller can tell when this sound will end) plus
-		// the ground distance the next gap is scheduled from; false when the ping was
-		// suppressed (the player standing on the object).
+		// Plays the ping and reports the parameters it played with plus the ground
+		// distance the next gap is scheduled from; false when the ping was suppressed
+		// (the player standing on the object).
 		private static bool Ping(string key, Vector3 position, CombatFrame frame,
 				out SoundParams parameters, out float distance) {
 			frame.Project(position, out float right, out float forward);

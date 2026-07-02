@@ -46,11 +46,13 @@ namespace HandOfFateAccess.Tests {
 		public void InsideZone_RattlesAtFullVolume_TowardTheCenter() {
 			// Player 1 unit west of a radius-3 zone's center: inside, full volume, and the
 			// sound sits toward the center (east) so fleeing it exits through the near edge.
+			// Within the near-field crossover the pan is proportional, so it strengthens as
+			// the player nears the edge and the center falls behind them.
 			ZoneCue cue = ZoneSonifier.Compose(1f, 0f, 3f, 0f, ZonePhase.Active);
 			Assert.True(cue.Inside);
 			Assert.Equal(ZoneSynth.InsideKey, cue.ClipKey);
 			Assert.Equal(1f, cue.Params.Volume, 3);
-			Assert.True(cue.Params.Pan > 0.9f);
+			Assert.True(cue.Params.Pan > 0f);
 			Assert.Equal(0f, cue.Distance, 3);
 		}
 
@@ -79,22 +81,23 @@ namespace HandOfFateAccess.Tests {
 			ZoneCue cue = ZoneSonifier.Compose(2f, 0f, 8f, 4f, ZonePhase.Active);
 			Assert.False(cue.Inside);
 			Assert.Equal(2f, cue.Distance, 3);
-			Assert.True(cue.Params.Pan < -0.9f);
+			Assert.True(cue.Params.Pan < 0f);
 		}
 
 		[Fact]
-		public void OnTheCenter_NoBearing_CenteredAtMidPitch() {
+		public void OnTheCenter_NoBearing_CenteredAndDry() {
 			ZoneCue cue = ZoneSonifier.Compose(0f, 0f, 3f, 0f, ZonePhase.Active);
 			Assert.True(cue.Inside);
 			Assert.Equal(0f, cue.Params.Pan, 3);
-			Assert.Equal(ProjectileSonifier.PitchFor(0f), cue.Params.Pitch, 3);
+			Assert.Equal(0f, cue.Params.Depth, 3);
 		}
 
 		[Fact]
-		public void Bearing_UsesTheSharedNorthSouthGrammar() {
+		public void Bearing_UsesTheSharedForeAftGrammar() {
 			ZoneCue north = ZoneSonifier.Compose(0f, 6f, 2f, 0f, ZonePhase.Active);
 			ZoneCue south = ZoneSonifier.Compose(0f, -6f, 2f, 0f, ZonePhase.Active);
-			Assert.True(north.Params.Pitch > south.Params.Pitch);
+			Assert.True(north.Params.Depth > 0f);
+			Assert.True(south.Params.Depth < 0f);
 			Assert.Equal(0f, north.Params.Pan, 3);
 		}
 
@@ -139,7 +142,7 @@ namespace HandOfFateAccess.Tests {
 			Assert.True(cue.Inside);
 			Assert.Equal(ZoneSynth.InsideKey, cue.ClipKey);
 			Assert.Equal(1f, cue.Params.Volume, 3);
-			Assert.True(cue.Params.Pan > 0.9f);
+			Assert.True(cue.Params.Pan > 0.5f);
 			Assert.Equal(0f, cue.Distance, 3);
 		}
 
@@ -189,23 +192,24 @@ namespace HandOfFateAccess.Tests {
 		public void Segment_WithinTheWidth_RattlesAtFullVolume_TowardTheAxis() {
 			// The beam runs north-south 0.3 east of the player, width 0.5: inside. The
 			// bearing points at the axis (east), so fleeing the sound steps west off the
-			// line, the shortest exit.
+			// line, the shortest exit; this close, the near-field crossover keeps the pan
+			// gentle (the line is nearly underfoot, either side out works).
 			ZoneCue cue = ZoneSonifier.ComposeSegment(0.3f, -5f, 0.3f, 5f, 0.5f, ZonePhase.Active);
 			Assert.True(cue.Inside);
 			Assert.Equal(ZoneSynth.InsideKey, cue.ClipKey);
 			Assert.Equal(1f, cue.Params.Volume, 3);
-			Assert.True(cue.Params.Pan > 0.9f);
+			Assert.True(cue.Params.Pan > 0f);
 			Assert.Equal(0f, cue.Distance, 3);
 		}
 
 		[Fact]
-		public void Segment_OnTheAxis_NoBearing_CenteredAtMidPitch() {
-			// Standing exactly on the beam's line: no bearing, centered at mid pitch like a
+		public void Segment_OnTheAxis_NoBearing_CenteredAndDry() {
+			// Standing exactly on the beam's line: no bearing, centered and dry like a
 			// zone's center - either side out works.
 			ZoneCue cue = ZoneSonifier.ComposeSegment(0f, -5f, 0f, 5f, 0.5f, ZonePhase.Active);
 			Assert.True(cue.Inside);
 			Assert.Equal(0f, cue.Params.Pan, 3);
-			Assert.Equal(ProjectileSonifier.PitchFor(0f), cue.Params.Pitch, 3);
+			Assert.Equal(0f, cue.Params.Depth, 3);
 		}
 
 		[Fact]
