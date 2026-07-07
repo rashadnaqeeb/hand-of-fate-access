@@ -4,10 +4,12 @@ namespace HandOfFateAccess.Audio {
 	/// <summary>
 	/// One playing sound, spatialized: a mono source (a registered clip read at a
 	/// fractional step, a caller-supplied buffer, or a live synth) run through the
-	/// shared placement chain - the rear low-pass wet/dry blend, then equal-power
-	/// gains with the interaural delay on the far ear (see <see cref="Spatializer"/>).
-	/// The chain is pure Core, so what the player actually hears renders and asserts
-	/// in the offline tests.
+	/// shared placement chain - the pitch as the read step (a live synth is resampled
+	/// through the same fractional read as a clip, so the placement law's
+	/// darker-means-behind cue covers both), then equal-power gains with the
+	/// interaural delay on the far ear (see <see cref="Spatializer"/>). The chain is
+	/// pure Core, so what the player actually hears renders and asserts in the
+	/// offline tests.
 	///
 	/// Placement is re-settable while the voice plays: <see cref="SetParams"/> (main
 	/// thread) writes volatile targets, and <see cref="MixInto"/> (audio thread) ramps
@@ -46,17 +48,18 @@ namespace HandOfFateAccess.Audio {
 		private IPcmSource _live;
 		private float[] _liveScratch;   // lazily sized once, on the main thread
 		private double _pos;            // clip read head; audio thread only after publish
+		private float _livePrev;        // the live sample just behind the read head
+		private double _liveFrac;       // live read-head fraction past _livePrev, [0, 1)
 
 		// Placement targets, written by SetParams (main thread), read per block on the
 		// audio thread. A torn read is one slightly stale block.
-		private volatile float _tGainL, _tGainR, _tItd, _tCutoff, _tWet, _tPitch;
+		private volatile float _tGainL, _tGainR, _tItd, _tPitch;
 
 		// Live smoothed values - audio thread only.
-		private float _cGainL, _cGainR, _cItd, _cCutoff, _cWet;
+		private float _cGainL, _cGainR, _cItd;
 		private bool _primed;
 
 		private readonly float[] _ring = new float[RingSize];
-		private readonly BiquadLowPass _lp = new BiquadLowPass();
 		private long _frame;        // frames rendered this play (ring index)
 		private bool _sourceEnded;
 		private int _tail;          // drain frames left once the source ended
@@ -87,37 +90,39 @@ namespace HandOfFateAccess.Audio {
 		}
 
 		/// <summary>Start a live mono source, pulled on the audio thread until
-		/// <see cref="RequestStop"/>. A live source generates at the mixer rate, so
-		/// the params' Pitch does not apply here. Only valid on an idle voice.</summary>
+		/// <see cref="RequestStop"/>. The params' Pitch applies exactly as to a clip:
+		/// the pulled stream is resampled at the read step. Only valid on an idle
+		/// voice.</summary>
 		public void PlayLive(IPcmSource source, SoundParams p) {
 			_clip = null;
 			_loop = false;
 			_live = source;
-			if (_liveScratch == null) _liveScratch = new float[MaxBlockFrames];
+			// Worst case one block consumes MaxPitch source samples per output frame,
+			// plus the sub-sample carry and the interpolation lookahead.
+			if (_liveScratch == null) _liveScratch = new float[MaxBlockFrames * (int)SoundParams.MaxPitch + 2];
 			Prepare(p);
 		}
 
 		private void Prepare(SoundParams p) {
 			_pos = 0.0;
+			_livePrev = 0f;
+			_liveFrac = 0.0;
 			_frame = 0;
 			_sourceEnded = false;
 			_tail = 0;
 			Array.Clear(_ring, 0, RingSize);   // a fresh voice must not replay the last one's delay tail
-			_lp.Reset();
 			SetParams(p);
 			_primed = false;
 			_state = StatePlaying;   // volatile write: publishes everything above to the audio thread
 		}
 
-		/// <summary>Re-place a playing voice (pan, depth, pitch, volume); the audio
-		/// thread ramps toward the new targets. Ignored once stopped.</summary>
+		/// <summary>Re-place a playing voice (pan, pitch, volume); the audio thread
+		/// ramps toward the new targets. Ignored once stopped.</summary>
 		public void SetParams(SoundParams p) {
 			SpatialCue cue = Spatializer.Cue(p, _sampleRate);
 			_tGainL = cue.GainLeft;
 			_tGainR = cue.GainRight;
 			_tItd = cue.ItdSamples;
-			_tCutoff = cue.CutoffHz;
-			_tWet = cue.WetMix;
 			_tPitch = p.Clamped().Pitch;
 		}
 
@@ -152,10 +157,8 @@ namespace HandOfFateAccess.Audio {
 			int state = _state;
 			if (state != StatePlaying && state != StateStopping) return;
 
-			_lp.SelfHeal();
-
 			float tGainL = _tGainL, tGainR = _tGainR;
-			float tItd = _tItd, tCutoff = _tCutoff, tWet = _tWet;
+			float tItd = _tItd;
 			if (state == StateStopping) {
 				tGainL = 0f;
 				tGainR = 0f;
@@ -166,41 +169,32 @@ namespace HandOfFateAccess.Audio {
 			// and a permanently NaN voice would poison the whole shared mix). Targets
 			// are safe to snap to: SoundParams.Clamped neutralizes NaN fields.
 			if (!_primed
-					|| float.IsNaN(_cGainL) || float.IsNaN(_cGainR)
-					|| float.IsNaN(_cItd) || float.IsNaN(_cCutoff) || float.IsNaN(_cWet)) {
+					|| float.IsNaN(_cGainL) || float.IsNaN(_cGainR) || float.IsNaN(_cItd)) {
 				_cGainL = tGainL;
 				_cGainR = tGainR;
 				_cItd = tItd;
-				_cCutoff = tCutoff;
-				_cWet = tWet;
-				_lp.SetCutoff(_sampleRate, _cCutoff);
 				_primed = true;
 			}
 
-			// The cutoff converges once per block (retuning per sample is too costly;
-			// the filter state is preserved across retunes, so the sweep is click-free).
-			if (Math.Abs(tCutoff - _cCutoff) > 1f) {
-				_cCutoff += (tCutoff - _cCutoff) * 0.5f;
-				_lp.SetCutoff(_sampleRate, _cCutoff);
-			}
+			double step = _live != null ? _tPitch : _tPitch * (_clipRate / (double)_sampleRate);
 
-			// One pull per block for a live source; the read loop then indexes it. A
+			// One pull per block for a live source, resampled at the read step like a
+			// clip: pull just enough source samples to cover this block's read span. A
 			// stopping voice does not pull (its gains are ramping to silence anyway),
 			// so once Stop is called the source is never touched again and its owner
 			// can hand it to a fresh voice without two voices advancing its state.
 			float[] liveBlock = null;
 			if (_live != null && !_sourceEnded && state == StatePlaying) {
+				int lastRead = (int)(_liveFrac + (frames - 1) * step) + 1;   // interpolation lookahead
+				int endRead = (int)(_liveFrac + frames * step);              // the next block's _livePrev
 				liveBlock = _liveScratch;
-				int pull = frames < MaxBlockFrames ? frames : MaxBlockFrames;
-				_live.Fill(liveBlock, 1, pull);
+				_live.Fill(liveBlock, 1, lastRead > endRead ? lastRead : endRead);
 			}
-			double step = _tPitch * (_clipRate / (double)_sampleRate);
 
-			// Gains, ITD, and wet mix ramp linearly to target across the block.
+			// Gains and ITD ramp linearly to target across the block.
 			float dGainL = (tGainL - _cGainL) / frames;
 			float dGainR = (tGainR - _cGainR) / frames;
 			float dItd = (tItd - _cItd) / frames;
-			float dWet = (tWet - _cWet) / frames;
 
 			int clipLen = _clip != null ? _clip.Length : 0;
 			for (int f = 0; f < frames; f++) {
@@ -215,7 +209,17 @@ namespace HandOfFateAccess.Audio {
 				} else if (_live != null) {
 					// liveBlock is null while stopping (the source is no longer pulled):
 					// the fade block rides the ring tail down to silence.
-					dry = liveBlock != null && f < MaxBlockFrames ? liveBlock[f] : 0f;
+					if (liveBlock == null) {
+						dry = 0f;
+					} else {
+						// Fractional read measured from _livePrev (the sample behind the
+						// head), linear-interpolated; the pull above covers every index.
+						double p = _liveFrac + f * step;
+						int i0 = (int)p;
+						float a = i0 == 0 ? _livePrev : liveBlock[i0 - 1];
+						float b = liveBlock[i0];
+						dry = a + (b - a) * (float)(p - i0);
+					}
 				} else {
 					// Fractional clip read, linear-interpolated; wraps for a loop, ends
 					// (into the tail drain) for a one-shot.
@@ -246,14 +250,8 @@ namespace HandOfFateAccess.Audio {
 				_cGainL += dGainL;
 				_cGainR += dGainR;
 				_cItd += dItd;
-				_cWet += dWet;
 
-				// Rear muffle: blend the dry sample with its low-passed copy. The filter
-				// always runs (state must stay warm for a cutoff sweep); ahead/beside the
-				// wet mix is ~0, so the output is the dry sample bit-exact.
-				float wet = _lp.Transform(dry);
-				float m = dry + _cWet * (wet - dry);
-				_ring[(int)(_frame & RingMask)] = m;
+				_ring[(int)(_frame & RingMask)] = dry;
 
 				// The far ear reads the ring a fractional delay back; the near ear is live.
 				float itdMag = _cItd < 0f ? -_cItd : _cItd;
@@ -267,9 +265,18 @@ namespace HandOfFateAccess.Audio {
 				float far = s0 + (s1 - s0) * frac;
 
 				bool delayLeft = _cItd >= 0f;   // source right/east: the left ear lags
-				stereo[f * 2] += (delayLeft ? far : m) * _cGainL;
-				stereo[f * 2 + 1] += (delayLeft ? m : far) * _cGainR;
+				stereo[f * 2] += (delayLeft ? far : dry) * _cGainL;
+				stereo[f * 2 + 1] += (delayLeft ? dry : far) * _cGainR;
 				_frame++;
+			}
+
+			// Advance the live read head past this block's consumption; the remainder
+			// carries into the next block so the resample stays seamless.
+			if (liveBlock != null) {
+				double end = _liveFrac + frames * step;
+				int consumed = (int)end;
+				if (consumed > 0) _livePrev = liveBlock[consumed - 1];
+				_liveFrac = end - consumed;
 			}
 
 			// A stop drains: after the fade-out block, cut the source and run the tail.

@@ -5,7 +5,7 @@ namespace HandOfFateAccess.Audio {
 	/// <summary>
 	/// The non-speech audio engine: a clip registry, a pool of spatial voices, and
 	/// the mixer that sums them, all in Core so every audible decision - the pan law,
-	/// the interaural delay, the rear muffle, the pitch step, the mix clamp - is
+	/// the interaural delay, the pitch step, the mix clamp - is
 	/// unit-tested off-engine. The backend (<see cref="IAudioBackend"/>, real =
 	/// FMOD) only opens the device and pulls the hosted mixer on its audio thread.
 	///
@@ -157,9 +157,9 @@ namespace HandOfFateAccess.Audio {
 		/// <summary>
 		/// Starts a live mono source (a real-time synth), pulled on the audio thread
 		/// until <see cref="Stop"/>. The source's Fill must follow
-		/// <see cref="IPcmSource"/>'s audio-thread rules. A live source generates at
-		/// the mixer rate, so the params' Pitch does not apply here; a live cue that
-		/// wants a different pitch synthesizes it (that is the point of being live).
+		/// <see cref="IPcmSource"/>'s audio-thread rules. The params' Pitch applies
+		/// to a live source exactly as to a clip (the voice resamples the pulled
+		/// stream), so the placement law's darker-means-behind cue covers synths too.
 		/// </summary>
 		public static Voice PlayLive(IPcmSource source, SoundParams parameters) {
 			Voice voice = _pool.Acquire();
@@ -168,7 +168,7 @@ namespace HandOfFateAccess.Audio {
 			return voice;
 		}
 
-		/// <summary>Re-places a still-playing voice (pan, depth, pitch, volume); the
+		/// <summary>Re-places a still-playing voice (pan, pitch, volume); the
 		/// voice ramps toward the new targets click-free. A handle to a voice that has
 		/// already stopped is ignored.</summary>
 		public static void Update(Voice voice, SoundParams parameters) {

@@ -5,7 +5,7 @@ namespace HandOfFateAccess.Audio {
 	/// hosts, and a feature that synthesizes audio in real time (the projectile
 	/// tumble) implements it as a raw MONO source started with
 	/// <see cref="AudioEngine.PlayLive"/> - the voice chain applies all placement
-	/// (pan, delay, muffle, volume), so a live source never spatializes itself.
+	/// (pan, delay, pitch, volume), so a live source never spatializes itself.
 	///
 	/// <see cref="Fill"/> runs on the audio thread: it must not allocate, block, take
 	/// a lock, touch engine state, or throw. Any parameters it reads are written from

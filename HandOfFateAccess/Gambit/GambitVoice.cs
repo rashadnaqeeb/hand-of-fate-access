@@ -6,8 +6,8 @@ namespace HandOfFateAccess.Gambit {
 	/// on the shared spatial chain, which applies the equal-power pan plus the
 	/// interaural delay - the same placement law as every other positioned sound, so
 	/// the card row localizes with the full model, not level alone. The gambit's
-	/// stage is the card row, all ahead of the player, so Depth stays 0 (no rear
-	/// muffle). This wrapper just holds the engine handle so a caller can swap
+	/// stage is the card row, all ahead of the player, so the tones keep their
+	/// authored pitch (a flat placement). This wrapper just holds the engine handle so a caller can swap
 	/// buffers (the establish walk replays one voice per slot) and re-pan a playing
 	/// loop (the shuffle glides each tone with its card).
 	/// </summary>

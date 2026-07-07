@@ -85,19 +85,19 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void OnTheCenter_NoBearing_CenteredAndDry() {
+		public void OnTheCenter_NoBearing_CenteredAtMidPitch() {
 			ZoneCue cue = ZoneSonifier.Compose(0f, 0f, 3f, 0f, ZonePhase.Active);
 			Assert.True(cue.Inside);
 			Assert.Equal(0f, cue.Params.Pan, 3);
-			Assert.Equal(0f, cue.Params.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0f), cue.Params.Pitch, 3);
 		}
 
 		[Fact]
 		public void Bearing_UsesTheSharedForeAftGrammar() {
 			ZoneCue north = ZoneSonifier.Compose(0f, 6f, 2f, 0f, ZonePhase.Active);
 			ZoneCue south = ZoneSonifier.Compose(0f, -6f, 2f, 0f, ZonePhase.Active);
-			Assert.True(north.Params.Depth > 0f);
-			Assert.True(south.Params.Depth < 0f);
+			Assert.True(north.Params.Pitch > Spatializer.PitchFor(0f));
+			Assert.True(south.Params.Pitch < Spatializer.PitchFor(0f));
 			Assert.Equal(0f, north.Params.Pan, 3);
 		}
 
@@ -203,13 +203,13 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void Segment_OnTheAxis_NoBearing_CenteredAndDry() {
-			// Standing exactly on the beam's line: no bearing, centered and dry like a
-			// zone's center - either side out works.
+		public void Segment_OnTheAxis_NoBearing_CenteredAtMidPitch() {
+			// Standing exactly on the beam's line: no bearing, centered at mid pitch like
+			// a zone's center - either side out works.
 			ZoneCue cue = ZoneSonifier.ComposeSegment(0f, -5f, 0f, 5f, 0.5f, ZonePhase.Active);
 			Assert.True(cue.Inside);
 			Assert.Equal(0f, cue.Params.Pan, 3);
-			Assert.Equal(0f, cue.Params.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0f), cue.Params.Pitch, 3);
 		}
 
 		[Fact]

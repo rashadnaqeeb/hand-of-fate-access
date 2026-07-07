@@ -16,7 +16,15 @@ namespace HandOfFateAccess.Tests {
 
 		[Fact]
 		public void NextPing_StartsTheDistanceGapAfterTheClipEnds() {
-			Assert.Equal(10f + 1.3f + BeaconComposer.NearPingGap, BeaconComposer.NextPingTime(10f, 1.3f, 0f), 3);
+			Assert.Equal(10f + 1.3f + BeaconComposer.NearPingGap, BeaconComposer.NextPingTime(10f, 1.3f, 1f, 0f), 3);
+		}
+
+		[Fact]
+		public void NextPing_StretchesWithAPitchedDownClip() {
+			// A ping from behind plays slower and so runs longer; the next ping must
+			// wait for it, or the gap of silence (the distance readout) would shrink.
+			Assert.Equal(10f + 1.3f / 0.5f + BeaconComposer.NearPingGap,
+				BeaconComposer.NextPingTime(10f, 1.3f, 0.5f, 0f), 3);
 		}
 
 		[Fact]
@@ -45,29 +53,28 @@ namespace HandOfFateAccess.Tests {
 			Assert.True(far > near * 2f);
 		}
 
-		// --- Bearing: the shared placement law, pan east/west, depth fore/aft, the
-		// sample always at its authored pitch. ---
+		// --- Bearing: the shared placement law, pan east/west, the down-biased pitch
+		// fore/aft. ---
 
 		[Fact]
-		public void DueNorth_Centered_FullAhead() {
+		public void DueNorth_Centered_AuthoredPitch() {
 			Assert.True(BeaconComposer.TryCompose(0f, 5f, out SoundParams sp, out _));
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal(1f, sp.Depth, 3);
 			Assert.Equal(1f, sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void DueWest_FullLeft_NoDepth() {
+		public void DueWest_FullLeft_MidPitch() {
 			Assert.True(BeaconComposer.TryCompose(-5f, 0f, out SoundParams sp, out _));
 			Assert.Equal(-1f, sp.Pan, 3);
-			Assert.Equal(0f, sp.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0f), sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void Northeast_HalfFieldHalfAhead() {
+		public void Northeast_HalfFieldBrighterThanTheSideLine() {
 			Assert.True(BeaconComposer.TryCompose(3f, 3f, out SoundParams sp, out _));
 			Assert.Equal(0.707f, sp.Pan, 3);
-			Assert.Equal(0.707f, sp.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0.707f), sp.Pitch, 3);
 		}
 
 		[Fact]
@@ -75,14 +82,14 @@ namespace HandOfFateAccess.Tests {
 			Assert.True(BeaconComposer.TryCompose(-4f, 4f, out SoundParams near, out _));
 			Assert.True(BeaconComposer.TryCompose(-20f, 20f, out SoundParams far, out _));
 			Assert.Equal(near.Pan, far.Pan, 3);
-			Assert.Equal(near.Depth, far.Depth, 3);
+			Assert.Equal(near.Pitch, far.Pitch, 3);
 		}
 
 		[Fact]
 		public void Bearing_StaysWithinSeamClamps() {
 			Assert.True(BeaconComposer.TryCompose(-100f, 3f, out SoundParams sp, out _));
 			Assert.InRange(sp.Pan, -1f, 1f);
-			Assert.InRange(sp.Depth, -1f, 1f);
+			Assert.InRange(sp.Pitch, SoundParams.MinPitch, 1f);
 		}
 
 		[Fact]

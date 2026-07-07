@@ -7,22 +7,8 @@ namespace HandOfFateAccess.Tests {
 		public void Neutral_IsCenteredUnmodifiedFullVolume() {
 			var n = SoundParams.Neutral;
 			Assert.Equal(0f, n.Pan);
-			Assert.Equal(0f, n.Depth);
 			Assert.Equal(1f, n.Pitch);
 			Assert.Equal(1f, n.Volume);
-		}
-
-		[Fact]
-		public void FlatConstructor_HasNoDepth() {
-			// Sounds with no fore/aft axis (wall tones, the gambit row, chimes) use the
-			// three-argument form and must never pick up a rear muffle.
-			Assert.Equal(0f, new SoundParams(0.5f, 1f, 1f).Depth);
-		}
-
-		[Fact]
-		public void Clamped_DepthBeyondField_ClampsToUnit() {
-			Assert.Equal(-1f, new SoundParams(0f, -4f, 1f, 1f).Clamped().Depth);
-			Assert.Equal(1f, new SoundParams(0f, 4f, 1f, 1f).Clamped().Depth);
 		}
 
 		[Fact]
@@ -55,9 +41,8 @@ namespace HandOfFateAccess.Tests {
 		public void Clamped_NaN_BecomesNeutral_NotPoison() {
 			// A NaN reaching the audio thread poisons a voice's smoothed placement
 			// permanently; Clamped is the gate, so each NaN field becomes its neutral.
-			var p = new SoundParams(float.NaN, float.NaN, float.NaN, float.NaN).Clamped();
+			var p = new SoundParams(float.NaN, float.NaN, float.NaN).Clamped();
 			Assert.Equal(0f, p.Pan);
-			Assert.Equal(0f, p.Depth);
 			Assert.Equal(1f, p.Pitch);
 			Assert.Equal(0f, p.Volume);
 		}

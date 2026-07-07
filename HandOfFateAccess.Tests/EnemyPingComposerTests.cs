@@ -5,12 +5,12 @@ namespace HandOfFateAccess.Tests {
 	public class EnemyPingComposerTests {
 		[Fact]
 		public void Bearing_MatchesTheProjectileGrammar() {
-			// Pan and depth must be identical to the projectile voices' for the same
+			// Pan and pitch must be identical to the projectile voices' for the same
 			// offset, so the learned spatial language transfers without retraining.
 			var ping = EnemyPingComposer.Compose(-3f, 5f);
 			var projectile = ProjectileSonifier.Compose(-3f, 5f);
 			Assert.Equal(projectile.Pan, ping.Pan);
-			Assert.Equal(projectile.Depth, ping.Depth);
+			Assert.Equal(projectile.Pitch, ping.Pitch);
 		}
 
 		[Fact]
@@ -42,7 +42,7 @@ namespace HandOfFateAccess.Tests {
 			Assert.True(near.Volume > mid.Volume);
 			// Bearing is distance-independent past the crossover: same direction, same placement.
 			Assert.Equal(near.Pan, mid.Pan, 5);
-			Assert.Equal(near.Depth, mid.Depth, 5);
+			Assert.Equal(near.Pitch, mid.Pitch, 5);
 		}
 
 		[Fact]

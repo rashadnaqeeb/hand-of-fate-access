@@ -57,8 +57,7 @@ namespace HandOfFateAccess.Tests {
 			Assert.Equal(0f, depth);
 		}
 
-		// --- Cue: equal-power gains, the ITD riding the same lateral fraction, and the
-		// rear muffle only in the southern hemisphere. ---
+		// --- Cue: equal-power gains, the ITD riding the same lateral fraction. ---
 
 		[Fact]
 		public void Cue_Centered_EqualPowerBothEars() {
@@ -100,48 +99,70 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void Cue_AheadAndBeside_AreDry() {
-			SpatialCue ahead = Spatializer.Cue(new SoundParams(0f, 1f, 1f, 1f), Rate);
-			SpatialCue beside = Spatializer.Cue(new SoundParams(1f, 0f, 1f, 1f), Rate);
-			Assert.Equal(0f, ahead.WetMix, 3);
-			Assert.Equal(0f, beside.WetMix, 3);
-			Assert.Equal(Spatializer.OpenHz, ahead.CutoffHz, 0);
-		}
-
-		[Fact]
-		public void Cue_DeadBehind_MuffledAndMixed() {
-			SpatialCue cue = Spatializer.Cue(new SoundParams(0f, -1f, 1f, 1f), Rate);
-			Assert.Equal(Spatializer.MuffledHz, cue.CutoffHz, 0);
-			Assert.Equal(Spatializer.MaxWet, cue.WetMix, 3);
-		}
-
-		[Fact]
-		public void Cue_WetMixNeverReachesOne() {
-			// The dry remainder is the guarantee that a bright, narrowband cue can never
-			// filter into silence behind the player.
-			SpatialCue cue = Spatializer.Cue(new SoundParams(0f, -1f, 1f, 1f), Rate);
-			Assert.True(cue.WetMix < 1f);
-		}
-
-		[Fact]
-		public void Cue_MuffleDeepensEvenlyInOctaves() {
-			// Log-space interpolation: each step back drops the cutoff by a constant RATIO.
-			SpatialCue quarter = Spatializer.Cue(new SoundParams(0f, -0.25f, 1f, 1f), Rate);
-			SpatialCue half = Spatializer.Cue(new SoundParams(0f, -0.5f, 1f, 1f), Rate);
-			SpatialCue threeQ = Spatializer.Cue(new SoundParams(0f, -0.75f, 1f, 1f), Rate);
-			Assert.Equal(half.CutoffHz / quarter.CutoffHz, threeQ.CutoffHz / half.CutoffHz, 2);
-			Assert.True(threeQ.CutoffHz < half.CutoffHz && half.CutoffHz < quarter.CutoffHz);
-		}
-
-		[Fact]
 		public void Cue_ClampsWildInput() {
 			// The far gain at a hard pan is cos(pi/2), a sub-epsilon negative in float:
 			// inaudible, so the bounds allow it.
-			SpatialCue cue = Spatializer.Cue(new SoundParams(5f, -9f, 1f, 3f), Rate);
+			SpatialCue cue = Spatializer.Cue(new SoundParams(5f, 1f, 3f), Rate);
 			Assert.True(cue.GainLeft >= -1e-6f && cue.GainLeft <= 1f);
 			Assert.True(cue.GainRight >= -1e-6f && cue.GainRight <= 1f);
 			Assert.True(Math.Abs(cue.ItdSamples) <= Spatializer.MaxItdSeconds * Rate + 0.001f);
-			Assert.Equal(Spatializer.MaxWet, cue.WetMix, 3);
+		}
+
+		// --- The fore/aft pitch law: the authored sound dead ahead, down-biased toward
+		// the rear, never shifted up. ---
+
+		[Fact]
+		public void PitchFor_DeadAhead_IsTheAuthoredSound() {
+			Assert.Equal(1f, Spatializer.PitchFor(1f), 4);
+		}
+
+		[Fact]
+		public void PitchFor_DeadBehind_DropsTheFullSpan() {
+			Assert.Equal((float)Math.Pow(2.0, -Spatializer.DownOctaves), Spatializer.PitchFor(-1f), 4);
+		}
+
+		[Fact]
+		public void PitchFor_SideLine_SitsHalfwayDown() {
+			Assert.Equal((float)Math.Pow(2.0, -Spatializer.DownOctaves * 0.5), Spatializer.PitchFor(0f), 4);
+		}
+
+		[Fact]
+		public void PitchFor_NeverShiftsUp() {
+			// Up-shifting smears a sample's transients into a metallic buzz; the whole
+			// span works in the clean downward direction.
+			for (float depth = -1f; depth <= 1f; depth += 0.125f)
+				Assert.True(Spatializer.PitchFor(depth) <= 1f);
+		}
+
+		[Fact]
+		public void PitchFor_DeepensEvenlyInOctaves() {
+			// Each step back drops the pitch by a constant RATIO, so the darkening reads
+			// evenly by ear across the whole fore/aft span.
+			float ahead = Spatializer.PitchFor(0.5f);
+			float mid = Spatializer.PitchFor(0f);
+			float back = Spatializer.PitchFor(-0.5f);
+			Assert.Equal(mid / ahead, back / mid, 4);
+			Assert.True(back < mid && mid < ahead);
+		}
+
+		// --- Place: the one composition every positioned sound uses. ---
+
+		[Fact]
+		public void Place_FoldsTheBearingPitchIn() {
+			SoundParams north = Spatializer.Place(0f, 10f, 1f);
+			SoundParams west = Spatializer.Place(-10f, 0f, 1f);
+			SoundParams south = Spatializer.Place(0f, -10f, 1f);
+			Assert.Equal(1f, north.Pitch, 3);
+			Assert.Equal(Spatializer.PitchFor(0f), west.Pitch, 3);
+			Assert.Equal(Spatializer.PitchFor(-1f), south.Pitch, 3);
+		}
+
+		[Fact]
+		public void Place_OnTheListener_CenteredAtMidPitch() {
+			// No bearing: the source is everywhere, any direction away works.
+			SoundParams sp = Spatializer.Place(0f, 0f, 1f);
+			Assert.Equal(0f, sp.Pan, 3);
+			Assert.Equal(Spatializer.PitchFor(0f), sp.Pitch, 3);
 		}
 	}
 }

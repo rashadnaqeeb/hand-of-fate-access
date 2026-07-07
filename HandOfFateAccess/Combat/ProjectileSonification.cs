@@ -10,7 +10,7 @@ namespace HandOfFateAccess.Combat {
 	/// Sonifies every hostile projectile in a fight: each gets its own looping voice whose
 	/// placement tracks where the projectile sits relative to the player, so a player who
 	/// cannot see the arena can hear a projectile's bearing (pan and interaural delay for
-	/// east/west, the rear muffle for behind), its proximity (volume), and where it is
+	/// east/west, the down-biased pitch for behind), its proximity (volume), and where it is
 	/// heading as those move frame to frame. Only enemy-team projectiles are voiced: the
 	/// player's own shots and reflections are not threats and would only clutter the field.
 	///

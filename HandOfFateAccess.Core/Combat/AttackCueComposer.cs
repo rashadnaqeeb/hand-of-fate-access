@@ -20,10 +20,9 @@ namespace HandOfFateAccess.Combat {
 	///
 	/// Bearing rides the shared placement law (<see cref="Spatializer"/>), the same
 	/// grammar as projectile sonification so the player learns one spatial language for
-	/// the whole fight: east/west (camera-right) is the stereo position, and an attacker
-	/// in the southern hemisphere is progressively muffled by the rear low-pass. The
-	/// sample itself plays unaltered at every bearing, so block and dodge keep their full
-	/// authored contrast wherever the attack comes from. Volume carries distance, but a
+	/// the whole fight: east/west (camera-right) is the stereo position, and fore/aft is
+	/// the down-biased pitch, darker meaning behind. The block/dodge contrast is timbral
+	/// identity, so it survives the placement shift at every bearing. Volume carries distance, but a
 	/// telegraph is a critical alert rather than ambient tracking, so it stays loud
 	/// throughout and only tapers to a high floor far off, never to a faint one.
 	/// </summary>
@@ -91,7 +90,7 @@ namespace HandOfFateAccess.Combat {
 		/// <summary>
 		/// The voice parameters for an attacker sitting <paramref name="right"/> world units to
 		/// the camera's right (negative is left) and <paramref name="forward"/> world units
-		/// toward screen-north (negative is south) of the player. Pan and depth encode its
+		/// toward screen-north (negative is south) of the player. Pan and pitch encode its
 		/// bearing (pure bearing past the near-field crossover); volume encodes its ground
 		/// distance.
 		/// </summary>

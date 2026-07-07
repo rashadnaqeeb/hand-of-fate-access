@@ -195,7 +195,7 @@ namespace HandOfFateAccess.Combat {
 			}
 			if (now < next) return;
 			if (Ping(sampleKey, position, frame, out SoundParams played, out float distance))
-				_nextPing[key] = BeaconComposer.NextPingTime(now, clipDuration, distance);
+				_nextPing[key] = BeaconComposer.NextPingTime(now, clipDuration, played.Pitch, distance);
 			else
 				_nextPing[key] = now + BeaconComposer.PingGap;
 		}
@@ -247,7 +247,7 @@ namespace HandOfFateAccess.Combat {
 			if (Ping(BeaconComposer.ChestKey, nearest, frame, out SoundParams played, out float distance))
 				Log.Info("treasure locator: answered " + distance.ToString("F1") + " away at (right "
 					+ right.ToString("F1") + ", forward " + forward.ToString("F1") + "); pan "
-					+ played.Pan.ToString("F2") + ", depth " + played.Depth.ToString("F2")
+					+ played.Pan.ToString("F2") + ", pitch " + played.Pitch.ToString("F2")
 					+ ", volume " + played.Volume.ToString("F2"));
 			else
 				Log.Info("treasure locator: treasure underfoot ("

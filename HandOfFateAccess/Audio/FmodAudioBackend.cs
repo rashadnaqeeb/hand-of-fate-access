@@ -9,7 +9,7 @@ namespace HandOfFateAccess.Audio {
 	/// for two things Unity's mixer denied: much lower trigger latency (a small DSP
 	/// buffer set before init, versus Unity's ~200ms) and no positional
 	/// postprocessing applied behind our back - every audible decision (pan law,
-	/// interaural delay, rear muffle, mixing) is Core's, and what Core renders is
+	/// interaural delay, placement pitch, mixing) is Core's, and what Core renders is
 	/// what the player hears.
 	///
 	/// It needs the license-gated FMOD SDK, vendored locally (see third_party/fmod):

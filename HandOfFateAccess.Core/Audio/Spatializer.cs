@@ -2,9 +2,9 @@ using System;
 
 namespace HandOfFateAccess.Audio {
 	/// <summary>The audio-thread targets one placement resolves to: the two channel
-	/// gains, the interaural delay, and the rear low-pass. Derived once per placement
-	/// change on the main thread by <see cref="Spatializer.Cue"/>; the voice ramps its
-	/// live values toward these so a moving source never clicks.</summary>
+	/// gains and the interaural delay. Derived once per placement change on the main
+	/// thread by <see cref="Spatializer.Cue"/>; the voice ramps its live values toward
+	/// these so a moving source never clicks.</summary>
 	public struct SpatialCue {
 		/// <summary>Equal-power channel gains, volume folded in.</summary>
 		public float GainLeft;
@@ -13,16 +13,6 @@ namespace HandOfFateAccess.Audio {
 		/// <summary>Interaural time difference in output samples; magnitude is the far
 		/// ear's lag, sign is the source side (+right/east delays the LEFT ear).</summary>
 		public float ItdSamples;
-
-		/// <summary>The rear (wet) path's low-pass cutoff; lower is more muffled.
-		/// <see cref="Spatializer.OpenHz"/> is effectively transparent.</summary>
-		public float CutoffHz;
-
-		/// <summary>How much of the filtered copy replaces the dry signal, 0 (ahead or
-		/// beside) to <see cref="Spatializer.MaxWet"/> (dead behind). The dry remainder
-		/// is always kept so a bright, narrowband cue can never filter into silence:
-		/// behind reads as quieter and darker, never as gone.</summary>
-		public float WetMix;
 	}
 
 	/// <summary>
@@ -35,10 +25,12 @@ namespace HandOfFateAccess.Audio {
 	///    is resolved far finer than one sample, so it sharpens and externalizes
 	///    placement well beyond what the level pan gives alone. Both ride the same
 	///    lateral fraction, so the two cues can never disagree.
-	///  - fore/aft: timbre. Stereo cannot pan front/back, so a source behind the
-	///    player is progressively low-passed, blended wet/dry (see
-	///    <see cref="SpatialCue.WetMix"/>): muffled means behind, bright means ahead,
-	///    the long-standing audiogame convention. Ahead and beside are bit-exact dry.
+	///  - fore/aft: pitch. Stereo cannot pan front/back, so the fore/aft fraction maps
+	///    to a down-biased playback rate (<see cref="PitchFor"/>): the authored sound
+	///    dead ahead, darkening to <see cref="DownOctaves"/> lower dead behind, so
+	///    darker means behind and bright means ahead. Down only, never up: down-shifting
+	///    compresses a sample's transients cleanly while up-shifting smears them into a
+	///    metallic buzz.
 	///  - distance: volume, left to each feature's own falloff curve.
 	///
 	/// <see cref="Bearing"/> maps a ground offset onto the pan/depth fractions with a
@@ -46,7 +38,7 @@ namespace HandOfFateAccess.Audio {
 	/// (a due-west source is hard left at any distance), inside it they track the
 	/// absolute offset instead, so a source passing within arm's reach glides across
 	/// the field rather than snapping ear to ear, and a source on top of the player
-	/// sits centered and dry: it is everywhere, any direction away works.
+	/// sits centered at mid pitch: it is everywhere, any direction away works.
 	/// </summary>
 	public static class Spatializer {
 		/// <summary>Ground distance, in world units, of the near-field pan crossover:
@@ -59,17 +51,10 @@ namespace HandOfFateAccess.Audio {
 		/// about 0.22 m / 343 m/s. About 29 samples at 44.1 kHz.</summary>
 		public const float MaxItdSeconds = 0.00066f;
 
-		/// <summary>Wet-path cutoff with no rear muffle: effectively transparent.</summary>
-		public const float OpenHz = 20000f;
-
-		/// <summary>Wet-path cutoff dead behind: heavily muffled. Tuned by ear.</summary>
-		public const float MuffledHz = 500f;
-
-		/// <summary>Wet mix dead behind: half muffled, half dry, so a bright cue loses
-		/// about 6 dB behind and the dry remainder keeps every cue audible. The value
-		/// wotr-access shipped and its users validated; raise it if behind reads too
-		/// subtly against what the old pitch drop conveyed.</summary>
-		public const float MaxWet = 0.5f;
+		/// <summary>Octaves the pitch is dropped dead behind (dead ahead is the
+		/// authored sound; the side line sits halfway down). 0.8 octave ~ 0.57x.
+		/// Tuned by ear.</summary>
+		public const float DownOctaves = 0.8f;
 
 		/// <summary>
 		/// The pan/depth fractions for a source <paramref name="right"/> world units
@@ -90,40 +75,42 @@ namespace HandOfFateAccess.Audio {
 			depth = forward / denom;
 		}
 
+		/// <summary>
+		/// The down-biased pitch ratio for a fore/aft <paramref name="depth"/> in
+		/// [-1, +1] (behind to ahead): 1 (the authored sound) dead ahead, falling to
+		/// <see cref="DownOctaves"/> lower dead behind, and never above 1. The side
+		/// line (depth 0) sits halfway down.
+		/// </summary>
+		public static float PitchFor(float depth) {
+			float octaves = (depth - 1f) * 0.5f * DownOctaves;  // 0 ahead, -DownOctaves behind
+			return (float)Math.Pow(2.0, octaves);
+		}
+
 		/// <summary>The placement for a source at a ground offset with a caller-decided
 		/// <paramref name="volume"/> (every family keeps its own falloff curve): the
-		/// bearing above, the clip at its authored pitch. The one composition every
-		/// bearing-positioned sound uses, so the placement law changes in one place.</summary>
+		/// bearing above, its fore/aft fraction folded into the pitch. The one
+		/// composition every bearing-positioned sound uses, so the placement law
+		/// changes in one place. Flat sounds (no fore/aft axis) skip this and pass
+		/// pitch 1 themselves.</summary>
 		public static SoundParams Place(float right, float forward, float volume) {
 			Bearing(right, forward, out float pan, out float depth);
-			return new SoundParams(pan, depth, 1f, volume);
+			return new SoundParams(pan, PitchFor(depth), volume);
 		}
 
 		/// <summary>The audio-thread targets for a placement, at the mixer's
 		/// <paramref name="sampleRate"/>. Main-thread math; the voice ramps toward
-		/// the result.</summary>
+		/// the result. Pitch is not part of the cue: the voice applies it directly
+		/// as its read step.</summary>
 		public static SpatialCue Cue(SoundParams p, int sampleRate) {
 			p = p.Clamped();
 
 			// Equal-power pan: cos/sin over the quarter turn, volume folded in.
 			float angle = (p.Pan + 1f) * 0.25f * (float)Math.PI;
-			var cue = new SpatialCue {
+			return new SpatialCue {
 				GainLeft = (float)Math.Cos(angle) * p.Volume,
 				GainRight = (float)Math.Sin(angle) * p.Volume,
 				ItdSamples = MaxItdSeconds * sampleRate * p.Pan,
-				CutoffHz = OpenHz,
-				WetMix = 0f,
 			};
-
-			// Only the rear hemisphere is processed, ramping from dry at the side line
-			// to muffled-and-mixed dead behind. The cutoff interpolates in log space so
-			// the muffle deepens evenly by ear (evenly in octaves, not hertz).
-			if (p.Depth < 0f) {
-				float back = -p.Depth;
-				cue.CutoffHz = OpenHz * (float)Math.Pow(MuffledHz / OpenHz, back);
-				cue.WetMix = back * MaxWet;
-			}
-			return cue;
 		}
 	}
 }

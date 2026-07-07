@@ -5,7 +5,7 @@ namespace HandOfFateAccess.Audio {
 	/// Synthesizes the projectile tumble from scratch: a fixed amplitude envelope (a
 	/// strong pulse and a weaker one per period) over a resonant low-pass on a noise
 	/// source. The tumble's rhythm and brightness are its identity and never modulate
-	/// with position - placement (pan, delay, rear muffle, volume) is applied by the
+	/// with position - placement (pan, delay, pitch, volume) is applied by the
 	/// spatial voice chain around it. The one identity variation is
 	/// <see cref="Reflected"/>: the player's own bounced-back shot flutters faster, an
 	/// orthogonal tag that scales the rhythm only.

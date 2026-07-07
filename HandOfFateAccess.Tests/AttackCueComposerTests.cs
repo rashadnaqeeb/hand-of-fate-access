@@ -70,45 +70,43 @@ namespace HandOfFateAccess.Tests {
 			Assert.False(AttackCueComposer.ShotThreatens(10f, 0f, 0f, 0f));
 		}
 
-		// --- Bearing: the shared placement law, pan east/west, depth fore/aft; the
-		// sample itself always plays unshifted (block and dodge keep their authored
-		// contrast at every bearing). ---
+		// --- Bearing: the shared placement law, pan east/west, the down-biased pitch
+		// fore/aft; the block/dodge contrast is timbral identity, so it survives the
+		// placement shift at every bearing. ---
 
 		[Fact]
-		public void DueNorth_Centered_FullAhead() {
+		public void DueNorth_Centered_AuthoredPitch() {
 			SoundParams sp = AttackCueComposer.Compose(0f, 5f);
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal(1f, sp.Depth, 3);
 			Assert.Equal(1f, sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void DueSouth_Centered_FullBehind_StillUnshifted() {
+		public void DueSouth_Centered_FullPitchDrop() {
 			SoundParams sp = AttackCueComposer.Compose(0f, -5f);
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal(-1f, sp.Depth, 3);
-			Assert.Equal(1f, sp.Pitch, 3);
+			Assert.Equal(Spatializer.PitchFor(-1f), sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void DueWest_FullLeft_NoDepth() {
+		public void DueWest_FullLeft_MidPitch() {
 			SoundParams sp = AttackCueComposer.Compose(-5f, 0f);
 			Assert.Equal(-1f, sp.Pan, 3);
-			Assert.Equal(0f, sp.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0f), sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void DueEast_FullRight_NoDepth() {
+		public void DueEast_FullRight_MidPitch() {
 			SoundParams sp = AttackCueComposer.Compose(5f, 0f);
 			Assert.Equal(1f, sp.Pan, 3);
-			Assert.Equal(0f, sp.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0f), sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void Northwest_HalfField_HalfAhead() {
+		public void Northwest_HalfField_BrighterThanTheSideLine() {
 			SoundParams sp = AttackCueComposer.Compose(-5f, 5f);
 			Assert.Equal(-0.707f, sp.Pan, 3);
-			Assert.Equal(0.707f, sp.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0.707f), sp.Pitch, 3);
 		}
 
 		// --- Bearing is distance-independent past the near-field crossover. ---
@@ -118,21 +116,21 @@ namespace HandOfFateAccess.Tests {
 			SoundParams near = AttackCueComposer.Compose(-4f, 4f);
 			SoundParams far = AttackCueComposer.Compose(-20f, 20f);
 			Assert.Equal(near.Pan, far.Pan, 3);
-			Assert.Equal(near.Depth, far.Depth, 3);
+			Assert.Equal(near.Pitch, far.Pitch, 3);
 		}
 
 		[Fact]
-		public void OnPlayer_CenteredAndDry() {
+		public void OnPlayer_CenteredAtMidPitch() {
 			SoundParams sp = AttackCueComposer.Compose(0f, 0f);
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal(0f, sp.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0f), sp.Pitch, 3);
 		}
 
 		[Fact]
 		public void Bearing_StaysWithinSeamClamps() {
 			SoundParams sp = AttackCueComposer.Compose(-100f, 3f);
 			Assert.InRange(sp.Pan, -1f, 1f);
-			Assert.InRange(sp.Depth, -1f, 1f);
+			Assert.InRange(sp.Pitch, SoundParams.MinPitch, 1f);
 		}
 
 		// --- Volume: a telegraph is reaction-critical, so it stays loud and floors high. ---

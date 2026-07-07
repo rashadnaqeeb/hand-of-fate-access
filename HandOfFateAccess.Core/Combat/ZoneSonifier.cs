@@ -38,7 +38,7 @@ namespace HandOfFateAccess.Combat {
 	/// a floor trap heard only "you are on it" with no way to hear the cycle.)
 	///
 	/// Bearing rides the shared placement law (<see cref="Spatializer"/>: pan and interaural
-	/// delay = east/west, the rear muffle = behind) so the player reads one spatial
+	/// delay = east/west, the down-biased pitch = behind) so the player reads one spatial
 	/// language. Volume is the proximity warning on the shared
 	/// <see cref="RangingCurve"/>: full with the edge within melee reach, fading to silence
 	/// at <see cref="FalloffRange"/> - unlike a projectile, a distant zone is not a live
@@ -116,7 +116,7 @@ namespace HandOfFateAccess.Combat {
 		/// the segment, and the voice sits there both outside and inside: within the beam's
 		/// width the bearing points at the beam's axis, so fleeing the sound is the
 		/// perpendicular step off the line, the shortest exit. Standing exactly on the axis
-		/// gives no bearing, which voices centered and dry like a zone's center -
+		/// gives no bearing, which voices centered at mid pitch like a zone's center -
 		/// either side out works. A degenerate segment (A = B) composes as a point.
 		/// </summary>
 		public static ZoneCue ComposeSegment(
@@ -155,7 +155,7 @@ namespace HandOfFateAccess.Combat {
 				: inside ? ZoneSynth.InsideKey : ZoneSynth.ActiveKey;
 
 			// The shared placement law. On top of the zone's center (no bearing) the
-			// voice sits centered and dry: it is everywhere, any direction out works.
+			// voice sits centered at mid pitch: it is everywhere, any direction out works.
 			return new ZoneCue {
 				Audible = true,
 				ClipKey = clip,

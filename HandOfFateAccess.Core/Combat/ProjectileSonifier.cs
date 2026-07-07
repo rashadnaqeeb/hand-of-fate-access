@@ -10,11 +10,11 @@ namespace HandOfFateAccess.Combat {
 	/// projectile's offset off its live transform and feeds the two numbers in.
 	///
 	/// Bearing rides the shared placement law (<see cref="Spatializer"/>): east/west
-	/// (camera-right) is the stereo position, level and interaural delay together; a
-	/// projectile in the southern hemisphere is progressively muffled by the rear
-	/// low-pass, so muffled means behind and bright means ahead. The tumble itself
-	/// plays unaltered at every bearing - its rhythm and brightness are identity
-	/// (reflected shots flutter faster), never position.
+	/// (camera-right) is the stereo position, level and interaural delay together;
+	/// fore/aft is the down-biased pitch, the authored tumble due north darkening to
+	/// <see cref="Spatializer.DownOctaves"/> lower due south, so darker means behind
+	/// and bright means ahead. The reflected shot's faster flutter is synthesized
+	/// identity and reads through the placement shift.
 	///
 	/// Distance is carried by volume alone, loudest when the projectile is on top of
 	/// the player and tapering to a faint floor far off: a closing projectile swells
@@ -37,7 +37,7 @@ namespace HandOfFateAccess.Combat {
 		/// The voice parameters for a projectile sitting <paramref name="right"/> world
 		/// units to the camera's right (negative is left) and <paramref name="forward"/>
 		/// world units toward screen-north (negative is south) of the player. Pan and
-		/// depth encode its bearing (pure bearing past the near-field crossover); volume
+		/// pitch encode its bearing (pure bearing past the near-field crossover); volume
 		/// encodes its ground distance.
 		/// </summary>
 		public static SoundParams Compose(float right, float forward) {

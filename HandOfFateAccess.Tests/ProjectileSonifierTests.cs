@@ -4,54 +4,52 @@ using Xunit;
 
 namespace HandOfFateAccess.Tests {
 	public class ProjectileSonifierTests {
-		// --- Cardinal bearings: pan is east/west, depth is fore/aft, the sample plays
-		// unshifted everywhere (pitch 1: position never modulates the tumble). ---
+		// --- Cardinal bearings: pan is east/west, the down-biased pitch is fore/aft
+		// (authored due north, mid at the side line, darkest due south). ---
 
 		[Fact]
-		public void DueNorth_Centered_FullAhead() {
+		public void DueNorth_Centered_AuthoredPitch() {
 			SoundParams sp = ProjectileSonifier.Compose(0f, 5f);
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal(1f, sp.Depth, 3);
 			Assert.Equal(1f, sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void DueSouth_Centered_FullBehind() {
+		public void DueSouth_Centered_FullPitchDrop() {
 			SoundParams sp = ProjectileSonifier.Compose(0f, -5f);
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal(-1f, sp.Depth, 3);
-			Assert.Equal(1f, sp.Pitch, 3);
+			Assert.Equal(Spatializer.PitchFor(-1f), sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void DueWest_FullLeft_NoDepth() {
+		public void DueWest_FullLeft_MidPitch() {
 			SoundParams sp = ProjectileSonifier.Compose(-5f, 0f);
 			Assert.Equal(-1f, sp.Pan, 3);
-			Assert.Equal(0f, sp.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0f), sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void DueEast_FullRight_NoDepth() {
+		public void DueEast_FullRight_MidPitch() {
 			SoundParams sp = ProjectileSonifier.Compose(5f, 0f);
 			Assert.Equal(1f, sp.Pan, 3);
-			Assert.Equal(0f, sp.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0f), sp.Pitch, 3);
 		}
 
-		// --- Diagonals: pan and depth are the bearing's sine and cosine, so a diagonal
-		// sits evenly between the cardinals. ---
+		// --- Diagonals: the bearing's sine and cosine, so a diagonal sits evenly
+		// between the cardinals. ---
 
 		[Fact]
-		public void Northwest_HalfField_HalfAhead() {
+		public void Northwest_HalfField_BrighterThanTheSideLine() {
 			SoundParams sp = ProjectileSonifier.Compose(-5f, 5f);
 			Assert.Equal(-0.707f, sp.Pan, 3);
-			Assert.Equal(0.707f, sp.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0.707f), sp.Pitch, 3);
 		}
 
 		[Fact]
-		public void Southwest_HalfField_HalfBehind() {
+		public void Southwest_HalfField_DarkerThanTheSideLine() {
 			SoundParams sp = ProjectileSonifier.Compose(-5f, -5f);
 			Assert.Equal(-0.707f, sp.Pan, 3);
-			Assert.Equal(-0.707f, sp.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(-0.707f), sp.Pitch, 3);
 		}
 
 		// --- Past the crossover the bearing is distance-independent; inside it the pan
@@ -63,7 +61,7 @@ namespace HandOfFateAccess.Tests {
 			SoundParams near = ProjectileSonifier.Compose(-4f, 4f);
 			SoundParams far = ProjectileSonifier.Compose(-20f, 20f);
 			Assert.Equal(near.Pan, far.Pan, 3);
-			Assert.Equal(near.Depth, far.Depth, 3);
+			Assert.Equal(near.Pitch, far.Pitch, 3);
 		}
 
 		[Fact]
@@ -75,10 +73,10 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
-		public void OnPlayer_CenteredAndDry() {
+		public void OnPlayer_CenteredAtMidPitch() {
 			SoundParams sp = ProjectileSonifier.Compose(0f, 0f);
 			Assert.Equal(0f, sp.Pan, 3);
-			Assert.Equal(0f, sp.Depth, 3);
+			Assert.Equal(Spatializer.PitchFor(0f), sp.Pitch, 3);
 		}
 
 		[Fact]
@@ -86,7 +84,7 @@ namespace HandOfFateAccess.Tests {
 			// Any direction must land inside the voice chain's valid ranges.
 			SoundParams sp = ProjectileSonifier.Compose(-100f, 3f);
 			Assert.InRange(sp.Pan, -1f, 1f);
-			Assert.InRange(sp.Depth, -1f, 1f);
+			Assert.InRange(sp.Pitch, SoundParams.MinPitch, 1f);
 		}
 
 		// --- Volume: ground distance maps to loudness, peak near, floor far. ---
@@ -131,7 +129,7 @@ namespace HandOfFateAccess.Tests {
 		public void FarSouthWest_LeftBehindAndQuiet() {
 			SoundParams sp = ProjectileSonifier.Compose(-ProjectileSonifier.FalloffRange, -ProjectileSonifier.FalloffRange);
 			Assert.True(sp.Pan < 0f);
-			Assert.True(sp.Depth < 0f);
+			Assert.True(sp.Pitch < Spatializer.PitchFor(0f));   // darker than the side line: behind
 			Assert.Equal(ProjectileSonifier.MinVolume, sp.Volume, 3);
 		}
 	}

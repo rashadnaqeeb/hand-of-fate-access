@@ -8,7 +8,7 @@ namespace HandOfFateAccess.Combat {
 	/// it is how a boss fight ends), the walk-in objects a sighted player simply sees
 	/// standing in the arena. Each pings on a fixed cadence with a sample naming what it is,
 	/// positioned by the shared placement law (pan and interaural delay = east/west, the
-	/// rear muffle = behind, volume = distance), so the skill of reading a projectile or
+	/// down-biased pitch = behind, volume = distance), so the skill of reading a projectile or
 	/// telegraph transfers directly and "walk toward the sound" is the whole instruction.
 	///
 	/// Pings, not loops, deliberately: in the established language a continuous loop means
@@ -88,10 +88,12 @@ namespace HandOfFateAccess.Combat {
 		/// <summary>
 		/// When a ping played at <paramref name="now"/> should ping again:
 		/// <see cref="GapFor"/> the object's <paramref name="distance"/> in silence after
-		/// the clip's authored <paramref name="clipDuration"/> ends.
+		/// the clip ends. The clip's authored <paramref name="clipDuration"/> stretches by
+		/// the played <paramref name="pitch"/> (a playback-rate multiplier, so a
+		/// pitched-down ping runs longer and repings no sooner than it finished).
 		/// </summary>
-		public static float NextPingTime(float now, float clipDuration, float distance) =>
-			now + clipDuration + GapFor(distance);
+		public static float NextPingTime(float now, float clipDuration, float pitch, float distance) =>
+			now + clipDuration / pitch + GapFor(distance);
 
 		/// <summary>The silence between pings for a ground distance: <see cref="NearPingGap"/>
 		/// in reach, stretching to <see cref="FarPingGap"/> at

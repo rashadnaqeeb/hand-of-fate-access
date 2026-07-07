@@ -6,7 +6,7 @@ namespace HandOfFateAccess.Combat {
 	/// One projectile voice: a live mono PCM source the spatial chain pulls. The
 	/// tumble is synthesized on the audio thread by Core's <see cref="ProjectileSynth"/>
 	/// (rhythm envelope times filtered noise); the chain applies all placement (pan,
-	/// interaural delay, rear muffle, volume) around the raw mono this emits.
+	/// interaural delay, pitch, volume) around the raw mono this emits.
 	/// <see cref="Play"/> and <see cref="Stop"/> start and stop it as projectiles
 	/// cycle through the pool; placement is pushed each frame with
 	/// <see cref="SetParams"/>.
