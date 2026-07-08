@@ -454,6 +454,22 @@ namespace HandOfFateAccess.Focus {
 			// and shows no counter, and non-equipment cards have no counter at all.
 			int charges = equipment != null && equipment.CardData.Quantity >= 0 ? equipment.CardData.Quantity : -1;
 
+			// An upgrade card's effects (the inventory screen's dealer-won upgrade cards:
+			// goblet, cloak... and the Fate card, whose ArchetypeCard derives from
+			// UpgradeCard) are authored as its Upgrades array, printed only on detail
+			// panels (the upgrades menu, the cabinet's upgrade panel) the focus path never
+			// reaches; fold each upgrade's localized name and text into the readout, the
+			// same list those panels show. Title and Description are localization keys.
+			UpgradeInfo[] upgrades = null;
+			var upgradeCard = card as UpgradeCard;
+			if (upgradeCard != null && upgradeCard.Upgrades.Length > 0) {
+				upgrades = new UpgradeInfo[upgradeCard.Upgrades.Length];
+				for (int i = 0; i < upgrades.Length; i++) {
+					Upgrade upgrade = upgradeCard.Upgrades[i];
+					upgrades[i] = new UpgradeInfo(UIUtils.GetString(upgrade.Title), UIUtils.GetString(upgrade.Description));
+				}
+			}
+
 			// Read the "new" and "pinned" badges and the token gem off the card's live template
 			// so they speak only where the game draws them. The token gem also mirrors a token
 			// granted by a later stage of a sequenced encounter, which a per-card token check
@@ -492,7 +508,8 @@ namespace HandOfFateAccess.Focus {
 				traits,
 				isNew: isNew,
 				pinned: pinned,
-				charges: charges);
+				charges: charges,
+				upgrades: upgrades);
 		}
 
 		// A monster card's title is the playing-card header "N of Creature" (number card) or

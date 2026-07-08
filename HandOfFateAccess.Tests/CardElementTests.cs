@@ -195,6 +195,41 @@ namespace HandOfFateAccess.Tests {
 		}
 
 		[Fact]
+		public void Upgrades_follow_the_description() {
+			// An upgrade card (the goblet, the Fate card) lists its effects only on detail
+			// panels the focus path never reaches, so each upgrade's name and text read
+			// after the card's own rules text, in the panel's order.
+			var info = new CardInfo("Goblet", "The Dealer's gift.", "", "",
+				upgrades: new[] {
+					new UpgradeInfo("Goblet I", "Heal 10 after each encounter."),
+					new UpgradeInfo("Goblet II", "Heal 20 after each encounter."),
+				});
+			Assert.Equal("Goblet, The Dealer's gift., Goblet I, Heal 10 after each encounter., "
+				+ "Goblet II, Heal 20 after each encounter.", Describe(info));
+		}
+
+		[Fact]
+		public void Upgrades_read_without_a_description() {
+			// The upgrade list carries the card's whole content when no rules text is authored.
+			var info = new CardInfo("Cloak", "", "", "",
+				upgrades: new[] { new UpgradeInfo("Cloak I", "Flee any combat.") });
+			Assert.Equal("Cloak, Cloak I, Flee any combat.", Describe(info));
+		}
+
+		[Fact]
+		public void No_upgrades_leaves_readout_unchanged() {
+			var info = new CardInfo("Iron Sword", "A reliable blade.", "Damage: 5", "");
+			Assert.Equal("Iron Sword, Damage: 5, A reliable blade.", Describe(info));
+		}
+
+		[Fact]
+		public void Face_down_card_withholds_upgrades() {
+			var info = new CardInfo("Goblet", "", "", "", faceDown: true,
+				upgrades: new[] { new UpgradeInfo("Goblet I", "Heal 10.") });
+			Assert.Equal("face down card", Describe(info));
+		}
+
+		[Fact]
 		public void Shop_price_replaces_the_face_value() {
 			// The card face prints the base value; the shop charges value times a stock
 			// multiplier. Only the panel's figure speaks, so the numbers never contradict.

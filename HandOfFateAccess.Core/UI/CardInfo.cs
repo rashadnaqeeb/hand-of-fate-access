@@ -68,6 +68,14 @@ namespace HandOfFateAccess.UI {
 		/// <summary>True when a charge count should be spoken.</summary>
 		public bool HasCharges => Charges >= 0;
 
+		/// <summary>
+		/// An upgrade card's effect list (the Fate card and the dealer-won upgrade cards:
+		/// goblet, cloak...). The game prints these only on detail panels (the upgrades
+		/// menu, the cabinet's upgrade panel) the focus path never reaches, so they are
+		/// folded into the card's own readout. Empty for every other card.
+		/// </summary>
+		public UpgradeInfo[] Upgrades { get; }
+
 		public CardInfo(
 			string title,
 			string description,
@@ -80,7 +88,8 @@ namespace HandOfFateAccess.UI {
 			bool isNew = false,
 			bool pinned = false,
 			int charges = -1,
-			string insufficient = null) {
+			string insufficient = null,
+			UpgradeInfo[] upgrades = null) {
 			Title = title;
 			Description = description;
 			StatValueString = statValueString;
@@ -93,6 +102,7 @@ namespace HandOfFateAccess.UI {
 			Pinned = pinned;
 			Charges = charges;
 			Insufficient = insufficient;
+			Upgrades = upgrades ?? new UpgradeInfo[0];
 		}
 
 		/// <summary>
@@ -105,7 +115,21 @@ namespace HandOfFateAccess.UI {
 		/// </summary>
 		public CardInfo WithShopPrice(string cost, string insufficient) {
 			return new CardInfo(Title, Description, StatValueString, cost, HasToken,
-				Complete, Traits, FaceDown, New, Pinned, Charges, insufficient);
+				Complete, Traits, FaceDown, New, Pinned, Charges, insufficient, Upgrades);
+		}
+	}
+
+	/// <summary>
+	/// One upgrade off an upgrade card: the game's localized name and effect text for
+	/// it, extracted raw (markup intact) like every CardInfo field.
+	/// </summary>
+	public sealed class UpgradeInfo {
+		public string Title { get; }
+		public string Description { get; }
+
+		public UpgradeInfo(string title, string description) {
+			Title = title;
+			Description = description;
 		}
 	}
 }

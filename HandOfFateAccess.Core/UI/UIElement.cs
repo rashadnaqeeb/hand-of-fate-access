@@ -85,8 +85,12 @@ namespace HandOfFateAccess.UI {
 			// carry no stat), ahead of the rules text that says what the ability does.
 			if (_info.HasCharges)
 				message.Add(_info.Charges + " " + (_info.Charges == 1 ? Strings.CardCharge : Strings.CardCharges));
+			message.Add(_info.Description);
+			// An upgrade card's effects, each as its own name-then-text unit, following the
+			// card's rules text the way the game's detail panels list them under the card.
+			foreach (UpgradeInfo upgrade in _info.Upgrades)
+				message.Add(upgrade.Title).Add(upgrade.Description);
 			message
-				.Add(_info.Description)
 				.Add(_info.Traits)
 				.Add(_info.ValueString)
 				// Directly after the price, so cost and affordability read as one unit
