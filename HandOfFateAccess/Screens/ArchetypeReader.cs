@@ -11,18 +11,30 @@ namespace HandOfFateAccess.Screens {
 	/// browser. Returns nulls and false outside the Fates pile, so the caller says nothing there.
 	/// </summary>
 	internal static class ArchetypeReader {
+		/// <summary>
+		/// True while the Fates pile browser is the deck builder's active mode - the only
+		/// context where this reader speaks for the focused archetype card. ProxyFactory
+		/// keys its archetype-card suppression on this; elsewhere (the inventory screen's
+		/// Fate card) the card reads through the generic Card branch.
+		/// </summary>
+		public static bool BrowserLive => LiveBrowser() != null;
+
+		private static ArchetypeBrowser LiveBrowser() {
+			UIManager ui = UIManager.Instance;
+			if (ui == null) return null;
+			UIDeckBuilder deckBuilder = ui.DeckBuilder;
+			if (deckBuilder == null) return null;
+			DeckBuilderMode mode = deckBuilder.ActiveMode;
+			return mode != null ? mode.Browser as ArchetypeBrowser : null;
+		}
+
 		public static void Read(out string cardName, out bool locked, out string section, out string[] body) {
 			cardName = null;
 			locked = false;
 			section = null;
 			body = null;
 
-			UIManager ui = UIManager.Instance;
-			if (ui == null) return;
-			UIDeckBuilder deckBuilder = ui.DeckBuilder;
-			if (deckBuilder == null) return;
-			DeckBuilderMode mode = deckBuilder.ActiveMode;
-			ArchetypeBrowser browser = mode != null ? mode.Browser as ArchetypeBrowser : null;
+			ArchetypeBrowser browser = LiveBrowser();
 			if (browser == null) return;
 
 			Card card = CardInfoPanelReader.Read(browser.InfoPanel, out section, out body);

@@ -6,6 +6,7 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+* The inventory screen's Fate card is now read instead of staying silent.
 * Every positioned sound now reaches your far ear a fraction later than your near ear, the way real sounds do, making left/right placement much sharper on headphones.
 * Sounds passing very close now glide across the stereo field instead of jumping from ear to ear.
 * Attack cues follow your movement while they ring instead of freezing where they fired.

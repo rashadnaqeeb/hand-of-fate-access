@@ -132,12 +132,15 @@ namespace HandOfFateAccess.Focus {
 				}
 			}
 
-			// An archetype (Fates) card's detail lives on the deck builder's CabinetCardInfo
-			// panel (description, upgrades, deck changes, loadout), which the ArchetypeReader
-			// owns and edge-announces. The focused card itself would only re-read the title and
-			// duplicate the panel's description, so suppress it here, the same way the zoom is.
+			// In the deck builder's Fates pile an archetype card's detail lives on the
+			// CabinetCardInfo panel (description, upgrades, deck changes, loadout), which the
+			// ArchetypeReader owns and edge-announces; the focused card itself would only
+			// re-read the title and duplicate the panel's description, so suppress it there,
+			// the same way the zoom is. Gated on the browser being live because the inventory
+			// screen also focuses the player's Fate card, with no panel or reader speaking for
+			// it, so it must fall through to the Card branch and read like any other card.
 			// Checked before the Card branch since an archetype card is a Card.
-			if (go.GetComponentInParent<ArchetypeCard>() != null)
+			if (go.GetComponentInParent<ArchetypeCard>() != null && ArchetypeReader.BrowserLive)
 				return null;
 
 			Card card = go.GetComponentInParent<Card>();
