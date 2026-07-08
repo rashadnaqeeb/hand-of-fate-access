@@ -6,6 +6,8 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+## 1.2.0 - 2026-07-08
+
 * The inventory screen's Fate card is now read instead of staying silent.
 * The Fate card and the dealer-won upgrade cards like the goblet now also read what each of their upgrades does.
 * Vastly improved the accuracy of audio.
