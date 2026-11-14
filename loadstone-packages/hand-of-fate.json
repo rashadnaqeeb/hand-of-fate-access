@@ -1,0 +1,13 @@
+{
+  "manifestVersion": 1,
+  "kind": "game",
+  "id": "hand-of-fate",
+  "name": "Hand of Fate",
+  "detect": {
+    "steam": { "appId": 266510, "dirName": "Hand of Fate" },
+    "markers": ["Hand of Fate.exe"]
+  },
+  "userData": {
+    "windows": "${localLow}/Defiant Development/Hand of Fate"
+  }
+}

@@ -66,4 +66,6 @@ The repo builds with the .NET SDK and requires a local install of the game (the 
 
 The audio backend is FMOD, whose SDK is license-gated and cannot be redistributed in full, so it is not committed. It is required to build: vendor it once by following `third_party\fmod\README.md` (drop in the x86 `fmod.dll` and the core C# binding), and `build.ps1` will fail with a clear message until you do.
 
+Releases also install through the Loadstone mod manager. `loadstone-packages/` describes the game and the install, and each GitHub release carries a `loadstone-release.json` next to the zip, built by the Loadstone CLI from a checkout beside this repo (`../loadstone`). The `/release` skill does this. After editing the package files, check them with `../loadstone/target/release/loadstone validate --scope loadstone-packages loadstone-packages/*.json`.
+
 Logs: the game writes `Hand of Fate_Data\output_log.txt` in the game folder, and BepInEx writes `BepInEx\LogOutput.log`. Both reset on every launch. All mod lines are prefixed `[HoFAccess]`.

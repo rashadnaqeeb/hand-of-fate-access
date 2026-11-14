@@ -36,18 +36,24 @@ Stop and report (publish nothing) if any of these fail:
 ## Tag and publish
 
 11. `git tag v<version>`, then `git push origin main v<version>`.
-12. Compose the release notes (template below) into a temporary file and publish:
+12. Compose the release notes (template below) into a temporary file.
+13. Build the Loadstone release manifest, so the Loadstone mod manager can install this release. The Loadstone CLI comes from the checkout beside this repo (`../loadstone`, from github.com/rashadnaqeeb/loadstone); build it first with `cargo build --release -p loadstone-cli` there if `../loadstone/target/release/loadstone` is missing. Then:
 
-    gh release create v<version> "release/HandOfFateAccess-v<version>.zip" --title "Hand of Fate Access v<version>" --notes-file <notes file>
+    ../loadstone/target/release/loadstone package --manifest loadstone-packages/hand-of-fate-access.json --scope loadstone-packages --version v<version> --artifact "release/HandOfFateAccess-v<version>.zip" --notes-file <notes file> --out release/loadstone-release.json
+
+    A failure here (a missing zip, a package error) stops the release before anything is published.
+14. Publish, attaching both files:
+
+    gh release create v<version> "release/HandOfFateAccess-v<version>.zip" release/loadstone-release.json --title "Hand of Fate Access v<version>" --notes-file <notes file>
 
 ## Deploy locally
 
-13. Run `build.ps1 -NoBuild` to copy the just-released binaries into the local game install. `release.ps1` already built them, so `-NoBuild` deploys exactly the bits that were published; the user's own game then runs the released version.
-14. Verify the deployed `BepInEx\plugins\HandOfFateAccess.dll` in the game folder reports the new file version.
+15. Run `build.ps1 -NoBuild` to copy the just-released binaries into the local game install. `release.ps1` already built them, so `-NoBuild` deploys exactly the bits that were published; the user's own game then runs the released version.
+16. Verify the deployed `BepInEx\plugins\HandOfFateAccess.dll` in the game folder reports the new file version.
 
 ## Report
 
-15. Report back: the release URL, the notes as published, confirmation of the local deploy, and a reminder that the startup line now speaks the new version number.
+17. Report back: the release URL, the notes as published, confirmation of the local deploy, and a reminder that the startup line now speaks the new version number.
 
 ## Release notes template
 
