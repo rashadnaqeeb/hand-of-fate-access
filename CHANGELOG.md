@@ -6,6 +6,8 @@ New changes go under Unreleased as they are made; the release skill rolls that s
 
 ## Unreleased
 
+- The mod can now be installed, updated and uninstalled with the Loadstone mod manager; the README explains how.
+
 ## 1.2.0 - 2026-07-08
 
 * The inventory screen's Fate card is now read instead of staying silent.

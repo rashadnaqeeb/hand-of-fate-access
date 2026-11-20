@@ -10,6 +10,16 @@ A mod that makes Hand of Fate (the original game) playable without sight. Everyt
 
 ## Installation
 
+The easiest way to install is [Loadstone](https://github.com/bradjrenshaw/loadstone), an accessible mod manager for screen-reader accessibility mods:
+
+1. Download `Loadstone.exe` from [Loadstone's latest release](https://github.com/bradjrenshaw/loadstone/releases/latest) and run it.
+2. Choose Hand of Fate Access in the list of mods and press Install. Loadstone finds your Steam copy of the game on its own.
+3. Press Launch in Loadstone. Shortly after the game starts, the mod speaks its name and version, which confirms the install worked.
+
+To update, open Loadstone and press Update on the mod's page. The same page uninstalls the mod.
+
+### Installing by hand
+
 1. Download the latest release zip.
 2. Extract it directly into the game folder, the one containing `Hand of Fate.exe`. For a default Steam install that is `C:\Program Files (x86)\Steam\steamapps\common\Hand of Fate`. Allow it to merge with the existing folders.
 3. Launch the game. Shortly after launch the mod speaks its name and version, for example "Hand of Fate Access version 1.0.0 loaded". That line confirms everything is installed correctly.
