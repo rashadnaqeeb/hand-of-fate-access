@@ -1,8 +1,21 @@
 {
-  "manifestVersion": 1,
+  "manifestVersion": 2,
   "id": "hand-of-fate-access",
   "name": "Hand of Fate Access",
-  "description": "Makes Hand of Fate (the original game) playable without sight: every menu, card and encounter is spoken through your screen reader, and combat gets directional audio cues for walls, attacks, projectiles, hazards, chests and exits.",
+  "description": {
+    "en": "Makes Hand of Fate (the original game) playable without sight: every menu, card and encounter is spoken through your screen reader, and combat gets directional audio cues for walls, attacks, projectiles, hazards, chests and exits.",
+    "de": "Macht Hand of Fate (das Originalspiel) ohne Sehen spielbar: Jedes Menü, jede Karte und jede Begegnung wird über deinen Screenreader gesprochen, und im Kampf gibt es räumliche Audiosignale für Wände, Angriffe, Projektile, Gefahren, Truhen und Ausgänge.",
+    "es": "Hace que Hand of Fate (el juego original) se pueda jugar sin ver: cada menú, carta y encuentro se lee con tu lector de pantalla, y el combate incluye señales de audio direccionales para paredes, ataques, proyectiles, peligros, cofres y salidas.",
+    "fr": "Rend Hand of Fate (le jeu original) jouable sans la vue : chaque menu, carte et rencontre est lu par votre lecteur d'écran, et le combat dispose de signaux sonores directionnels pour les murs, les attaques, les projectiles, les dangers, les coffres et les sorties.",
+    "hu": "Látás nélkül is játszhatóvá teszi a Hand of Fate-et (az eredeti játékot): minden menüt, kártyát és találkozást felolvas a képernyőolvasód, a harcban pedig irányhangok jelzik a falakat, a támadásokat, a lövedékeket, a veszélyeket, a ládákat és a kijáratokat.",
+    "it": "Rende Hand of Fate (il gioco originale) giocabile senza vista: ogni menu, carta e incontro viene letto dal tuo screen reader, e il combattimento ha segnali audio direzionali per muri, attacchi, proiettili, pericoli, forzieri e uscite.",
+    "ja": "ハンドオブフェイト（初代）を目が見えなくても遊べるようにします。メニュー、カード、エンカウンターはすべてスクリーンリーダーで読み上げられ、戦闘では壁、攻撃、飛翔体、ハザード、宝箱、出口を方向のわかる音で知らせます。",
+    "ko": "Hand of Fate(원작 게임)를 앞을 보지 않고도 플레이할 수 있게 합니다. 모든 메뉴, 카드, 조우를 스크린 리더로 읽어 주고, 전투에서는 벽, 공격, 투사체, 위험물, 상자, 출구를 방향 오디오 신호로 알려 줍니다.",
+    "pt-BR": "Torna Hand of Fate (o jogo original) jogável sem enxergar: cada menu, carta e encontro é lido pelo seu leitor de tela, e o combate ganha sinais sonoros direcionais para paredes, ataques, projéteis, perigos, baús e saídas.",
+    "ru": "Позволяет играть в Hand of Fate (оригинальную игру) без зрения: каждое меню, карта и встреча озвучиваются вашей программой экранного доступа, а в бою направленные звуковые сигналы обозначают стены, атаки, снаряды, опасности, сундуки и выходы.",
+    "uk": "Дозволяє грати в Hand of Fate (оригінальну гру) без зору: кожне меню, карта й зустріч озвучуються вашою програмою екранного доступу, а в бою спрямовані звукові сигнали позначають стіни, атаки, снаряди, небезпеки, скрині та виходи.",
+    "zh-Hans": "让《命运之手》（初代游戏）无需视力也能游玩：所有菜单、卡牌和遭遇都由你的读屏软件朗读，战斗中还会用方向音效提示墙壁、攻击、投射物、危险物、宝箱和出口。"
+  },
   "authors": [
     "Rashad Naqeeb"
   ],
@@ -20,13 +33,39 @@
       "checks": [
         {
           "platform": "windows",
-          "message": "Hand of Fate Access needs the Windows version of the game."
+          "message": {
+            "en": "Hand of Fate Access needs the Windows version of the game.",
+            "de": "Hand of Fate Access braucht die Windows-Version des Spiels.",
+            "es": "Hand of Fate Access necesita la versión de Windows del juego.",
+            "fr": "Hand of Fate Access nécessite la version Windows du jeu.",
+            "hu": "A Hand of Fate Access működéséhez a játék Windows-verziója szükséges.",
+            "it": "Hand of Fate Access richiede la versione Windows del gioco.",
+            "ja": "Hand of Fate Access にはゲームの Windows 版が必要です。",
+            "ko": "Hand of Fate Access를 사용하려면 Windows 버전의 게임이 필요합니다.",
+            "pt-BR": "O Hand of Fate Access precisa da versão do jogo para Windows.",
+            "ru": "Для Hand of Fate Access нужна Windows-версия игры.",
+            "uk": "Для Hand of Fate Access потрібна Windows-версія гри.",
+            "zh-Hans": "Hand of Fate Access 需要 Windows 版游戏。"
+          }
         },
         {
           "not": {
             "processRunning": "Hand of Fate"
           },
-          "message": "Hand of Fate is running. Quit it, then install again."
+          "message": {
+            "en": "Hand of Fate is running. Quit it, then install again.",
+            "de": "Hand of Fate läuft. Beende das Spiel und installiere dann erneut.",
+            "es": "Hand of Fate se está ejecutando. Ciérralo y vuelve a instalar.",
+            "fr": "Hand of Fate est en cours d'exécution. Quittez le jeu, puis relancez l'installation.",
+            "hu": "A Hand of Fate fut. Lépj ki a játékból, majd indítsd újra a telepítést.",
+            "it": "Hand of Fate è in esecuzione. Chiudi il gioco, poi ripeti l'installazione.",
+            "ja": "ハンドオブフェイトが実行中です。ゲームを終了してから、もう一度インストールしてください。",
+            "ko": "Hand of Fate가 실행 중입니다. 게임을 종료한 후 다시 설치하세요.",
+            "pt-BR": "Hand of Fate está em execução. Feche o jogo e instale novamente.",
+            "ru": "Hand of Fate запущена. Закройте игру и повторите установку.",
+            "uk": "Hand of Fate запущено. Закрийте гру й повторіть встановлення.",
+            "zh-Hans": "《命运之手》正在运行。请退出游戏，然后重新安装。"
+          }
         }
       ]
     },
@@ -44,13 +83,39 @@
       "checks": [
         {
           "fileExists": "${gameDir}/BepInEx/plugins/HandOfFateAccess.dll",
-          "message": "The download didn't contain the mod (no BepInEx/plugins/HandOfFateAccess.dll)."
+          "message": {
+            "en": "The download didn't contain the mod (no BepInEx/plugins/HandOfFateAccess.dll).",
+            "de": "Der Download enthielt die Mod nicht (keine BepInEx/plugins/HandOfFateAccess.dll).",
+            "es": "La descarga no contenía el mod (falta BepInEx/plugins/HandOfFateAccess.dll).",
+            "fr": "Le téléchargement ne contenait pas le mod (BepInEx/plugins/HandOfFateAccess.dll absent).",
+            "hu": "A letöltés nem tartalmazta a modot (hiányzik a BepInEx/plugins/HandOfFateAccess.dll).",
+            "it": "Il download non conteneva la mod (manca BepInEx/plugins/HandOfFateAccess.dll).",
+            "ja": "ダウンロードに MOD が含まれていませんでした（BepInEx/plugins/HandOfFateAccess.dll がありません）。",
+            "ko": "다운로드한 파일에 모드가 들어 있지 않습니다(BepInEx/plugins/HandOfFateAccess.dll 없음).",
+            "pt-BR": "O download não continha o mod (falta BepInEx/plugins/HandOfFateAccess.dll).",
+            "ru": "В загрузке не оказалось мода (нет BepInEx/plugins/HandOfFateAccess.dll).",
+            "uk": "Завантаження не містило мода (немає BepInEx/plugins/HandOfFateAccess.dll).",
+            "zh-Hans": "下载的文件中没有该模组（缺少 BepInEx/plugins/HandOfFateAccess.dll）。"
+          }
         }
       ]
     },
     {
       "step": "notice",
-      "message": "Shortly after the game starts, the mod says \"Hand of Fate Access version ... loaded\". That line confirms the install worked."
+      "message": {
+        "en": "Shortly after the game starts, the mod says \"Hand of Fate Access version ... loaded\". That line confirms the install worked.",
+        "de": "Kurz nach dem Spielstart sagt die Mod „Hand of Fate Zugang Version ... geladen“. Diese Zeile bestätigt, dass die Installation geklappt hat.",
+        "es": "Poco después de iniciar el juego, el mod dice «Hand of Fate Acceso versión ... cargado». Esa frase confirma que la instalación funcionó.",
+        "fr": "Peu après le lancement du jeu, le mod annonce « Hand of Fate Accès version ... chargé ». Cette phrase confirme que l'installation a réussi.",
+        "hu": "Nem sokkal a játék indulása után a mod ezt mondja: „Hand of Fate Hozzáférés ... verzió betöltve”. Ez a mondat jelzi, hogy a telepítés sikerült.",
+        "it": "Poco dopo l'avvio del gioco, la mod dice «Hand of Fate Accesso versione ... caricato». Questa frase conferma che l'installazione è riuscita.",
+        "ja": "ゲームが起動して間もなく、MOD が「ハンドオブフェイト・アクセス バージョン... 読み込み完了」と読み上げます。これが聞こえれば、インストールは成功しています。",
+        "ko": "게임이 시작되고 잠시 후 모드가 “Hand of Fate 액세스 버전 ... 로드됨”이라고 말합니다. 이 말이 들리면 설치가 제대로 된 것입니다.",
+        "pt-BR": "Pouco depois de o jogo iniciar, o mod diz “Hand of Fate Acesso versão ... carregado”. Essa frase confirma que a instalação deu certo.",
+        "ru": "Вскоре после запуска игры мод произносит «Hand of Fate Доступ версии ... загружен». Эта фраза подтверждает, что установка прошла успешно.",
+        "uk": "Невдовзі після запуску гри мод промовляє «Hand of Fate Доступ версії ... завантажено». Ця фраза підтверджує, що встановлення пройшло успішно.",
+        "zh-Hans": "游戏启动后不久，模组会朗读“命运之手无障碍，版本 ... 已加载”。听到这句话，就说明安装成功了。"
+      }
     }
   ],
   "launch": [
@@ -62,7 +127,20 @@
       "checks": [
         {
           "processRunning": "steam",
-          "message": "Steam isn't running. Open Steam, then press Launch again."
+          "message": {
+            "en": "Steam isn't running. Open Steam, then press Launch game again.",
+            "de": "Steam läuft nicht. Öffne Steam und drücke dann erneut „Spiel starten“.",
+            "es": "Steam no se está ejecutando. Abre Steam y vuelve a pulsar Iniciar el juego.",
+            "fr": "Steam n'est pas lancé. Ouvrez Steam, puis appuyez de nouveau sur Lancer le jeu.",
+            "hu": "A Steam nem fut. Nyisd meg a Steamet, majd nyomd meg újra a Játék indítása gombot.",
+            "it": "Steam non è in esecuzione. Apri Steam, poi premi di nuovo Avvia il gioco.",
+            "ja": "Steam が起動していません。Steam を開いてから、もう一度「ゲームを起動」を押してください。",
+            "ko": "Steam이 실행 중이 아닙니다. Steam을 연 후 게임 실행을 다시 누르세요.",
+            "pt-BR": "O Steam não está em execução. Abra o Steam e pressione Iniciar o jogo novamente.",
+            "ru": "Steam не запущен. Откройте Steam и снова нажмите «Запустить игру».",
+            "uk": "Steam не запущено. Відкрийте Steam і знову натисніть «Запустити гру».",
+            "zh-Hans": "Steam 未运行。请打开 Steam，然后再次按“启动游戏”。"
+          }
         }
       ]
     },
